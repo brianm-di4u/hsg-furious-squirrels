@@ -121,7 +121,17 @@ After the stop, defects both critics flagged were fixed but not re-scored:
   - `check-levels`: 14/14
   - `check-facts`: 35/35
   - `tools/check-birds.mjs`: 13/13
-- **Not yet done:** the v1.1 update is not pushed to `hsg-furious-squirrels` or the website.
+- **Released:** `brianm-di4u/hsg-furious-squirrels` tag `v1.1.0` (game PR [hsg-furious-squirrels#1](https://github.com/brianm-di4u/hsg-furious-squirrels/pull/1)), live through site PR [hot-springs-games#25](https://github.com/brianm-di4u/hot-springs-games/pull/25) with a retaken in-game shot and social card.
+
+## Update: Blender birds, no squirrel halo (v1.2.0, 2026-11-01)
+- **Birds** are Blender sprites in the squirrels' toon look (`art-src/blender/scripts/bird.py`, `README-birds.md`). They use the same cel shading, rim light, ink hull and cartoon eyes as the squirrels, with six flap frames and a glide frame for each of the seven species. They are packed into `assets/birds.webp` (171 KB).
+  - The flap and glide timing is unchanged, and so are bird sizes and hit radii. The code-drawn birds remain as the `?art=0` fallback.
+- **Squirrels** no longer get the dark-brown and cream halo that loop 2 added. They now sit flush in the trees with only their thin baked ink line, like the trees.
+  - The squirrel renders themselves are unchanged (byte-identical after `squirrel.py` gained its `__main__` guard).
+- **Tests:**
+  - `--milestone final --slow`: 76/76
+  - `npm test`: 70/70
+  - `tools/check-birds.mjs`: 13/13
 
 ## Release
 Shipped on 2026-11-01 as `brianm-di4u/hsg-furious-squirrels` tag `v1.0.0` (public), through site PR [hot-springs-games#20](https://github.com/brianm-di4u/hot-springs-games/pull/20).

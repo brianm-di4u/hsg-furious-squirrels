@@ -1313,4 +1313,5 @@ def main():
     print('@@DONE seconds=%.1f' % (time.time() - t_all))
 
 
-main()
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,79 @@
+{
+ "frames": [
+  "flap_0",
+  "flap_1",
+  "flap_2",
+  "flap_3",
+  "flap_4",
+  "flap_5",
+  "glide_0"
+ ],
+ "order": [
+  "swift",
+  "vulture",
+  "jay",
+  "crow",
+  "goose",
+  "waxwing",
+  "eagle"
+ ],
+ "res": 256,
+ "species": {
+  "crow": {
+   "anchor": [
+    134.76,
+    143.6
+   ],
+   "bodyPx": 87.18,
+   "linePx": 3.1
+  },
+  "eagle": {
+   "anchor": [
+    144.5,
+    146.27
+   ],
+   "bodyPx": 80.32,
+   "linePx": 1.83
+  },
+  "goose": {
+   "anchor": [
+    119.35,
+    146.4
+   ],
+   "bodyPx": 99.04,
+   "linePx": 2.81
+  },
+  "jay": {
+   "anchor": [
+    139.42,
+    143.49
+   ],
+   "bodyPx": 110.87,
+   "linePx": 5.25
+  },
+  "swift": {
+   "anchor": [
+    162.45,
+    140.0
+   ],
+   "bodyPx": 91.75,
+   "linePx": 5.79
+  },
+  "vulture": {
+   "anchor": [
+    149.26,
+    152.2
+   ],
+   "bodyPx": 89.62,
+   "linePx": 2.31
+  },
+  "waxwing": {
+   "anchor": [
+    130.14,
+    142.09
+   ],
+   "bodyPx": 106.61,
+   "linePx": 6.73
+  }
+ }
+}

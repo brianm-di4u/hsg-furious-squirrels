@@ -42,5 +42,68 @@
   ]
  },
  "variants": 4,
- "perVariant": 17
+ "perVariant": 17,
+ "birds": {
+  "cell": 256,
+  "cols": 7,
+  "flap": 6,
+  "species": {
+   "swift": {
+    "row": 0,
+    "anchor": [
+     162.45,
+     140
+    ],
+    "bodyPx": 91.75
+   },
+   "vulture": {
+    "row": 1,
+    "anchor": [
+     149.26,
+     152.2
+    ],
+    "bodyPx": 89.62
+   },
+   "jay": {
+    "row": 2,
+    "anchor": [
+     139.42,
+     143.49
+    ],
+    "bodyPx": 110.87
+   },
+   "crow": {
+    "row": 3,
+    "anchor": [
+     134.76,
+     143.6
+    ],
+    "bodyPx": 87.18
+   },
+   "goose": {
+    "row": 4,
+    "anchor": [
+     119.35,
+     146.4
+    ],
+    "bodyPx": 99.04
+   },
+   "waxwing": {
+    "row": 5,
+    "anchor": [
+     130.14,
+     142.09
+    ],
+    "bodyPx": 106.61
+   },
+   "eagle": {
+    "row": 6,
+    "anchor": [
+     144.5,
+     146.27
+    ],
+    "bodyPx": 80.32
+   }
+  }
+ }
 }

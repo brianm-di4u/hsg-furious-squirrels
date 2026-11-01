@@ -80,7 +80,7 @@ export class Renderer {
     this.drawPiles(g);
     this.trees.draw(g, cam, level, sim);
     this.drawFalling(g, sim);
-    drawBirds(g, cam, sim, app.time);
+    drawBirds(g, cam, sim, app.time, this.birdSprites);
     if (level.targets) this.drawTargets(g, app);
     if (app.showPerches) this.drawPerches(g, app);
     if (app.aimGuide) this.drawGuide(g, app.aimGuide);
@@ -293,8 +293,6 @@ export class Renderer {
     const f = list[Math.floor(t * rate) % list.length] + (meta.perVariant || 0) * (variant % (meta.variants || 1)), c = meta.cell, sx = (f % meta.cols) * c, sy = Math.floor(f / meta.cols) * c;
     const k = (s * 1.05) / meta.pxPerUnit; // screen px per atlas px (a touch larger than the 46-unit hit body)
     g.save(); g.translate(x, y); g.scale(facing * (1 + squash * 0.18), 1 - squash * 0.18);
-    // a cream rim (pre-baked silhouette) keeps squirrels readable against foliage of their own colour
-    if (this.sprites.rims) g.drawImage(this.sprites.rims[team], sx, sy, c, c, -meta.anchor[0] * k, -meta.anchor[1] * k, c * k, c * k);
     g.drawImage(imgs[team], sx, sy, c, c, -meta.anchor[0] * k, -meta.anchor[1] * k, c * k, c * k);
     if (flash) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.28; g.drawImage(imgs[team], sx, sy, c, c, -meta.anchor[0] * k, -meta.anchor[1] * k, c * k, c * k); }
     g.restore();
