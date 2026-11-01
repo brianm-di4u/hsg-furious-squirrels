@@ -229,6 +229,55 @@
    "text": "Hot Springs breezes are gentle: at Memorial Field the wind averages about 5 mph and blows from the east more than any other direction (2016–2025 records).",
    "source": "Iowa Environmental Mesonet ASOS archive (computed)",
    "url": "https://mesonet.agron.iastate.edu/request/download.phtml?network=AR_ASOS"
+  },
+  {
+   "id": "n-birds-park",
+   "season": "any",
+   "text": "Every bird that flies over these battles is on Hot Springs National Park's species list, from chimney swifts to bald eagles.",
+   "source": "NPS NPSpecies, Hot Springs National Park birds",
+   "url": "https://irmaservices.nps.gov/v3/rest/npspecies/checklist/HOSP/Bird"
+  },
+  {
+   "id": "n-jays",
+   "season": "fall",
+   "text": "A blue jay can carry five acorns at once and bury up to 5,000 in a season, but finds only about one in four, so jays plant oak trees.",
+   "source": "National Park Service, Species Spotlight: Oaks",
+   "url": "https://www.nps.gov/articles/species-spotlight-oaks.htm"
+  },
+  {
+   "id": "n-vultures",
+   "season": "any",
+   "text": "Turkey vultures ride rising warm air, holding their wings in a shallow V and tilting side to side. Their wings span about 70 inches.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/turkey-vulture"
+  },
+  {
+   "id": "n-swifts",
+   "season": "summer",
+   "text": "Chimney swifts look like flying cigars and catch insects on the wing. They arrive in April and leave for South America in October.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/chimney-swift"
+  },
+  {
+   "id": "n-waxwings",
+   "season": "winter",
+   "text": "Cedar waxwings travel in big, quiet flocks and eat cedar berries in winter. Look for the yellow tips on their tails.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/cedar-waxwing"
+  },
+  {
+   "id": "n-geese",
+   "season": "fall",
+   "text": "Migrating Canada geese fly in V-shaped chevrons, and the males call a long, loud \"a-honk!\"",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/canada-goose"
+  },
+  {
+   "id": "n-eagles",
+   "season": "winter",
+   "text": "Arkansas's first modern bald eagle nest was found in 1983; now about 150–160 pairs nest in the state, and winter is the best time to spot one.",
+   "source": "Arkansas Game & Fish Commission",
+   "url": "https://www.agfc.com/news/eagles-inspire-awe-appreciation-for-conservation-efforts/"
   }
  ]
 }

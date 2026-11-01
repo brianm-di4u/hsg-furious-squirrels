@@ -95,6 +95,7 @@ const TEMPLATES = {
       ${field('Rounds', `<div class="seg">${[1, 3, 5].map((n) => `<button type="button" class="btn small" data-act="qset" data-k="rounds" data-v="${n}" aria-pressed="${q.rounds == n}">Best of ${n}</button>`).join('')}</div>`)}
       ${field('Wind', `<div class="seg">${[['off', 'Off'], ['light', 'Light'], ['normal', 'Normal'], ['gusty', 'Gusty']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="wind" data-v="${v}" aria-pressed="${q.wind === v}">${l}</button>`).join('')}</div>`)}
       ${field('Steam updraft', `<div class="seg">${[['off', 'Off'], ['on', 'On'], ['strong', 'Strong']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="steam" data-v="${v}" aria-pressed="${q.steam === v}">${l}</button>`).join('')}</div>`)}
+      ${field('Birds', `<div class="seg">${[['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="birds" data-v="${v}" aria-pressed="${(q.birds || 'some') === v}">${l}</button>`).join('')}</div>`)}
       ${field('Nuts', `<div class="seg"><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="all" aria-pressed="${q.loadout === 'all'}">All seven</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="story" aria-pressed="${q.loadout === 'story'}">Story unlocks</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="acorn" aria-pressed="${q.loadout === 'acorn'}">Acorns only</button></div>`)}
       ${field('Rival skill', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="difficulty" data-v="${v}" aria-pressed="${q.difficulty === v}">${l}</button>`).join('')}</div>`)}
       <nav class="menu row">${btn('quickGo', 'Start battle', 'autofocus', 'btn primary')}${btn('back', 'Back', 'data-back')}</nav>
@@ -185,6 +186,7 @@ const TEMPLATES = {
         <li>Bathhouse Row order, architecture and colors: the Hot Springs Games research corpus (NPS, HABS AR-28, the NHL nomination, Encyclopedia of Arkansas); Field Notes facts from the collection's audited trivia bank, each with its source.</li>
         <li>Valley shape: USGS 3D Elevation Program (public domain). Viewpoint and tower positions: © OpenStreetMap contributors (ODbL 1.0).</li>
         <li>Squirrels and nut trees: NPS NPSpecies, Missouri Department of Conservation, University of Arkansas Extension, USDA Forest Service Silvics; wind from the Iowa Environmental Mesonet ASOS archive.</li>
+        <li>Birds: the NPS species list for Hot Springs National Park, the National Park Service (oaks and blue jays), Missouri Department of Conservation field guides and the Arkansas Game &amp; Fish Commission.</li>
         <li>No logos or marks of the National Park Service or any business; not affiliated with or endorsed by anyone shown.</li>
       </ul>
       <h3>Made with</h3>

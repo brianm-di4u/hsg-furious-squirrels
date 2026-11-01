@@ -1,6 +1,6 @@
 // Code-drawn trees (branches must be able to break): tapered bark strokes and clustered leaf canopies in the
 // season's colours. Each tree is cached to its own sprite and redrawn only when one of its branches breaks.
-import { CANOPY, BARK, ACCENT, SKY } from './looks.js';
+import { CANOPY, BARK, ACCENT, SKY, EVERGREEN } from './looks.js';
 import { makeRng } from '../rng.js';
 
 const PAD = 90;
@@ -73,7 +73,7 @@ export function drawTree(g, def, geom, season, rng) {
   // bark texture: short horizontal ticks
   g.strokeStyle = 'rgba(25,15,8,0.22)'; g.lineWidth = 1.2;
   const L = Math.hypot(tr.x1 - tr.x0, tr.y1 - tr.y0);
-  for (let s = 10; s < L - 10; s += def.species === 'pine' ? 9 : 14) {
+  for (let s = 10; s < L - 10; s += EVERGREEN.has(def.species) ? 9 : 14) {
     const u = s / L, x = tr.x0 + (tr.x1 - tr.x0) * u, y = tr.y0 + (tr.y1 - tr.y0) * u, w = tr.w * (1 - u * 0.55) * 0.35;
     g.beginPath(); g.moveTo(x - w + rng.range(-1, 1), y); g.lineTo(x + w * rng.range(0.2, 1), y + rng.range(-1, 1)); g.stroke();
   }
@@ -93,11 +93,11 @@ export function drawTree(g, def, geom, season, rng) {
 }
 
 function canopy(g, c, pal, species, season, rng) {
-  const n = species === 'pine' ? 9 : 12;
+  const ever = EVERGREEN.has(species), n = ever ? 9 : 12;
   const blobs = [];
   for (let i = 0; i < n; i++) {
     const a = rng.range(0, Math.PI * 2), d = rng.range(0, c.r * 0.62);
-    blobs.push({ x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * (species === 'pine' ? 0.55 : 0.8), r: c.r * rng.range(0.34, 0.5) });
+    blobs.push({ x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d * (ever ? 0.55 : 0.8), r: c.r * rng.range(0.34, 0.5) });
   }
   blobs.sort((a, b) => a.y - b.y);
   // ink outline (matches the squirrels), dark under-layer, mid, then lit tops
@@ -119,7 +119,13 @@ function canopy(g, c, pal, species, season, rng) {
   g.globalAlpha = 1;
   if (season === 'winter') for (const b of blobs) { g.fillStyle = '#F4F6F5'; g.beginPath(); g.ellipse(b.x - b.r * 0.1, b.y - b.r * 0.62, b.r * 0.62, b.r * 0.22, 0, 0, Math.PI * 2); g.fill(); }
   const acc = ACCENT[season];
-  if (acc && species !== 'pine') for (let i = 0; i < 7; i++) {
+  // hedge apples: big lime-green fruit hang in the Osage-orange's fall crown
+  if (species === 'osage' && season === 'fall') for (let i = 0; i < 4; i++) {
+    const a = rng.range(0, Math.PI * 2), d = rng.range(0, c.r * 0.7), x = c.x + Math.cos(a) * d, y = c.y + Math.sin(a) * d * 0.8;
+    g.fillStyle = '#1A1410'; g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#B5C84A'; g.beginPath(); g.arc(x, y, 4.8, 0, Math.PI * 2); g.fill();
+  }
+  if (acc && !ever && species !== 'redbud') for (let i = 0; i < 7; i++) {
     const a = rng.range(0, Math.PI * 2), d = rng.range(0, c.r * 0.8);
     g.fillStyle = acc[i % 2];
     g.beginPath(); g.arc(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * 0.8, rng.range(2, 4), 0, Math.PI * 2); g.fill();
@@ -128,7 +134,7 @@ function canopy(g, c, pal, species, season, rng) {
 
 function leafBlob(g, x, y, r, species, rng) {
   g.beginPath();
-  if (species === 'pine') {
+  if (EVERGREEN.has(species)) {
     // needle tufts: a flattened, spiky ellipse
     const k = 10;
     for (let i = 0; i <= k; i++) {

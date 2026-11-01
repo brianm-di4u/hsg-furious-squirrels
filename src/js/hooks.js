@@ -24,6 +24,7 @@ export function installHooks(App, api) {
         branches: { total: b.trees.reduce((n, t) => n + t.b.length, 0), broken: b.trees.reduce((n, t) => n + t.b.filter((s) => s.broken).length, 0) },
         nuts: b.nuts.map((n) => ({ kind: n.kind, x: +n.x.toFixed(1), y: +n.y.toFixed(1), state: n.state, tapped: n.tapped })),
         craters: b.craters.length, events: b.log.slice(-20), hash: api.hashBattle(b),
+        birds: { level: b.birdLevel, t: +(b.birdT || 0).toFixed(3), list: (b.birds || []).map((bd, i) => { const p = sim.birdAt(i); return { kind: bd.k, x: +p.x.toFixed(1), y: +p.y.toFixed(1), startled: !!bd.flee }; }) },
       };
     }
     return out;

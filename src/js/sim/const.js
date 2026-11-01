@@ -15,7 +15,7 @@ export const SETTLE_MAX = 2.5;
 export const FLIGHT_MAX = 12; // seconds; a nut still flying after this is retired
 export const OWNER_GRACE = 0.25;
 
-export const MAT = { AIR: 0, DIRT: 1, ROCK: 2, TUFA: 3 };
+export const MAT = { AIR: 0, DIRT: 1, ROCK: 2, TUFA: 3, LOG: 4 }; // LOG: fallen logs and stumps (solid, never carved)
 
 export const TEAMS = [
   { id: 'rustlers', name: 'West Ridge Rustlers', short: 'Rustlers', species: 'fox squirrels', home: 'West Mountain', shape: 'circle', facing: 1 },
@@ -37,6 +37,21 @@ export const NUT_ORDER = ['acorn', 'chinquapin', 'pecan', 'walnut', 'hickory', '
 export const NUT_CAP = 3;
 
 export const ACORNS = { hit: 4, branch: 6, ko: 20, roundWin: 40, roundPlayed: 15, start: 60 };
+
+// Birds over the valley (MECHANICS.md §6b): airborne obstacles rolled fresh each turn. r: hit radius; v: air
+// speed; alt: height band above the valley floor; keep: how much of a nut's speed survives a glancing bounce;
+// snatch: may grab a plain acorn in mid-air. Seasons follow when each species is around Hot Springs.
+const ALL_YEAR = ['spring', 'summer', 'fall', 'winter'];
+export const BIRDS = {
+  swift: { name: 'chimney swift', plural: 'chimney swifts', r: 9, v: 250, flock: [4, 7], form: 'zig', alt: [380, 880], seasons: ['spring', 'summer'], keep: 0.9 },
+  vulture: { name: 'turkey vulture', plural: 'turkey vultures', r: 22, v: 85, flock: [2, 4], form: 'circle', alt: [700, 1100], seasons: ALL_YEAR, keep: 0.7 },
+  jay: { name: 'blue jay', plural: 'blue jays', r: 12, v: 165, flock: [1, 1], form: 'single', alt: [380, 760], seasons: ALL_YEAR, keep: 0.85, snatch: true },
+  crow: { name: 'American crow', plural: 'American crows', r: 16, v: 145, flock: [1, 3], form: 'loose', alt: [420, 900], seasons: ALL_YEAR, keep: 0.8, snatch: true },
+  goose: { name: 'Canada goose', plural: 'Canada geese', r: 20, v: 150, flock: [5, 9], form: 'v', alt: [650, 1250], seasons: ['fall', 'winter'], keep: 0.6 },
+  waxwing: { name: 'cedar waxwing', plural: 'cedar waxwings', r: 9, v: 195, flock: [6, 10], form: 'loose', alt: [360, 720], seasons: ['winter', 'spring'], keep: 0.9 },
+  eagle: { name: 'bald eagle', plural: 'bald eagles', r: 25, v: 115, flock: [1, 1], form: 'glide', alt: [750, 1250], seasons: ['winter'], keep: 0.6 },
+};
+export const BIRD_LEVELS = { off: 0, some: 1, lots: 2 };
 
 export const WIND_LEVELS = { off: 0, light: 0.45, normal: 0.8, gusty: 1 };
 export const STEAM_LEVELS = { off: 0, weak: 420, on: 680, strong: 980 };

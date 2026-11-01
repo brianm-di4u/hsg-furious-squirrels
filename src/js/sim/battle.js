@@ -2,8 +2,9 @@
 // (terrain mask, tree geometry, perch graphs) rebuilt from the level and that object. No DOM.
 import {
   DT, G, W, VMAX, STAMINA, GRIP, SQ_UP, NUTS, NUT_ORDER, NUT_CAP, ACORNS, TEAMS, SETTLE_MAX, WIND_LEVELS, STEAM_LEVELS,
-  ANGLE_MIN, ANGLE_MAX, clamp,
+  ANGLE_MIN, ANGLE_MAX, BIRDS, BIRD_LEVELS, clamp,
 } from './const.js';
+import { rollBirds, birdPos, startle } from './birds.js';
 import { Terrain } from './terrain.js';
 import { initTreeState, treeGeom, buildPerches, shortestPath, reachable, segDist } from './trees.js';
 import { makeNut, stepNut, applyTap, startRoll, treeBoxes, predict } from './flight.js';
@@ -17,11 +18,11 @@ const NAMES = [
 ];
 
 export class Sim {
-  // opts: {seed, mode, difficulty, teamSize, rounds, wind, steam, loadout, human: [bool, bool], practice}
+  // opts: {seed, mode, difficulty, teamSize, rounds, wind, steam, birds, loadout, human: [bool, bool], practice}
   constructor(level, opts = {}, battle = null) {
     this.level = level;
     this.queue = []; // events for the renderer/audio, drained each frame
-    if (battle) { this.b = battle; this.rebuild(); return; }
+    if (battle) { this.b = battle; birdDefaults(battle); this.rebuild(); return; }
     const seed = (opts.seed ?? 7) >>> 0;
     const size = clamp(opts.teamSize || level.teamSize || 3, 1, 4);
     const windKey = opts.wind || level.wind || 'normal', steamKey = opts.steam || level.steam || 'on';
@@ -38,9 +39,10 @@ export class Sim {
         aim: { angle: 45, power: 0.6, nut: 'acorn' },
       })),
       squirrels: [], trees: null, craters: [], settle: 0, falling: [], nuts: [], log: [],
-      rng: { sim: makeRng(seed ^ 0x5eed).s, ai: makeRng(seed ^ 0xa11ce).s }, result: null, size,
+      rng: { sim: makeRng(seed ^ 0x5eed).s, ai: makeRng(seed ^ 0xa11ce).s, birds: makeRng(seed ^ 0xb1d5).s }, result: null, size,
+      birdLevel: opts.birds in BIRD_LEVELS ? opts.birds : 'off', birds: [], birdT: 0,
     };
-    if (this.b.practice) this.b.teams[1].human = false;
+    if (this.b.practice) { this.b.teams[1].human = false; this.b.birdLevel = 'off'; }
     this.startRound(true);
   }
 
@@ -59,7 +61,8 @@ export class Sim {
   }
   env() {
     const b = this.b;
-    return { wind: b.wind, steam: { x: this.level.steam.x, w: this.level.steam.w, lift: b.steamLevel }, floorY: this.level.floorY, terrain: this.terrain, geoms: this.geoms, boxes: this.boxes, squirrels: b.squirrels };
+    return { wind: b.wind, steam: { x: this.level.steam.x, w: this.level.steam.w, lift: b.steamLevel }, floorY: this.level.floorY, terrain: this.terrain, geoms: this.geoms, boxes: this.boxes, squirrels: b.squirrels,
+      birds: b.birds, birdT: b.birdT, groundY: this.groundYFn || (this.groundYFn = (x) => this.terrain.groundY(x)) };
   }
   rng(stream) {
     const r = makeRng(1);
@@ -98,6 +101,7 @@ export class Sim {
     const second = b.teams[1 - b.turn.team];
     if (!b.practice && 'walnut' in second.inventory) second.inventory.walnut = Math.min(NUT_CAP, second.inventory.walnut + 1);
     b.wind = clamp(this.rng('sim').normal(0, 0.5), -1, 1) * b.windLevel;
+    rollBirds(L, b, this.rng('birds'));
     b.phase = 'aim';
     this.pickSquirrel();
     this.emit({ type: 'round', round: b.round });
@@ -123,6 +127,7 @@ export class Sim {
     b.turn.stamina = STAMINA; b.turn.moved = 0;
     const r = this.rng('sim');
     b.wind = clamp((b.wind / (b.windLevel || 1)) * 0.5 + r.normal(0, 0.45), -1, 1) * b.windLevel;
+    rollBirds(this.level, b, this.rng('birds'));
     b.phase = 'aim';
     this.pickSquirrel();
     this.emit({ type: 'turn', team: b.turn.team, sq: b.turn.sq, wind: b.wind });
@@ -239,6 +244,10 @@ export class Sim {
     return true;
   }
 
+  // the birds keep flying while a family aims (wall-clock dt from the app; tests and tools never call it)
+  idle(dt) { const b = this.b; if (b.phase === 'aim' && b.birds && b.birds.length && dt > 0) b.birdT += Math.min(dt, 0.25); }
+  birdAt(i) { const b = this.b; return birdPos(b.birds[i], b.birdT, this.env()); }
+
   // one fixed step
   step() {
     const b = this.b;
@@ -250,10 +259,12 @@ export class Sim {
     const b = this.b, env = this.env();
     if (b.tapAt != null && b.flightStep === b.tapAt) this.tap();
     b.flightStep++;
+    b.birdT += DT;
     for (let i = b.nuts.length - 1; i >= 0; i--) {
       const nut = b.nuts[i], ev = stepNut(nut, env, DT);
       if (!ev) continue;
       if (ev.type === 'rustle') { this.emit({ type: 'rustle', x: ev.x, y: ev.y }); continue; }
+      if (ev.type === 'bird') { if (this.hitBird(nut, ev)) b.nuts.splice(i, 1); continue; }
       if (ev.type === 'terrain' && nut.kind === 'hedgeapple' && !nut.rolled) { startRoll(nut, env); this.emit({ type: 'thud', x: nut.x, y: nut.y, kind: nut.kind }); continue; }
       b.nuts.splice(i, 1);
       if (ev.type === 'out') { if (!ev.husk) this.emit({ type: 'miss', x: ev.x, y: ev.y }); continue; }
@@ -378,9 +389,32 @@ export class Sim {
     }
   }
 
+  // A nut meets a bird. Nobody is hurt: a jay or crow may snatch a plain acorn (the nut is gone); otherwise the
+  // nut glances off, slowed and knocked off course, and keeps flying. Either way the bird flaps off startled.
+  // Returns true when the nut is gone.
+  hitBird(nut, ev) {
+    const b = this.b, bd = b.birds[ev.bird], d = BIRDS[bd.k];
+    const p = { x: ev.bx, y: ev.by, face: ev.face };
+    startle(bd, b.birdT, p, nut.x);
+    if (d.snatch && nut.kind === 'acorn' && this.rng('birds').chance(0.5)) {
+      this.emit({ type: 'snatch', bird: bd.k, x: p.x, y: p.y });
+      return true;
+    }
+    let nx = nut.x - p.x, ny = nut.y - p.y;
+    const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
+    const vn = nut.vx * nx + nut.vy * ny;
+    if (vn < 0) { nut.vx -= 1.4 * vn * nx; nut.vy -= 1.4 * vn * ny; }
+    nut.vx *= d.keep; nut.vy *= d.keep;
+    const rr = d.r + nut.r + 1;
+    nut.x = p.x + nx * rr; nut.y = p.y + ny * rr;
+    this.emit({ type: 'bird', bird: bd.k, x: p.x, y: p.y, kind: nut.kind });
+    return false;
+  }
+
   stepSettle() {
     const b = this.b;
     b.settle += DT;
+    b.birdT += DT;
     for (const f of b.falling) f.age += DT;
     let busy = false;
     for (const q of b.squirrels) {
@@ -440,12 +474,20 @@ export class Sim {
     if (!q) return null;
     const h = this.hand(q);
     const nut = makeNut(aim.nut || 'acorn', h.x, h.y, aim.angle, aim.power, VMAX, q.team, q.id, q.facing, this.homeTree(q));
-    return predict({ ...this.env(), squirrels: opts.squirrels === false ? [] : this.b.squirrels }, nut, { dt: DT, ...opts });
+    return predict({ ...this.env(), squirrels: opts.squirrels === false ? [] : this.b.squirrels, birds: [] }, nut, { dt: DT, ...opts });
   }
 
   alive(team) { return this.b.squirrels.filter((q) => q.team === team && !q.out && !q.dummy).length; }
 
   toJSON() { return JSON.parse(JSON.stringify(this.b)); }
+}
+
+// battles saved before birds existed fly without them
+function birdDefaults(b) {
+  if (b.rng.birds == null) b.rng.birds = makeRng((b.seed ^ 0xb1d5) >>> 0).s;
+  if (b.birdLevel == null) b.birdLevel = 'off';
+  if (!b.birds) b.birds = [];
+  if (b.birdT == null) b.birdT = 0;
 }
 
 function st(b, ti, bi) { return b.trees[ti].b[bi]; }

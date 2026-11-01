@@ -13,6 +13,7 @@ import { drawNut, NUT_COLORS } from './nuts.js';
 import { Fx, Steam } from './fx.js';
 import { TEAM_COLORS, BARK } from './looks.js';
 import { makeRng } from '../rng.js';
+import { drawBirds } from './birds.js';
 
 export class Renderer {
   constructor(canvas) {
@@ -69,10 +70,17 @@ export class Renderer {
     this.steam.draw(g, cam, this.reduced ? 0.7 : 1);
     this.drawTower(g);
     this.terrain.draw(g, cam);
-    { const [, by] = cam.toScreen(0, H - 1); if (by < h) { g.fillStyle = '#4E3A28'; g.fillRect(-10, by, w + 20, h - by + 10); } }
+    // bedrock below the world: a deep-soil fade over the last stretch hides the canvas edges, then solid ground
+    { const [, by] = cam.toScreen(0, H - 1); if (by < h) {
+      const [, fy] = cam.toScreen(0, H - 260), fg = g.createLinearGradient(0, fy, 0, by);
+      fg.addColorStop(0, 'rgba(38,28,19,0)'); fg.addColorStop(1, 'rgba(38,28,19,1)');
+      g.fillStyle = fg; g.fillRect(-10, fy, w + 20, by - fy + 1);
+      g.fillStyle = '#261C13'; g.fillRect(-10, by, w + 20, h - by + 10);
+    } }
     this.drawPiles(g);
     this.trees.draw(g, cam, level, sim);
     this.drawFalling(g, sim);
+    drawBirds(g, cam, sim, app.time);
     if (level.targets) this.drawTargets(g, app);
     if (app.showPerches) this.drawPerches(g, app);
     if (app.aimGuide) this.drawGuide(g, app.aimGuide);
@@ -127,17 +135,25 @@ export class Renderer {
   }
   drawBackdrop(g) {
     const r = this.backdropRect(), cam = this.cam;
-    if (this.art && this.art.img) {
-      // continuous forest behind the painting's feathered edges
+    // continuous forest behind the backdrop's feathered edges (wide enough for the furthest zoom-out)
+    if (this.band) {
       const bw = this.band.w * (r.w / BW), bh = this.band.h * (r.h / BH);
       const [bx, by] = cam.toScreen(r.x + r.w / 2 - bw / 2, r.y + 60);
       g.drawImage(this.band.cv, bx, by, bw * cam.zoom, bh * cam.zoom);
-      // paintings keep their own aspect; their street line sits at ART_BASE of the height
-      const w = Math.max(r.w * 0.78, (cam.vw / cam.zoom) * 1.04), h = (w * this.art.h) / this.art.w, base = r.y + BASE * (r.h / BH), y = base - h * ART_BASE;
+    }
+    if (this.art && this.art.img) {
+      // paintings keep their own aspect; their street line sits at ART_BASE of the height. They stretch to fill the
+      // view only up to 1.3 panels wide, so zooming far out doesn't balloon the Row; past that the feathered
+      // edges blend into the forest band
+      const vwW = (cam.vw / cam.zoom) * 1.04, w = Math.max(r.w * 0.78, Math.min(vwW, r.w * 1.3)), h = (w * this.art.h) / this.art.w, base = r.y + BASE * (r.h / BH), y = base - h * ART_BASE;
       let [sx, sy] = cam.toScreen(r.x + (r.w - w) / 2, y);
-      sx = Math.min(0, Math.max(cam.vw - w * cam.zoom, sx)); // never let an edge into the view
+      if (w >= vwW) sx = Math.min(0, Math.max(cam.vw - w * cam.zoom, sx)); // never let an edge into the view
       g.fillStyle = '#6E6E6C'; g.fillRect(sx, sy + h * cam.zoom - 2, w * cam.zoom, 500 * cam.zoom);
-      g.drawImage(this.art.img, sx, sy, w * cam.zoom, h * cam.zoom);
+      // once the view is wider than the painting, cross-fade to its arch-feathered copy so no hard edge shows
+      const u = this.art.soft ? Math.max(0, Math.min(1, (vwW / w - 1) / 0.2)) : 0;
+      if (u < 1) { g.globalAlpha = 1 - u; g.drawImage(this.art.img, sx, sy, w * cam.zoom, h * cam.zoom); }
+      if (u > 0) { g.globalAlpha = u; g.drawImage(this.art.soft, sx, sy, w * cam.zoom, h * cam.zoom); }
+      g.globalAlpha = 1;
       return;
     }
     const [sx, sy] = cam.toScreen(r.x, r.y);

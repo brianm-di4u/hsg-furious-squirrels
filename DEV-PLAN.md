@@ -9,6 +9,7 @@
 | **M3 Content** | 12 Story levels, Story map, Quick Battle setup, Practice range; full Codex backdrop set; Blender squirrel cast (2 families × 4, 7 animations), Field Notes | Every level passes `check-levels` and balance; start shot per level; Story progress survives reload |
 | **M4 Polish** | Synth music and SFX, juice, tutorial, accessibility pass, `check-facts`, then the visual review loop (`reviews/PROTOCOL.md`; stop after 3 loops with no new best, all gates met, or loop 8) | Contrast clean; reduced-motion shots; review gates or the stop rule |
 | **M5 Release** | Performance and size budgets, full test campaign (`TEST-CAMPAIGN.md`), REPORT.md, sync to `repos/hsg-furious-squirrels`, tag `v1.0.0`, site PR, merge and live check (with your OK at push and merge) | `--milestone final` and `--file-url` green; live page plays |
+| **M6 Zoom, landscapes, birds** | Camera zooms out to about twice the world's width with painted aprons past each edge, and zooms in to at most 1.25×. Every level gets its own `land` recipe (relief, spread, benches and gullies, tree mix with redbud, redcedar, Osage-orange and snags, plus boulders, logs and stumps). Seasonal birds as airborne obstacles, with bounce and snatch, `sim.idle`, a Birds setting, an Aloft HUD line and Field Notes. | `check-levels` and `balance` green; `tools/check-birds.mjs`; `m6.test.mjs`; `--milestone final` green |
 
 ## Task breakdown
 - **M0:**
@@ -93,6 +94,9 @@ See MECHANICS.md §13.
 | AC28 | m3 › art manifest; fallback `?art=0`; idle while loading | m3-art-fallback |
 | AC29 | review loop (recorded below) | review sheets |
 | AC30 | m4 › credits | m4-credits |
+| AC31 | m6 › zoom range | m6-zoomed-out, m6-zoomed-in |
+| AC32 | m6 › levels on one battlefield differ; obstacles are solid, uncarvable and mirrored (node) | — |
+| AC33 | m6 › birds fly, bonk and can be turned off; birds-check (node) | — |
 
 ## Defect log
 | # | Found | Description | Status |
@@ -118,6 +122,9 @@ See MECHANICS.md §13.
 | D19 | M4 review | Squirrel outlines bled between atlas frames (stray marks); squirrels looked like white stickers | fixed: per-cell outline build, warm-brown outline; four outfit variants per family and distinct family silhouettes |
 | D20 | M4 review | Turn prompt and active buttons during the knockout camera | fixed: "Knockout!" label, Throw/Move disabled until the camera returns |
 | D21 | Final sheets | At 150% text the nut-bar labels ran into each other | fixed: nut-bar labels stay at base size (the readout and aria-label carry the scaled full name) |
+| D22 | M6 | Knolls and deep gullies sheltered fallen squirrels: Hedge Apple Harvest ran 91 throws per round (AI hit rate 0.15); short redbuds and double benches stretched Redbud Ridge and the Promenade | fixed: knolls dropped from those recipes, gully 70 → 45, redbuds 215–250 tall, the Promenade on one bench with 3 trees, Magnolia Lamps relief 1.12 |
+| D23 | M6 | Zoomed out, the painting's edges, the edge scenery's lighter soil and the world's bottom edge showed as seams | fixed: arch-feathered painting cross-fade, a taller and wider forest band, matching depth darkening on the aprons, a bedrock fade below the world |
+| D24 | M6 | Mississippi kite and American white pelican not on the park's species list | dropped from the bird roster (research/birds.md) |
 
 ## Visual review (M4)
 Recorded per loop in `reviews/HISTORY.md`, with each loop's critiques and `CHANGES.md` in `reviews/loop-N/`.

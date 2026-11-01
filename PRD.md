@@ -87,6 +87,7 @@ See `research/town-content.md` for sources.
 | 11 | Winter Lamps | Middle | Winter night | 4 vs 4 | strong | normal | — | 14 |
 | 12 | Battle for the Valley | North | Fall sunset | 4 vs 4, best of 3 | on | gusty | — | 14 |
 
+- Each level is a different spot on its stretch's two mountains, with its own heights, slope features, tree species and obstacles (MECHANICS.md §4). Birds of the season fly over every level except the tutorial and night battles (MECHANICS.md §6b).
 - The player picks a family at the start of the Story; the other family is the opponent.
 - The difficulty preset (easy, medium or hard) scales the AI's aim, but the story order stays the same.
 
@@ -190,6 +191,9 @@ See `research/town-content.md` for sources.
 | AC28 | Painted art loads only files listed in `assets/manifest.json`; `?art=0` draws the vector fallback; `isIdle()` stays false while art loads. |
 | AC29 | The game is fun and polished: juice, a tutorial, clear feedback for every event, and a satisfying end state, judged in the visual review loop (gates ≥ 7, authenticity ≥ 6, or the stop rule). |
 | AC30 | Credits list the families as fiction, the data sources (USGS 3DEP, OSM ODbL, NPS and research sources) and the adapted code (with licences). |
+| AC31 | The camera zooms out to about twice the world's width on desktop with painted scenery past the edges, and zooms in no further than 1.25×. |
+| AC32 | Levels on the same stretch differ in mountain height, trees and obstacles, mirrored for fairness, and every level still passes `tools/check-levels.mjs`. |
+| AC33 | Seasonal local birds fly as airborne obstacles: a hit bounces the nut (or a jay or crow snatches an acorn), nobody is hurt, Quick Battle can turn them off, and the aim guide and AI ignore them. |
 
 ## 14. Out of scope
 - Online or networked multiplayer (the collection makes no runtime network requests).

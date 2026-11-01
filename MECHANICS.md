@@ -39,12 +39,19 @@ battle = {
 - **Determinism:** the same seed, level and actions give the same `hashBattle()` in Node and Chromium. FNV-1a runs over the rounded squirrel, tree and crater state, as in Tub Rally's `hashRace`.
 
 ## 4. Terrain: a material mask
-- **Mask:** `Uint8Array` at half resolution (1 cell = 2 world units, 1,200 × 600 cells). Values are `0` air, `1` dirt, `2` rock (does not carve) and `3` tufa (the valley floor, which does not carve).
+- **Mask:** `Uint8Array` at half resolution (1 cell = 2 world units, 1,200 × 600 cells). Values are `0` air, `1` dirt, `2` rock (does not carve), `3` tufa (the valley floor, which does not carve) and `4` log (fallen logs and stumps, which do not carve).
 - **Carving:** a circle of radius `r` clears dirt cells. The visual terrain canvas is carved with `globalCompositeOperation = 'destination-out'` using the same circle, so the mask and the visuals always change together. That two-part update is the caveat in the Tuts+ technique.
 - **Collision:**
   - For each step, walk from the previous to the next position, sampling the mask every `≤ 1` cell along the segment. This is the swept segment, so a fast nut never tunnels.
   - The nut collides with the first solid cell its circle overlaps (radius sampled on 8 points).
 - **Surface normal:** the average of the vectors from solid cells to the hit point inside a 5-cell radius, normalised (Tuts+ method). It is used for bounce, roll (the hedge apple) and the dust direction.
+- **Each level is its own spot on the two mountains.** The stretch (north, middle or south) keeps its Row backdrop, while each level's `land` recipe in `tools/levels/bake.mjs` varies:
+  - `relief`, which scales the mountain heights (0.9–1.25);
+  - `spread`, which makes the mountains steeper and narrower or broader;
+  - slope `features`: benches (ledges) and gullies. Knolls exist too, but a knoll in front of a family's trees shelters fallen squirrels so well that rounds drag, so the story levels avoid them except level 12;
+  - tree count (3–5 per family), where on the slope the trees stand, and the species mix;
+  - obstacles standing on the slope: boulders (rock; novaculite on Under the Tower), fallen logs and stumps (log). They are drawn on their own layer, so craters never erase them.
+- Everything is generated on West Mountain and mirrored across the valley. Each tree pair shares a leaf class (broadleaf, evergreen or bare), so neither family gets more cover. Levels carry `rev: 2`, and a saved mid-battle resume from an older layout is dropped.
 
 ## 5. Trees, branches and perches
 - **Geometry, not mask.**
@@ -55,6 +62,7 @@ battle = {
   - Branches have `hp = 14 + 4·width` (about 40–54). Hits subtract the nut's `wood` damage.
   - At 0 hp the branch and its child branches **break**: a scripted fall with rotation and a leaf burst.
   - Squirrels perched on a breaking branch drop.
+- **Species:** oak, hickory, shortleaf pine, sweetgum, eastern redbud, eastern redcedar (evergreen), Osage-orange (crooked, with hedge apples in fall) and dead snags (bare branches that crack easily).
   - Trunks never break (the tree stays standing, which keeps the family's home).
 - **Perch graph.**
   - Nodes are evenly spaced along every unbroken branch (about every 28 units), along the trunk (about every 40), and on the ground along the slope beneath the family's trees (about every 40).
@@ -90,6 +98,26 @@ x  += vx*DT;  y += vy*DT;  then sweep-test terrain, trees, squirrels (the owner 
 - **Grip damage** is reduced by distance in the splash radius: linear from the splash value to 0.
 - **Knockback** pushes a hit squirrel along the impact direction. If the push exceeds 18 units, the squirrel loses its perch and drops, as in §5.
 - Abilities resolve deterministically from `tapAt` (the sim step of the tap), so the AI and tests can replay any shot exactly.
+
+## 6b. Birds (airborne obstacles)
+- **Who:** local and migratory birds, all on Hot Springs National Park's species list (`research/birds.md`):
+  - chimney swift (spring, summer): fast zig-zag flocks
+  - turkey vulture (all year): circles in the steam thermal
+  - blue jay (all year): flies single
+  - American crow (all year): flies in ones to threes
+  - Canada goose (fall, winter): V flocks
+  - cedar waxwing (winter, spring): tight flocks
+  - bald eagle (winter): glides
+  - There are no birds at night, and fewer in mist.
+- **When:** fresh flocks are rolled at the start of every turn from the battle's own `birds` RNG stream.
+  - Birds: Off / Some / Lots. Quick Battle offers all three; story levels use Some, except the tutorial, which has none; Practice has none.
+  - A bird's position is a pure function of the bird clock `b.birdT`. The clock runs during flight and settle steps, and while a family aims (`sim.idle(dt)`, driven by the app's clock, so it pauses with the game).
+  - Birds wrap across the sky, rise over the ridges, and big flocks drift a little with the wind.
+- **Hits:** nobody is hurt.
+  - A blue jay or crow that meets a plain acorn snatches it half the time, and the nut is gone. Paid special nuts are never taken.
+  - Otherwise the nut glances off the bird: its velocity reflects about the bird's centre (restitution 0.4), it keeps 55–90% of its speed by species, and the flight continues.
+  - The bird flaps off startled and can't be hit again that turn.
+- **Not planned for:** the aim guide, the AI and `tools/check-levels.mjs` preview with no birds, so birds are a surprise hazard for both families, like gusts.
 
 ## 7. Turns, grip, knockouts, rounds and the shop
 - **Grip** starts at 64, so two solid acorn hits knock a squirrel out. At 0 the squirrel is **out**: a tumble into the leaf pile at its mountain's foot, dizzy stars, and a cheer. A squirrel knocked off its perch that falls 110 units or more onto the ground is also **out** ("knocked out of the tree").
@@ -165,6 +193,10 @@ Input comes from `games/Cart Racing/src/js/ui/input.js` (keyboard, gamepad and t
 **Camera:**
 - `{x, y, zoom}` with a lerp follow (0.12 per frame at 60 fps, frame-rate corrected).
 - Zoom-to-point keeps the world point under the cursor fixed.
+- **Zoom range:**
+  - Out to about twice the world's width (`max(0.5 × fit-width, min(fit-width, vh/2600))`). On phones this stays at the whole world.
+  - In to `clamp(2 × fit-width, 1.0, 1.25)`.
+  - Past the world's edges, painted aprons carry the ridges and distant woods 1,200 units each side (visual only). The forest band widens, and the painting cross-fades to an arch-feathered copy, so no panel edge shows.
 - Modes:
   - `overview`: fits both families
   - `aim`: the active squirrel plus its throwing arc
@@ -188,9 +220,9 @@ Caches are rebuilt only on size or DPR change. There is no per-frame `shadowBlur
 - Fields:
   - `settings` {sound, music, volume, reducedMotion, aimGuide, turnTimer, hudScale, keys}
   - `story` {unlocked: n, stars: {levelId: 0–3}, nuts: [...]}
-  - `quick` {last setup}
+  - `quick` {last setup, including `birds`: off | some | lots}
   - `stats` {battles, wins, kos, bestShot}
-  - optional `resume`: the `battle` object, saved at the start of each turn
+  - optional `resume`: the `battle` object, saved at the start of each turn, with `levelRev` (dropped when the level's layout revision changes)
 
 ## 13. `window.__game` hooks
 The shared contract (`shared/test-harness/README.md`), all JSON-serializable:

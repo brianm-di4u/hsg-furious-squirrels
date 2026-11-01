@@ -3,6 +3,9 @@
 // next shot (MECHANICS.md §10).
 import { W, H } from '../sim/const.js';
 
+// Painted scenery past each edge of the world (visual only), so a zoomed-out view never shows a void.
+export const APRON = 1200;
+
 export class Camera {
   constructor() {
     this.x = W / 2; this.y = H / 2; this.zoom = 0.5;
@@ -12,8 +15,10 @@ export class Camera {
   }
   resize(w, h) { this.vw = w; this.vh = h; }
   fitZoom(spanX, spanY) { return Math.min(this.vw / spanX, this.vh / spanY); }
-  minZoom() { return this.vw / W; } // the world always fills the width
-  maxZoom() { return Math.max(1.6, this.minZoom() * 4); }
+  // pull back to about twice the world's width (never a view taller than the painted sky and bedrock);
+  // zoom in no further than a little past 1:1
+  minZoom() { const fw = this.vw / W; return Math.max(fw * 0.5, Math.min(fw, this.vh / 2600)); }
+  maxZoom() { return Math.max(1.0, Math.min(1.25, (this.vw / W) * 2)); }
   set(x, y, zoom, snap = false) {
     this.tx = x; this.ty = y; this.tz = Math.max(this.minZoom(), Math.min(this.maxZoom(), zoom));
     if (snap) this.snap();
@@ -36,10 +41,10 @@ export class Camera {
   }
   clamp() {
     const hw = this.vw / 2 / this.zoom, hh = this.vh / 2 / this.zoom;
-    const x0 = hw, x1 = W - hw;
+    const x0 = -APRON + hw, x1 = W + APRON - hw;
     this.x = x0 > x1 ? W / 2 : Math.max(x0, Math.min(x1, this.x));
-    const y0 = -900 + hh, y1 = H - hh;
-    this.y = y0 > y1 ? (H - 400) / 2 : Math.max(y0, Math.min(y1, this.y));
+    const y0 = -900 + hh, y1 = H + 400 - hh;
+    this.y = y0 > y1 ? (H - 500) / 2 : Math.max(y0, Math.min(y1, this.y));
   }
   toScreen(wx, wy) { return [(wx - this.x) * this.zoom + this.vw / 2, (wy - this.y) * this.zoom + this.vh / 2]; }
   toWorld(sx, sy) { return [(sx - this.vw / 2) / this.zoom + this.x, (sy - this.vh / 2) / this.zoom + this.y]; }

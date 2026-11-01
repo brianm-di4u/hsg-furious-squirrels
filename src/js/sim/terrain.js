@@ -32,6 +32,10 @@ export class Terrain {
       for (let cy = Math.floor(rockTop / CELL); cy < ch; cy++) m[cy * cw + cx] = MAT.ROCK;
     }
     for (const r of level.rocks || []) this.paint(r.x, r.y, r.r, MAT.ROCK, true);
+    // obstacles on the slope stand above the ground: boulders, fallen logs (capsules along the slope), stumps
+    for (const b of level.boulders || []) this.paint(b.x, b.y, b.r, MAT.ROCK, false);
+    for (const l of level.logs || []) { const a = (l.a * Math.PI) / 180, hx = Math.cos(a) * l.len / 2, hy = Math.sin(a) * l.len / 2; this.capsule(l.x - hx, l.y - hy, l.x + hx, l.y + hy, l.r, MAT.LOG); }
+    for (const s of level.stumps || []) this.capsule(s.x, s.y, s.x, s.y - s.h, s.r, MAT.LOG, true);
     // the valley floor (Central Ave and the Row's footing) is tufa and pavement: it does not carve
     if (level.floor) {
       const [x0, x1] = level.floor;
@@ -53,6 +57,19 @@ export class Terrain {
       if (dx * dx + dy * dy > r2) continue;
       const i = cy * cw + cx;
       if (!onlySolid || m[i]) m[i] = mat;
+    }
+  }
+
+  // Fill a capsule (segment x0,y0 -> x1,y1 swept by radius r); flat: square ends (a sawn stump top).
+  capsule(x0, y0, x1, y1, r, mat, flat = false) {
+    const { cw, ch, m } = this, dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1;
+    const cx0 = Math.max(0, Math.floor((Math.min(x0, x1) - r) / CELL)), cx1 = Math.min(cw - 1, Math.ceil((Math.max(x0, x1) + r) / CELL));
+    const cy0 = Math.max(0, Math.floor((Math.min(y0, y1) - r) / CELL)), cy1 = Math.min(ch - 1, Math.ceil((Math.max(y0, y1) + r) / CELL));
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+      const px = (cx + 0.5) * CELL, py = (cy + 0.5) * CELL, tr = ((px - x0) * dx + (py - y0) * dy) / l2;
+      if (flat && (tr < 0 || tr > 1)) continue;
+      const t = Math.max(0, Math.min(1, tr));
+      if ((px - x0 - dx * t) ** 2 + (py - y0 - dy * t) ** 2 <= r * r) m[cy * cw + cx] = mat;
     }
   }
 

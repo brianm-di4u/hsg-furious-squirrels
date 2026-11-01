@@ -44,6 +44,9 @@ button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .wind { display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 12px; background: #2A2119; border: 2px solid var(--ink); font: 800 calc(14px * var(--text-scale)) var(--font-ui); color: #fff; }
 .wind canvas { width: 52px; height: 22px; }
 .wind span { min-width: 4.6em; text-align: left; }
+.wind { position: relative; }
+.wind .aloft { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); white-space: nowrap; padding: 2px 10px; border-radius: 10px; background: rgba(42,33,25,0.85); border: 2px solid var(--ink); font: 700 calc(12px * var(--text-scale)) var(--font-ui); color: #FFF6C8; pointer-events: none; }
+.wind .aloft[hidden] { display: none; }
 .hud .pause { pointer-events: auto; }
 .hud .bottom { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 0 max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
 .nutbar { pointer-events: auto; display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: #3E3226; border: 3px solid var(--ink); overflow-x: auto; max-width: 100%; scrollbar-width: none; }
@@ -77,6 +80,7 @@ body.reduced .call, body.reduced .hint { transition: none; }
   .mid { order: 3; width: 100%; flex-direction: row; justify-content: center; min-width: 0; }
   .turnlabel { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .wind { flex: none; }
+  .wind .aloft { display: none; }
   .call { top: 30%; }
   .minimap { display: block; position: absolute; border-color: #1A1410; left: 10px; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 104px); height: 44px; border-radius: 10px; border: 2px solid var(--ink); background: rgba(26,20,16,0.55); width: calc(100% - 20px); }
   .hud .bottom { flex-direction: column; align-items: stretch; gap: 6px; }

@@ -16,7 +16,9 @@ Open `index.html` (works from `file://` too).
 - **Move:** press Move (M), then a glowing perch; A/D/W/S scamper by keyboard. **Pause:** Esc/P.
 - Gamepad: left stick aims, A throws and tricks, LB/RB pick nuts, Start pauses. Touch: drag, tap, pinch to zoom.
 
-Modes: **Story** (12 battles across the seasons, unlocking six special nuts), **Quick Battle** (any battlefield,
+**Birds** of the season (chimney swifts, turkey vultures, blue jays, crows, Canada geese, cedar waxwings, bald eagles) cross the sky. A nut that hits one glances off, and a blue jay or crow may snatch a plain acorn. Quick Battle can set Birds to Off, Some or Lots. Zoom out (wheel, pinch, X) to see past both mountains.
+
+Modes: **Story** (12 battles across the seasons, unlocking six special nuts, each a different spot on the mountains), **Quick Battle** (any battlefield,
 family size, rounds, wind, steam, nut set and rival skill) and **Practice Range**.
 
 The seven nuts: Acorn, Chinquapin Trio (splits), Pecan Dart (dashes), Black Walnut Burst (big pop), Hickory Hook
@@ -31,6 +33,7 @@ npm run check                     # every squirrel on every level has a hitting 
 npm run balance                   # AI-vs-AI battles against tools/balance-targets.json
 node tools/build-facts.mjs        # Field Notes facts from the audited trivia bank + research
 node tools/check-facts.mjs        # every fact is confirmed and sourced
+node tools/check-birds.mjs        # birds: deterministic, bounce, snatch, preview ignores them
 node shared/test-harness/art-pack.mjs .   # Codex paintings (art-src/codex, git-ignored) → assets/bd-*.webp
 node tools/pack-sprites.mjs       # Blender squirrel frames (art-src/sprites) → assets/sq-t*.webp
 npm run build                     # src/ → index.html
