@@ -1,0 +1,25 @@
+# Loop 4 · Critic A (Claude, blind)
+
+```json
+{
+  "scores": { "art": 7.0, "place": 7.0, "chars": 6.5, "juice": 6.0, "read": 6.5, "ui": 7.0, "type": 7.0, "mobile": 6.5, "ground": 6.0, "polish": 6.5 },
+  "ab": { "art": "B", "place": "B", "chars": "tie", "juice": "B", "read": "B", "ui": "B", "type": "B", "mobile": "B", "ground": "B", "polish": "B" },
+  "issues": [
+    { "category": "ground", "severity": "high", "shot": "r03-battle-north-summer.png", "problem": "The terrain fill is one repeating band of horizontal brown stripes with evenly sprinkled pebbles, no depth gradient, roots or large stones; reads as a tiled texture.", "fix": "Top-to-bottom value gradient, a few big embedded stones and roots near the surface, break the stripe rhythm.", "effort": "M" },
+    { "category": "ground", "severity": "medium", "shot": "r06-aim.png", "problem": "Boulders are flat grey spheres with a crescent highlight; placeholder primitives.", "fix": "Irregular sandstone or novaculite rocks with moss, cast shadow, partly buried.", "effort": "S" },
+    { "category": "ground", "severity": "medium", "shot": "r05-battle-middle-winter-night.png", "problem": "The valley floor ends in a small pale ellipse pool; the road is a grey trapezoid under the backdrop with no curb or basin.", "fix": "A stone spring basin with a lip; blend the road edge into the slopes.", "effort": "M" },
+    { "category": "read", "severity": "high", "shot": "r04-battle-south-fall.png", "problem": "In fall the orange Rustlers nearly vanish in orange foliage; aim dots run through Rusty's nameplate.", "fix": "Cream outline or dark rim on squirrels; lower-saturation foliage behind; guide above labels or labels routed around it.", "effort": "S" },
+    { "category": "juice", "severity": "high", "shot": "r07-flight.png", "problem": "The walnut in flight is a ~14px dark disc with no trail or spin; barely findable against the facade.", "fix": "1.5x larger in flight, comet trail, squash-and-spin, light rim.", "effort": "S" },
+    { "category": "juice", "severity": "medium", "shot": "r08-impact.png", "problem": "The impact on Willow is a thin pale ring and '-38'; no leaf burst, branch shake or recoil.", "fix": "Leaf and bark burst, white flash, branch wobble, shake scaled to damage.", "effort": "M" },
+    { "category": "juice", "severity": "medium", "shot": "r09-knockout.png", "problem": "The knocked-out Ash is a small tumbling sprite with tiny stars; '-64' floats far from the body.", "fix": "Hold on the falling squirrel with a dust puff and dizzy loop at the leaf pile; anchor the number to the victim.", "effort": "M" },
+    { "category": "read", "severity": "medium", "shot": "r09-knockout.png", "problem": "The turn banner already reads 'Hazel's turn' while 'Ash is out!' shows and the camera is on the enemy ridge.", "fix": "Hold the next-turn prompt until the knockout beat ends.", "effort": "S" },
+    { "category": "mobile", "severity": "high", "shot": "mobile/r13-practice.png", "problem": "Phone practice is zoomed out so the playfield fills the middle third; empty sky and brown dead zone; labels stack and clip at the left edge.", "fix": "Fit the playfield width, anchor to the HUD bottom; clamp and fan nameplates.", "effort": "M" },
+    { "category": "mobile", "severity": "medium", "shot": "mobile/r07-flight.png", "problem": "During flight ~200px of empty sky under the minimap; Rusty's label clipped to 'ty'; an enemy marker cut at the right.", "fix": "Lower the portrait top margin in flight; clamp or hide off-screen nameplates.", "effort": "S" },
+    { "category": "chars", "severity": "medium", "shot": "r03-battle-north-summer.png", "problem": "Families differ mostly by colour; the silhouettes are the same round bean; grey Tails blend into white walls.", "fix": "Distinct family silhouettes and a 2px dark outline at play scale.", "effort": "M" },
+    { "category": "art", "severity": "medium", "shot": "r04-battle-south-fall.png", "problem": "Battle-tree foliage is flat vector blobs with dot texture, clashing with the painterly forest behind.", "fix": "Repaint foliage with the backdrop palette and brushwork, consistent light, softer edge.", "effort": "M" },
+    { "category": "place", "severity": "medium", "shot": "r06-aim.png", "problem": "Battle framing shows one large neoclassical bathhouse with generic villas; the dome and Fordyce appear only in some views.", "fix": "A continuous row in real order at consistent scale with the dome visible in the default camera.", "effort": "L" },
+    { "category": "ui", "severity": "low", "shot": "r11-results.png", "problem": "The results squirrels stand on a flat orange ellipse crowding the heading; HUD shows through the dim.", "fix": "A small podium or stump vignette with room; fade the HUD behind modal cards.", "effort": "S" },
+    { "category": "type", "severity": "low", "shot": "r02-story-map.png", "problem": "Locked level names are low-contrast grey on brown; desktop nut-bar labels and glyphs ~9-10px.", "fix": "4.5:1 locked text with a lock overlay; 12-13px tray and tile captions.", "effort": "S" }
+  ]
+}
+```

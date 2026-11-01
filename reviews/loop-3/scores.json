@@ -1,0 +1,56 @@
+{
+ "loop": 3,
+ "scores": {
+  "art": 7,
+  "place": 7,
+  "chars": 7,
+  "juice": 6,
+  "read": 6.5,
+  "ui": 7,
+  "type": 7,
+  "mobile": 6.5,
+  "ground": 6.5,
+  "polish": 6.5
+ },
+ "raw": {
+  "claude": {
+   "art": 7,
+   "place": 7,
+   "chars": 6.5,
+   "juice": 6,
+   "read": 6.5,
+   "ui": 7,
+   "type": 6.5,
+   "mobile": 6.5,
+   "ground": 6.5,
+   "polish": 6.5
+  },
+  "codex": {
+   "art": 6.5,
+   "place": 7,
+   "chars": 7,
+   "juice": 6.5,
+   "read": 6.5,
+   "ui": 7,
+   "type": 6.5,
+   "mobile": 6,
+   "ground": 6.5,
+   "polish": 6.5
+  }
+ },
+ "held": [
+  {
+   "c": "juice",
+   "judged": 6.5,
+   "kept": 6
+  },
+  {
+   "c": "type",
+   "judged": 6.5,
+   "kept": 7
+  }
+ ],
+ "total": 67,
+ "newBest": true,
+ "stop": null
+}

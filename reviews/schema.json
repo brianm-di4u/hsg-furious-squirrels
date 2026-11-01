@@ -1,0 +1,5 @@
+{
+ "scores": { "art": 0, "place": 0, "chars": 0, "juice": 0, "read": 0, "ui": 0, "type": 0, "mobile": 0, "ground": 0, "polish": 0 },
+ "ab": { "art": "A|B|tie", "place": "A|B|tie", "chars": "A|B|tie", "juice": "A|B|tie", "read": "A|B|tie", "ui": "A|B|tie", "type": "A|B|tie", "mobile": "A|B|tie", "ground": "A|B|tie", "polish": "A|B|tie" },
+ "issues": [ { "category": "art", "severity": "high|medium|low", "shot": "file name", "problem": "what is wrong, concretely", "fix": "the change that would raise the score", "effort": "S|M|L" } ]
+}

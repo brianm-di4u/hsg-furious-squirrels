@@ -1,0 +1,93 @@
+{
+ "quality": 0.8,
+ "items": [
+  {
+   "name": "bd-middle-summer-day",
+   "src": "codex/bd-middle-summer-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-north-summer-day",
+   "src": "codex/bd-north-summer-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-south-spring-day",
+   "src": "codex/bd-south-spring-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-middle-spring-day",
+   "src": "codex/bd-middle-spring-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-middle-fall-day",
+   "src": "codex/bd-middle-fall-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-north-fall-day",
+   "src": "codex/bd-north-fall-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-south-fall-day",
+   "src": "codex/bd-south-fall-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-south-winter-day",
+   "src": "codex/bd-south-winter-day.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-middle-winter-night",
+   "src": "codex/bd-middle-winter-night.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "bd-north-summer-night",
+   "src": "codex/bd-north-summer-night.png",
+   "w": 2048,
+   "h": 1365,
+   "fit": "cover",
+   "keyWhite": 16
+  },
+  {
+   "name": "tex-soil",
+   "src": "codex/tex-soil.png",
+   "w": 512,
+   "h": 512,
+   "fit": "cover",
+   "quality": 0.82
+  }
+ ]
+}

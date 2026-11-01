@@ -1,0 +1,234 @@
+{
+ "landmarks": [
+  {
+   "id": "hs-0066",
+   "stretch": "north",
+   "text": "Concrete on the facade is painted to imitate ornamental tile.",
+   "q": "What color are the tile medallions on the Superior Bathhouse facade?",
+   "a": "Green",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0102",
+   "stretch": "north",
+   "text": "The Superior Bathhouse Brewery and Distillery has occupied the Superior Bathhouse since 2012.",
+   "q": "Which Bathhouse Row bathhouse now houses a brewery and distillery?",
+   "a": "The Superior",
+   "source": "Wikipedia: Hot Springs, Arkansas",
+   "url": "https://en.wikipedia.org/wiki/Hot_Springs,_Arkansas"
+  },
+  {
+   "id": "hs-0061",
+   "stretch": "north",
+   "text": "EoA calls the Hale, built in 1892-93, the oldest surviving bathhouse; the Buckstaff (1912), Fordyce (1914-15) and Lamar (1923) came later.",
+   "q": "Which is the oldest surviving bathhouse on Hot Springs' Bathhouse Row?",
+   "a": "The Hale",
+   "source": "Encyclopedia of Arkansas: Bathhouse Row",
+   "url": "https://encyclopediaofarkansas.net/entries/bathhouse-row-437/"
+  },
+  {
+   "id": "hs-0080",
+   "stretch": "north",
+   "text": "Thompson, Sanders & Ginocchio's late-1930s remodel changed the facade from neo-Classical revival to Mission Style in 1939-40.",
+   "q": "In what architectural style was the Hale Bathhouse facade remodeled in 1939–40?",
+   "a": "Mission",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0081",
+   "stretch": "middle",
+   "text": "The pool was installed in 1931 to treat paralysis; the Maurice was the only bathhouse to employ a registered physical therapist.",
+   "q": "What was the Maurice Bathhouse's 1931 therapeutic pool built for?",
+   "a": "Therapy for paralysis patients",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0093",
+   "stretch": "middle",
+   "text": "The Fordyce reopened as the visitor center on May 13, 1989.",
+   "q": "Which Bathhouse Row building houses Hot Springs National Park's visitor center and museum?",
+   "a": "The Fordyce",
+   "source": "Encyclopedia of Arkansas: Hot Springs National Park",
+   "url": "https://encyclopediaofarkansas.net/entries/hot-springs-national-park-2547/"
+  },
+  {
+   "id": "hs-0082",
+   "stretch": "middle",
+   "text": "Its chevron-mosaic dome is topped by a small copper cupola.",
+   "q": "Which Bathhouse Row bathhouse is crowned by a large tiled dome?",
+   "a": "The Quapaw",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0084",
+   "stretch": "middle",
+   "text": "Scalloped shells frame the sculpin, originally gold and now white.",
+   "q": "Which fish decorates the parapets of Hot Springs' Quapaw Bathhouse?",
+   "a": "Sculpin",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0085",
+   "stretch": "south",
+   "text": "The 1922 Spanish Colonial Revival design has a vague Art Deco look.",
+   "q": "Which Bathhouse Row bathhouse has twin towers with three-tiered setbacks?",
+   "a": "The Ozark",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0062",
+   "stretch": "south",
+   "text": "NPS says the Buckstaff opened on February 1, 1912, and has been in continuous operation since.",
+   "q": "Which Bathhouse Row bathhouse has offered baths continuously since 1912?",
+   "a": "The Buckstaff",
+   "source": "NPS: Buckstaff Bathhouse",
+   "url": "https://www.nps.gov/hosp/learn/historyculture/buckstaff-bathhouse.htm"
+  },
+  {
+   "id": "hs-0069",
+   "stretch": "south",
+   "text": "Cream brick with white stucco trim and brass \"Buckstaff Baths\" letters.",
+   "q": "What color is the brick of the Buckstaff Bathhouse?",
+   "a": "Cream",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0077",
+   "stretch": "south",
+   "text": "NPS: the final metamorphosis of Bathhouse Row was completed when the Lamar opened in 1923; it closed in 1985.",
+   "q": "Which bathhouse's 1923 opening completed Hot Springs' Bathhouse Row?",
+   "a": "The Lamar",
+   "source": "NPS: History & Culture",
+   "url": "https://www.nps.gov/hosp/learn/historyculture/index.htm"
+  },
+  {
+   "id": "hs-0086",
+   "stretch": "any",
+   "text": "Work began in the 1930s on the promenade behind the bathhouses, which was finally completed in the early 1960s.",
+   "q": "In what decade did construction begin on the Grand Promenade behind Bathhouse Row?",
+   "a": "The 1930s",
+   "source": "Wikipedia: Bathhouse Row",
+   "url": "https://en.wikipedia.org/wiki/Bathhouse_Row"
+  },
+  {
+   "id": "hs-0094",
+   "stretch": "north",
+   "text": "The lattice steel observation tower was officially opened to the public on June 3, 1983.",
+   "q": "How tall is the Hot Springs Mountain Tower?",
+   "a": "216 feet",
+   "source": "Wikipedia: Hot Springs Mountain Tower",
+   "url": "https://en.wikipedia.org/wiki/Hot_Springs_Mountain_Tower"
+  },
+  {
+   "id": "hs-0099",
+   "stretch": "north",
+   "text": "Construction began in 1982; it opened June 3, 1983.",
+   "q": "In what month and year did the current Hot Springs Mountain Tower open?",
+   "a": "June 1983",
+   "source": "Wikipedia: Hot Springs Mountain Tower",
+   "url": "https://en.wikipedia.org/wiki/Hot_Springs_Mountain_Tower"
+  },
+  {
+   "id": "hs-0071",
+   "stretch": "north",
+   "text": "The steel Rix Tower, opened in 1906, had an elevator to carry visitors to the top.",
+   "q": "What was the steel observation tower that preceded today's Hot Springs Mountain Tower called?",
+   "a": "The Rix Tower",
+   "source": "NPS: Hot Springs Mountain Tower",
+   "url": "https://www.nps.gov/places/hot-springs-mountain-tower.htm"
+  }
+ ],
+ "nature": [
+  {
+   "id": "n-squirrels-park",
+   "season": "any",
+   "text": "Both families are real neighbors: the park's species list counts the eastern gray squirrel as present and the fox squirrel as probably present.",
+   "source": "NPS NPSpecies, Hot Springs National Park mammals",
+   "url": "https://irmaservices.nps.gov/v3/rest/npspecies/checklist/HOSP/Mammal"
+  },
+  {
+   "id": "n-size",
+   "season": "any",
+   "text": "Fox squirrels are the bigger cousins: about 1½–2 lb in Arkansas, while gray squirrels weigh just over a pound.",
+   "source": "University of Arkansas Cooperative Extension",
+   "url": "https://uaex.uada.edu/environment-nature/musings-on-nature-blog/posts/squirrels.aspx"
+  },
+  {
+   "id": "n-dreys",
+   "season": "any",
+   "text": "A squirrel's leaf nest sits about 40 feet up, is 12–20 inches across, and can be built in under 12 hours.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/eastern-gray-squirrel-and-eastern-fox-squirrel"
+  },
+  {
+   "id": "n-planters",
+   "season": "fall",
+   "text": "Gray squirrels bury nuts one at a time and never find them all, so they plant new trees every fall.",
+   "source": "University of Arkansas Cooperative Extension",
+   "url": "https://uaex.uada.edu/environment-nature/musings-on-nature-blog/posts/squirrels.aspx"
+  },
+  {
+   "id": "n-mast",
+   "season": "fall",
+   "text": "Oak and hickory nuts in the region fall in September and October. Red-oak acorns take two years to ripen; white oak acorns take one.",
+   "source": "Missouri Department of Conservation tree guide",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/white-oak"
+  },
+  {
+   "id": "n-pine",
+   "season": "winter",
+   "text": "Squirrels snip shortleaf pine cones and eat the seeds before the cones even open.",
+   "source": "USDA Forest Service, Silvics of North America",
+   "url": "https://research.fs.usda.gov/silvics/shortleaf-pine"
+  },
+  {
+   "id": "n-hedgeapple",
+   "season": "fall",
+   "text": "Hedge apples (Osage-orange) are native to the Red River country of Oklahoma, Texas and Arkansas. Squirrels tear them open for the seeds.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/osage-orange"
+  },
+  {
+   "id": "n-gumball",
+   "season": "winter",
+   "text": "Sweetgum \"gumballs\" aren't nuts: they are spiky 1–1½ inch seed balls that ripen in fall and hang on all winter.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/sweet-gum"
+  },
+  {
+   "id": "n-chinquapin",
+   "season": "summer",
+   "text": "The Ozark chinquapin still grows in the park but is rare: chestnut blight reached it by 1940, and volunteers now breed blight-resistant trees.",
+   "source": "University of Arkansas Cooperative Extension",
+   "url": "https://uaex.uada.edu/yard-garden/resource-library/plant-week/chinquapin-ozark.aspx"
+  },
+  {
+   "id": "n-fallcolor",
+   "season": "fall",
+   "text": "In fall, hickories turn golden yellow and sweetgums go red, orange, maroon and purple.",
+   "source": "Missouri Department of Conservation",
+   "url": "https://mdc.mo.gov/discover-nature/field-guide/shagbark-hickory"
+  },
+  {
+   "id": "n-redbud",
+   "season": "spring",
+   "text": "Redbuds bloom pink to reddish purple from March before their leaves come out; flowering dogwood follows with white bracts.",
+   "source": "USDA Forest Service, Silvics of North America",
+   "url": "https://research.fs.usda.gov/silvics/eastern-redbud"
+  },
+  {
+   "id": "n-wind",
+   "season": "any",
+   "text": "Hot Springs breezes are gentle: at Memorial Field the wind averages about 5 mph and blows from the east more than any other direction (2016–2025 records).",
+   "source": "Iowa Environmental Mesonet ASOS archive (computed)",
+   "url": "https://mesonet.agron.iastate.edu/request/download.phtml?network=AR_ASOS"
+  }
+ ]
+}

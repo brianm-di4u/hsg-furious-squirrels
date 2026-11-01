@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Furious Squirrels: two squirrel families lob native nuts across Bathhouse Row in Hot Springs, Arkansas. A turn-based, family-friendly nut duel. Open source (MIT).">
+  <title>Furious Squirrels · Hot Springs Games</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body data-scene="boot">
+  <canvas id="view" aria-label="Battlefield: West Mountain on the left, Hot Springs Mountain on the right, Bathhouse Row in the valley"></canvas>
+  <div id="hud" class="hud" aria-hidden="false"></div>
+  <div id="screens" class="screens"></div>
+  <div id="live" class="sr-only" aria-live="polite"></div>
+  <p id="boot-error" class="boot-error" role="alert" hidden></p>
+  <noscript><p class="boot-error">Furious Squirrels needs JavaScript.</p></noscript>
+  <!-- @inline ../levels/all.json as LEVELS -->
+  <!-- @inline ../data/facts.json as FACTS -->
+  <!-- @inline ../assets/manifest.json as MANIFEST -->
+  <!-- @inline ../assets/sprites.json as SPRITES -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

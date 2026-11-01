@@ -1,0 +1,16 @@
+node_modules/
+shared/test-harness/.tmp/
+/screenshots/
+/reference-samples/
+*.log
+.DS_Store
+Thumbs.db
+# Codex paintings and other raw art sources (packed outputs live in assets/)
+art-src/**/*.png
+art-src/**/*.blend1
+art-src/**/renders/
+# Build scratch
+tools/out/
+# Review captures (regenerated from screenshots; review record only)
+reviews/**/*.png
+/reviews/loop-*/calibration.jpg
