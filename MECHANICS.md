@@ -185,7 +185,8 @@ Input comes from `games/Cart Racing/src/js/ui/input.js` (keyboard, gamepad and t
 6. **Trees:**
    - Code-drawn so branches can break: tapered bark strokes, and canopy clusters in season colours.
    - Static trees are cached to a sprite per tree and redrawn only when a branch breaks.
-7. **Squirrels:** Blender-rendered sprite atlas frames (idle, scamper, aim, throw, hit, tumble, cheer, for each family and accessory). Team badges and a name and grip pill sit above each squirrel.
+7. **Squirrels:** Blender-rendered sprite atlas frames (idle, scamper, aim, throw, hit, tumble, cheer, for each family and accessory). They sit flush in the scene with only their thin baked ink line, like the trees (no extra halo). Team badges and a name and grip pill sit above each squirrel.
+   - **Birds** are Blender sprites in the same toon look (`art-src/blender/scripts/bird.py`, `assets/birds.webp`): six flap frames and a glide frame per species, drawn so the body is `2.2 × r` long. `?art=0` falls back to code-drawn silhouettes.
 8. **Nuts and FX:** nuts drawn in code (small, crisp, rotating), plus leaf bursts, dust, wood chips and dizzy stars.
 9. **Aim guide:** dots along the first 35% (easy), 20% (medium) or 0% (hard) of the predicted arc. The preview uses the same integrator, with wind on easy (a kid-friendly option).
 10. **HUD and DOM screens** sit in the DOM over the canvas.

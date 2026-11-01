@@ -1,5 +1,6 @@
-// Code-drawn birds in side view (MECHANICS.md §6b): one parametric silhouette per species, ink-outlined to match
-// the squirrels, with flapping wings. Soarers (vulture, eagle) mostly hold their wings and glide.
+// Birds in side view (MECHANICS.md §6b): Blender sprite frames (art-src/blender/scripts/bird.py, packed into
+// assets/birds.webp) in the squirrels' toon look, six flap frames and a glide frame per species. The code-drawn
+// silhouettes below are the fallback (?art=0). Soarers (vulture, eagle) mostly hold their wings and glide.
 import { BIRDS } from '../sim/const.js';
 import { birdPos } from '../sim/birds.js';
 
@@ -16,7 +17,7 @@ const LOOK = {
 };
 const INK = '#1A1410';
 
-export function drawBirds(g, cam, sim, t) {
+export function drawBirds(g, cam, sim, t, art) {
   const b = sim.b;
   if (!b.birds || !b.birds.length) return;
   const env = sim.env(), k = Math.max(cam.zoom, 0.5); // birds never shrink below half size, so they read zoomed out
@@ -24,15 +25,29 @@ export function drawBirds(g, cam, sim, t) {
     const bd = b.birds[i], p = birdPos(bd, b.birdT, env);
     const [x, y] = cam.toScreen(p.x, p.y);
     if (x < -80 || x > cam.vw + 80 || y < -80 || y > cam.vh + 80) continue;
-    drawBird(g, bd.k, x, y, k * BIRDS[bd.k].r * 2.2, p.face, t + bd.ph, !!bd.flee);
+    if (art) drawBirdSprite(g, art, bd.k, x, y, k * BIRDS[bd.k].r * 2.2, p.face, t + bd.ph, !!bd.flee);
+    else drawBird(g, bd.k, x, y, k * BIRDS[bd.k].r * 2.2, p.face, t + bd.ph, !!bd.flee);
   }
+}
+
+// flap: a soaring bird glides most of each cycle; startled birds beat hard
+function wingbeat(L, t, startled) {
+  const rate = startled ? L.flap * 2.2 + 3 : L.flap;
+  return { cyc: (t * rate) % 1, soarNow: !startled && ((t * 0.37) % 1) < L.soar };
+}
+
+// one sprite frame, the body centre at (x, y), the body len px long on screen, mirrored to face left
+function drawBirdSprite(g, art, kind, x, y, len, face, t, startled) {
+  const m = art.meta, sp = m.species[kind] || m.species.crow, L = LOOK[kind] || LOOK.crow, { cyc, soarNow } = wingbeat(L, t, startled);
+  const f = soarNow ? m.flap : Math.floor(cyc * m.flap) % m.flap, c = m.cell, k = len / sp.bodyPx;
+  g.save(); g.translate(x, y); g.scale(face * k, k);
+  g.drawImage(art.img, f * c, sp.row * c, c, c, -sp.anchor[0], -sp.anchor[1], c, c);
+  g.restore();
 }
 
 // one bird centred at (x, y), facing right when face > 0, its body len px long on screen
 export function drawBird(g, kind, x, y, len, face, t, startled) {
-  const L = LOOK[kind] || LOOK.crow, sc = len / L.body;
-  // flap: a soaring bird glides most of each cycle; startled birds beat hard
-  const rate = startled ? L.flap * 2.2 + 3 : L.flap, cyc = (t * rate) % 1, soarNow = !startled && ((t * 0.37) % 1) < L.soar;
+  const L = LOOK[kind] || LOOK.crow, sc = len / L.body, { cyc, soarNow } = wingbeat(L, t, startled);
   const beat = soarNow ? (L.dihedral || 0.1) : Math.sin(cyc * Math.PI * 2) * 0.9;
   g.save(); g.translate(x, y); g.scale(face * sc, sc);
   g.lineJoin = 'round'; g.lineCap = 'round';

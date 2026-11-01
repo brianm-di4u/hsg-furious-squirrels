@@ -506,34 +506,18 @@ function loadArt(L) {
     .catch(() => {}).finally(() => { App.loading--; kick(); });
 }
 
-// squirrel sprite atlases (Blender renders packed by tools/pack-sprites.mjs); the vector squirrel is the fallback
+// squirrel and bird sprite atlases (Blender renders packed by tools/pack-sprites.mjs); the vector drawings are the fallback
 function loadSprites() {
   if (typeof SPRITES === 'undefined' || /[?&]art=0/.test(location.search)) return;
+  if (SPRITES.birds) {
+    const img = new Image();
+    img.src = 'assets/birds.webp';
+    App.loading++;
+    img.decode().then(() => { renderer.birdSprites = { img, meta: SPRITES.birds }; }).catch(() => {}).finally(() => { App.loading--; kick(); });
+  }
   const imgs = [0, 1].map((t) => { const im = new Image(); im.src = `assets/sq-t${t}.webp`; return im; });
   App.loading++;
-  Promise.all(imgs.map((im) => im.decode())).then(() => { renderer.sprites = { imgs, meta: SPRITES, rims: imgs.map(rimOf) }; decorateScreen(); }).catch(() => {}).finally(() => { App.loading--; kick(); });
-}
-
-// a cream silhouette 2 px larger than each frame, drawn under the sprite (built once; never read back)
-function rimOf(img) {
-  const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-  const g = cv.getContext('2d');
-  const cell = SPRITES.cell;
-  const ring = (d, col) => {
-    const c2 = document.createElement('canvas'); c2.width = cv.width; c2.height = cv.height;
-    const h = c2.getContext('2d');
-    for (let cy = 0; cy < cv.height; cy += cell) for (let cx = 0; cx < cv.width; cx += cell) {
-      h.save(); h.beginPath(); h.rect(cx, cy, cell, cell); h.clip();
-      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; h.drawImage(img, cx, cy, cell, cell, cx + Math.cos(a) * d, cy + Math.sin(a) * d, cell, cell); }
-      h.restore();
-    }
-    h.globalCompositeOperation = 'source-in'; h.fillStyle = col; h.fillRect(0, 0, c2.width, c2.height);
-    g.drawImage(c2, 0, 0);
-  };
-  ring(7, 'rgba(58,36,22,0.95)');
-  ring(3.5, 'rgba(255,240,210,0.55)');
-  return cv;
+  Promise.all(imgs.map((im) => im.decode())).then(() => { renderer.sprites = { imgs, meta: SPRITES }; decorateScreen(); }).catch(() => {}).finally(() => { App.loading--; kick(); });
 }
 
 // squirrels on menu screens: canvases marked data-sq="team:pose" get a sprite frame
@@ -545,7 +529,6 @@ function decorateScreen() {
     cv.width = c; cv.height = c;
     const g = cv.getContext('2d');
     if (flip) { g.translate(c, 0); g.scale(-1, 1); }
-    g.drawImage(sp.rims[+team], (f % m.cols) * c, Math.floor(f / m.cols) * c, c, c, 0, 0, c, c);
     g.drawImage(sp.imgs[+team], (f % m.cols) * c, Math.floor(f / m.cols) * c, c, c, 0, 0, c, c);
   });
 }
