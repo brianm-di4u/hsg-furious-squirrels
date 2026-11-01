@@ -1,6 +1,6 @@
 // Furious Squirrels: app shell. Owns the battle Sim, the renderer, HUD and screens, input, the camera director,
 // AI turns and saves. The rules live in sim/ (no DOM); this file only drives them.
-import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, clamp } from './sim/const.js';
+import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, clamp } from './sim/const.js';
 import { Sim, hashBattle } from './sim/battle.js';
 import { planTurnGen, planTurn } from './sim/ai.js';
 import { Renderer } from './gfx/renderer.js';
@@ -58,7 +58,7 @@ function startBattle(setup) {
   const seed = setup.seed ?? App.nextSeed ?? (Date.now() & 0xffff);
   const opts = {
     seed, mode: setup.mode, difficulty: setup.difficulty || 'medium', teamSize: setup.size || L.teamSize, rounds: setup.rounds || L.rounds,
-    wind: setup.wind || L.wind, steam: setup.steam || L.steam, loadout: setup.loadout || 'all', unlocked: setup.unlocked,
+    wind: setup.wind || L.wind, steam: setup.steam || L.steam, birds: setup.birds || 'off', loadout: setup.loadout || 'all', unlocked: setup.unlocked,
     playerTeam, human: setup.mode === 'practice' ? [true, false] : [playerTeam === 0, playerTeam === 1],
     practice: setup.mode === 'practice',
   };
@@ -98,7 +98,7 @@ function onTurnStart(first) {
   const tm = sim.b.teams[q.team];
   if (!first) say(`${q.name}'s turn, ${TEAMS[q.team].name}. Wind ${Math.round(Math.abs(sim.b.wind) * 10)}${sim.b.wind > 0.02 ? ' to the right' : sim.b.wind < -0.02 ? ' to the left' : ''}.`);
   if (tm.human && App.setup.mode === 'story') {
-    App.save.resume = { setup: { ...App.setup, battle: null }, battle: sim.toJSON() };
+    App.save.resume = { setup: { ...App.setup, battle: null }, battle: sim.toJSON(), levelRev: App.level.rev || 1 };
     persist();
   }
   tutorial();
@@ -196,12 +196,12 @@ App.onMenu = (act, d) => {
       const L = ALL[d.v];
       if (!L) return;
       if (L.practice) return App.onMenu('practice', {});
-      if (/^story-/.test(L.id)) return startBattle({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n) });
-      return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team });
+      if (/^story-/.test(L.id)) return startBattle({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
+      return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team, birds: s.quick.birds });
     }
     case 'quick': return screens.show('quick', { levels: STORY });
     case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist(); return screens.refresh();
-    case 'quickGo': { const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
+    case 'quickGo': { const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
@@ -233,11 +233,13 @@ function showTitle() {
   hud.show(false);
   // a living battlefield behind the title
   const L = ALL['story-01'] || Object.values(ALL)[0];
-  App.level = L; App.sim = new Sim(L, { seed: 5, teamSize: 3, human: [false, false] }); App.setup = { mode: 'title', levelId: L.id };
+  App.level = L; App.sim = new Sim(L, { seed: 5, teamSize: 3, human: [false, false], birds: 'lots' }); App.setup = { mode: 'title', levelId: L.id };
   renderer.setLevel(L, App.sim); loadArt(L);
   App.vis = {}; App.aiActive = null; App.paused = false;
   renderer.cam.frame(0, 330, W, 1110, 0, true);
   screens.show('title'); decorateScreen();
+  // a battle saved on an older layout of its level can't be resumed (its trees and perches no longer line up)
+  { const r = App.save.resume; if (r && (!ALL[r.setup.levelId] || (ALL[r.setup.levelId].rev || 1) !== (r.levelRev || 1))) { App.save.resume = null; persist(); } }
   if (App.save.resume) {
     const nav = screens.root.querySelector('.menu');
     const b = document.createElement('button'); b.className = 'btn teal'; b.type = 'button'; b.textContent = 'Resume battle'; b.dataset.act = 'resumeBattle';
@@ -500,7 +502,7 @@ function loadArt(L) {
   const img = new Image();
   App.loading++;
   img.src = 'assets/' + file;
-  img.decode().then(() => { App.art[key] = { img: featherArt(img, L), w: ent.w, h: ent.h }; if (App.level === L) renderer.art = App.art[key]; })
+  img.decode().then(() => { const fa = featherArt(img, L); App.art[key] = { img: fa, soft: archArt(fa), w: ent.w, h: ent.h }; if (App.level === L) renderer.art = App.art[key]; })
     .catch(() => {}).finally(() => { App.loading--; kick(); });
 }
 
@@ -563,6 +565,20 @@ function featherArt(img, L) {
   const fe = g.createLinearGradient(0, 0, w, 0);
   fe.addColorStop(0, 'rgba(0,0,0,0)'); fe.addColorStop(0.04, 'rgba(0,0,0,1)'); fe.addColorStop(0.96, 'rgba(0,0,0,1)'); fe.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = fe; g.fillRect(0, 0, w, h);
+  return cv;
+}
+
+// a second copy faded to an arch (upper corners and sides melt away) for views zoomed out past the painting's edges
+function archArt(src) {
+  const cv = document.createElement('canvas'), w = src.width, h = src.height;
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  g.setTransform(1, 0, 0, (h * 1.15) / (w * 0.5), 0, 0);
+  const cy = (h * 1.02) / ((h * 1.15) / (w * 0.5)), rg = g.createRadialGradient(w / 2, cy, w * 0.3, w / 2, cy, w * 0.5);
+  rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, w, cy * 2);
   return cv;
 }
 
@@ -641,6 +657,17 @@ function handleEvents() {
         break;
       }
       case 'move': if (v) { v.path = ev.pts.slice(1); v.pathFrom = ev.pts[0]; v.pathT = 0; } break;
+      case 'bird': {
+        // a glancing bonk: the bird flaps off startled and the nut flies on
+        const d = BIRDS[ev.bird]; fx.feathers(ev.x, ev.y, ev.bird); fx.ring(ev.x, ev.y, 30, '#FFF6C8');
+        sfx(ev.bird === 'goose' ? 'honk' : 'squawk', ev.bird); hud.call(`Bonk! ${article(d.name)}`, 900); say(`The nut bounced off ${article(d.name).toLowerCase()}.`);
+        break;
+      }
+      case 'snatch': {
+        const d = BIRDS[ev.bird]; fx.feathers(ev.x, ev.y, ev.bird); sfx('squawk', ev.bird);
+        hud.call(`${cap(article(d.name))} snatched the acorn!`, 1300); say(`${cap(article(d.name))} snatched the acorn out of the air.`);
+        break;
+      }
       case 'miss': hud.call('Missed!', 600); break;
       case 'turn': onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
       case 'round': break;
@@ -649,6 +676,9 @@ function handleEvents() {
     }
   }
 }
+
+const article = (n) => (/^[aeiou]/i.test(n) ? 'An ' : 'A ') + n;
+const cap = (t) => t[0].toUpperCase() + t.slice(1);
 
 function vis(id) {
   if (id == null) return null;
@@ -723,7 +753,9 @@ function frame(now) {
   rafId = 0; inFrame = true;
   try {
     const dtw = Math.min(0.1, (now - last) / 1000); last = now;
+    const t0 = App.time;
     App.time = App.clock != null ? App.clock : App.time + dtw;
+    const dtt = App.time - t0; // follows the test clock, so captures with a fixed clock hold the birds still
     const resized = renderer.resize();
     if (resized && App.sim) frameCamera(true);
     pollPad();
@@ -731,6 +763,7 @@ function frame(now) {
     const sim = App.sim;
     if (sim && App.scene === 'battle' && !App.paused && !App.testPaused && !screens.cur) {
       if (App.hitstop > 0) App.hitstop -= dtw;
+      sim.idle(dtt);
       if (sim.busy()) {
         acc += App.hitstop > 0 ? 0 : App.slowT > 0 ? dtw * 0.35 : dtw;
         let n = 0;
@@ -750,6 +783,7 @@ function frame(now) {
       const tt = App.save.settings.turnTimer;
       if (tt && sim.b.phase === 'aim' && humanTurn() && wallNow() - App.turnStart > tt) { sim.nextTurn(); }
     }
+    if (sim && App.scene === 'title') sim.idle(dtt);
     if (App.slowT > 0) { App.slowT -= dtw; busy = true; }
     if (App.koHold > 0) { App.koHold -= dtw; busy = true; if (App.koHold <= 0 && App.reframe) { App.reframe = false; frameCamera(false); } }
     if (sim && updateVis(App.slowT > 0 ? dtw * 0.35 : dtw)) busy = true;

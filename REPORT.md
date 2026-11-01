@@ -94,5 +94,38 @@ After the stop, defects both critics flagged were fixed but not re-scored:
 - `t.frameCost` under software raster swings with machine load; a harness-level `--gpu` default for 2D canvas performance tests would help.
 - `art-pack.mjs` prunes manifest keys it did not pack. A game that keeps extra entries (sprites) must keep them in a separate file, as this game does with `assets/sprites.json`.
 
+## Update: zoom, landscapes and birds (M6, 2026-11-01)
+- **Zoom.**
+  - Zoom out to about twice the world's width on desktop (the whole world on phones). Painted scenery continues past each edge: the ridges carry on, distant woods stand on them, the forest band is wider, and the painting cross-fades to an arch-feathered copy.
+  - Zoom in to at most 1.25×. The old limit was 2.1–3.2×.
+- **Landscapes.**
+  - Every level is its own spot on its stretch's two mountains, with lowest ground ranging from y 288 to 576 across the story levels (v1.0: 444–521).
+  - Levels vary in benches and gullies, tree mix, and obstacles. Four new species: redbud, redcedar, Osage-orange (with hedge apples in fall) and dead snags. The new obstacles (boulders, fallen logs, stumps) are solid and never carve.
+  - Everything is still mirrored for fairness. Levels carry `rev: 2`, and an older mid-battle resume is dropped.
+- **Birds.**
+  - Chimney swifts, turkey vultures (circling in the steam thermal), blue jays, American crows, Canada geese (V flocks), cedar waxwings and bald eagles, by season. There are no birds at night.
+  - A nut that hits a bird glances off and keeps flying; a jay or crow may snatch a plain acorn. Nobody is hurt.
+  - Birds are deterministic per battle seed. The aim guide and the AI ignore them.
+  - Quick Battle has Birds: Off / Some / Lots. The HUD shows what's aloft, and there are seven new sourced Field Notes facts.
+  - The Mississippi kite and American white pelican were dropped because they aren't on the park's species list (`research/birds.md`).
+- **Balance** (168 AI battles, after re-tuning four recipes; knolls and short trees sheltered fallen squirrels):
+  - 24.96 throws per round
+  - hard beats easy 100%, medium beats easy 92%
+  - first mover wins 46%
+  - hit rates easy/medium/hard 0.31/0.49/0.71
+  - special-nut spread 1.31
+  - All targets met.
+- **Tests:**
+  - `--milestone final --slow`: 76/76
+  - `file://`: 70/70
+  - `check-levels`: 14/14
+  - `check-facts`: 35/35
+  - `tools/check-birds.mjs`: 13/13
+- **Not yet done:** the v1.1 update is not pushed to `hsg-furious-squirrels` or the website.
+
 ## Release
-Release status: RELEASE_STATUS.
+Shipped on 2026-11-01 as `brianm-di4u/hsg-furious-squirrels` tag `v1.0.0` (public), through site PR [hot-springs-games#20](https://github.com/brianm-di4u/hot-springs-games/pull/20).
+- The Vercel preview and production builds passed.
+- The game is in the Library and is the homepage Featured game at https://www.hsargames.com/games/furious-squirrels/.
+- Checked live: Story battle 1 played in the site's player, with the painted backdrop and sprites loading and no console errors.
+- The site's share image now holds eight Library cards: `scripts/make-og.mjs` lets the card row span the full frame.

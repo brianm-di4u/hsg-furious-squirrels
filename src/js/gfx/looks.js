@@ -12,10 +12,14 @@ export const SKY = {
 // canopy colours by species and season: [base, light, dark]
 const C = (b, l, d) => ({ base: b, light: l, dark: d });
 export const CANOPY = {
-  summer: { oak: C('#4F6B35', '#6E8C45', '#33492A'), hickory: C('#5C7A3A', '#7C9A4C', '#3C5428'), pine: C('#2F4A2C', '#46653A', '#1F3324'), sweetgum: C('#4E7A3A', '#6D9A4A', '#355628') },
-  spring: { oak: C('#7FA54A', '#A3C46A', '#58783A'), hickory: C('#8DB85A', '#B2D47E', '#62873E'), pine: C('#36553A', '#4F7046', '#22382A'), sweetgum: C('#86B356', '#ABCF78', '#5E853C') },
-  fall: { oak: C('#9A5A2E', '#C27A40', '#6B3A20'), hickory: C('#D4A72C', '#EBC85A', '#9C7420'), pine: C('#33502E', '#4A6A3C', '#22382A'), sweetgum: C('#A8352E', '#D0574A', '#6E2230') },
-  winter: { oak: C('#9C7A52', '#B8966A', '#6E5438'), hickory: null, pine: C('#2E4A34', '#45634A', '#1E3226'), sweetgum: null },
+  summer: { oak: C('#4F6B35', '#6E8C45', '#33492A'), hickory: C('#5C7A3A', '#7C9A4C', '#3C5428'), pine: C('#2F4A2C', '#46653A', '#1F3324'), sweetgum: C('#4E7A3A', '#6D9A4A', '#355628'),
+    redbud: C('#5E8A3E', '#7FA855', '#3E6028'), redcedar: C('#2E4B3A', '#45664F', '#1D3226'), osage: C('#4A7434', '#6A9446', '#30502A'), snag: null },
+  spring: { oak: C('#7FA54A', '#A3C46A', '#58783A'), hickory: C('#8DB85A', '#B2D47E', '#62873E'), pine: C('#36553A', '#4F7046', '#22382A'), sweetgum: C('#86B356', '#ABCF78', '#5E853C'),
+    redbud: C('#C25A93', '#E08AB8', '#8E3A6A'), redcedar: C('#34523E', '#4C6E55', '#20372A'), osage: C('#7FAE4C', '#A2CA6E', '#577E36'), snag: null },
+  fall: { oak: C('#9A5A2E', '#C27A40', '#6B3A20'), hickory: C('#D4A72C', '#EBC85A', '#9C7420'), pine: C('#33502E', '#4A6A3C', '#22382A'), sweetgum: C('#A8352E', '#D0574A', '#6E2230'),
+    redbud: C('#C9A43A', '#E6C760', '#93762A'), redcedar: C('#3A5238', '#52704C', '#253826'), osage: C('#C8B040', '#E2CE66', '#8E7A2A'), snag: null },
+  winter: { oak: C('#9C7A52', '#B8966A', '#6E5438'), hickory: null, pine: C('#2E4A34', '#45634A', '#1E3226'), sweetgum: null,
+    redbud: null, redcedar: C('#4A5638', '#62704C', '#2E3A26'), osage: null, snag: null },
 };
 export const ACCENT = { spring: ['#B5568F', '#F6F3EC'], fall: ['#E07A2E', '#B8402C'] }; // redbud, dogwood / fall leaf bits
 
@@ -26,7 +30,9 @@ export const GROUND = {
   winter: { top: '#E8ECEA', soil: '#6E5640', deep: '#463426', litter: '#9A8A70' },
 };
 
-export const BARK = { oak: '#5B4632', hickory: '#6A5848', pine: '#7A4E34', sweetgum: '#5E4E44' };
+export const BARK = { oak: '#5B4632', hickory: '#6A5848', pine: '#7A4E34', sweetgum: '#5E4E44', redbud: '#4A3A34', redcedar: '#8A5A3E', osage: '#8A5E34', snag: '#7E7468' };
+// evergreen needle crowns (drawn as spiky tufts; every bough carries needles)
+export const EVERGREEN = new Set(['pine', 'redcedar']);
 
 export const TEAM_COLORS = [
   { coat: '#C8763A', coatDark: '#8E4E22', belly: '#E9B27A', acc: '#E0B23A', accDark: '#9C7A1E', ui: '#B5541E', uiText: '#FFF4E0', label: 'Rustlers' },

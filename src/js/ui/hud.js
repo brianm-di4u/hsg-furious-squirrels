@@ -1,6 +1,6 @@
 // Battle HUD (DOM over the canvas): family banners with emblem shapes and squirrel pips, turn label, wind flag
 // with arrow + number, the nut bar, aim readout and action buttons, a phone mini-map, hints and big calls.
-import { NUTS, NUT_ORDER, TEAMS, W } from '../sim/const.js';
+import { NUTS, NUT_ORDER, TEAMS, W, BIRDS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
 import { TEAM_COLORS } from '../gfx/looks.js';
 
@@ -13,7 +13,7 @@ export class Hud {
     root.innerHTML = `
       <div class="top">
         <div class="banner t0" id="ban0"></div>
-        <div class="mid"><div class="turnlabel" id="turnlabel"></div><div class="wind" id="wind" role="img"><canvas width="128" height="52"></canvas><span></span></div></div>
+        <div class="mid"><div class="turnlabel" id="turnlabel"></div><div class="wind" id="wind" role="img"><canvas width="128" height="52"></canvas><span></span><small class="aloft" id="aloft"></small></div></div>
         <div class="banner t1" id="ban1"></div>
       </div>
       <canvas class="minimap" id="minimap" width="740" height="88" aria-hidden="true"></canvas>
@@ -85,13 +85,16 @@ export class Hud {
     tl.style.visibility = label ? '' : 'hidden';
     // wind
     const wv = Math.round(Math.abs(b.wind) * 10), dir = b.wind > 0.02 ? 1 : b.wind < -0.02 ? -1 : 0;
-    const wk = wv + ':' + dir;
+    // birds aloft this turn (names, by flock)
+    const kinds = [...new Set((b.birds || []).filter((x) => !x.flee).map((x) => x.k))], aloft = kinds.map((k) => BIRDS[k].plural).join(', ');
+    const wk = wv + ':' + dir + ':' + aloft;
     if (this.windKey !== wk) {
       this.windKey = wk;
       drawWind(this.windCv, b.wind);
       const sp = this.el('wind').querySelector('span');
       sp.textContent = wv === 0 ? 'Calm' : `Wind ${wv} ${dir > 0 ? '→' : '←'}`;
-      this.el('wind').setAttribute('aria-label', wv === 0 ? 'Wind calm' : `Wind ${wv} of 10 blowing ${dir > 0 ? 'east, to the right' : 'west, to the left'}`);
+      const al = this.el('aloft'); al.textContent = aloft ? 'Aloft: ' + aloft : ''; al.hidden = !aloft;
+      this.el('wind').setAttribute('aria-label', (wv === 0 ? 'Wind calm' : `Wind ${wv} of 10 blowing ${dir > 0 ? 'east, to the right' : 'west, to the left'}`) + (aloft ? `. Birds aloft: ${aloft}` : ''));
     }
     // nut bar
     const key = team + ':' + JSON.stringify(tm.inventory);
@@ -135,7 +138,9 @@ export class Hud {
     // camera box
     const cam = app.renderer.cam, [wx0, wy0] = cam.toWorld(0, 0), [wx1, wy1] = cam.toWorld(cam.vw, cam.vh);
     g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2;
-    g.strokeRect(wx0 * sx, (wy0 - y0) * sy, (wx1 - wx0) * sx, (wy1 - wy0) * sy);
+    // zoomed out past the world, the box is clipped to the map
+    const bx0 = Math.max(1, wx0 * sx), bx1 = Math.min(w - 1, wx1 * sx), by0 = Math.max(1, (wy0 - y0) * sy), by1 = Math.min(h - 1, (wy1 - y0) * sy);
+    if (bx1 > bx0 && by1 > by0) g.strokeRect(bx0, by0, bx1 - bx0, by1 - by0);
     for (const q of sim.b.squirrels) {
       if (q.out) continue;
       const x = Math.max(12, Math.min(w - 12, q.x * sx)), y = Math.max(13, Math.min(h - 10, (q.y - 20 - y0) * sy)), c = TEAM_COLORS[q.team];

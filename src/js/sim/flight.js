@@ -1,8 +1,9 @@
 // Nut flight (MECHANICS.md §6): one fixed step of the integrator plus swept collision against squirrels, wood and
 // terrain. Shared by the battle, the aim preview and the AI, so all three agree. Semi-implicit Euler at DT, the
 // same stepping pattern as games/baseball/src/js/flight.js.
-import { G, W, H, WIND_MAX, SQ_R, SQ_UP, OWNER_GRACE, FLIGHT_MAX, NUTS } from './const.js';
+import { G, W, H, WIND_MAX, SQ_R, SQ_UP, OWNER_GRACE, FLIGHT_MAX, NUTS, BIRDS } from './const.js';
 import { segDist } from './trees.js';
+import { birdPos } from './birds.js';
 
 const SUB = 4; // max world units between collision samples
 export const HOME_GRACE = 0; // (kept for reference) own trees never block their family's nuts
@@ -44,6 +45,14 @@ function probe(nut, env, x, y, dash) {
       if (q.out || (q.id === nut.sq && nut.age < OWNER_GRACE)) continue;
       const dx = x - q.x, dy = y - (q.y - SQ_UP);
       if (dx * dx + dy * dy <= (SQ_R + nut.r) ** 2) return { type: 'squirrel', sq: q.id, x, y };
+    }
+    // birds (the aim preview and the AI fly with env.birds empty, so they never plan around them)
+    const birds = env.birds;
+    if (birds) for (let i = 0; i < birds.length; i++) {
+      const bd = birds[i];
+      if (bd.flee) continue;
+      const p = birdPos(bd, env.birdT, env), rr = BIRDS[bd.k].r + nut.r;
+      if ((x - p.x) ** 2 + (y - p.y) ** 2 <= rr * rr) return { type: 'bird', bird: i, x, y, bx: p.x, by: p.y, face: p.face };
     }
   }
   const boxes = env.boxes;

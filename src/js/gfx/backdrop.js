@@ -39,21 +39,22 @@ export function rowOrderFor() { return ROW.filter((b) => b.id !== 'arlington').m
 // A wide forested-mountain band (no buildings or street) drawn behind a painting, so the painted panel bleeds
 // into continuous forest instead of ending in sky. Same hill and canopy recipe as the vector backdrop.
 export function paintForestBand(level, rng) {
-  const BWW = BW * 2.2, cv = document.createElement('canvas');
+  const BWW = BW * 3.4, cv = document.createElement('canvas');
   cv.width = Math.round(BWW / 2); cv.height = Math.round(BH / 2);
   const g = cv.getContext('2d'), sky = SKY[level.time] || SKY.day, season = level.season;
   g.scale(0.5, 0.5);
   const leaf = { spring: '#7FA54A', summer: '#4F6B35', fall: '#B07A30', winter: '#6E6A55' }[season] || '#4F6B35';
   const hill = (y0, col, amp, ph) => {
     g.fillStyle = col; g.beginPath(); g.moveTo(0, BH);
-    for (let x = 0; x <= BWW; x += 25) g.lineTo(x, y0 - Math.sin((x / BWW) * Math.PI) * amp - Math.sin(x / 170 + ph) * 18);
+    for (let x = 0; x <= BWW; x += 25) g.lineTo(x, y0 - Math.min(1, Math.sin((x / BWW) * Math.PI) * 2.6) * amp - Math.sin(x / 170 + ph) * 18);
     g.lineTo(BWW, BH); g.closePath(); g.fill();
   };
-  hill(BASE - 300, mix(mix(leaf, '#5B7A8A', 0.35), sky.low, 0.4), 230, 1);
-  hill(BASE - 180, mix(leaf, sky.low, 0.22), 200, 2.4);
+  // tall enough to stand behind a painting's feathered edges at the furthest zoom-out
+  hill(BASE - 420, mix(mix(leaf, '#5B7A8A', 0.35), sky.low, 0.4), 330, 1);
+  hill(BASE - 260, mix(leaf, sky.low, 0.22), 300, 2.4);
   const pal = season === 'fall' ? ['#C27A40', '#D4A72C', '#9A5A2E', '#A8352E', '#5C7A3A'] : season === 'spring' ? ['#7FA54A', '#A3C46A', '#58783A', '#B5568F', '#F6F3EC'] : season === 'winter' ? ['#8A8676', '#A09A88', '#2F4A2C', '#B6B0A0', '#6E6A58'] : ['#4F6B35', '#6E8C45', '#33492A', '#5C7A3A', '#2F4A2C'];
-  for (let i = 0; i < 1600; i++) {
-    const x = rng.range(0, BWW), top = BASE - 180 - Math.sin((x / BWW) * Math.PI) * 200;
+  for (let i = 0; i < 2400; i++) {
+    const x = rng.range(0, BWW), top = BASE - 260 - Math.min(1, Math.sin((x / BWW) * Math.PI) * 2.6) * 300;
     const y = rng.range(top + 8, BH - 40), r = rng.range(12, 26);
     g.fillStyle = mix(pal[i % pal.length], sky.low, 0.28);
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();

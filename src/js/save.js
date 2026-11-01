@@ -7,7 +7,7 @@ export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
   story: { team: null, unlocked: 1, stars: {}, nuts: [] },
-  quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', loadout: 'all', difficulty: 'medium' },
+  quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0 },
   resume: null,
 });

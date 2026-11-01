@@ -4,6 +4,11 @@ import { CANOPY } from './looks.js';
 import { star } from './squirrels.js';
 
 const MAX = 600;
+const FEATHER = {
+  swift: ['#34302C', '#4A4440'], vulture: ['#2E2622', '#9A948C'], jay: ['#3D7CC9', '#F2F0EA', '#1E3E7A'],
+  crow: ['#1C1C22', '#2E2E36'], goose: ['#7A6A58', '#C8BCA8', '#F2F0EA'],
+  waxwing: ['#B89A6A', '#D8C49A', '#E8C83A'], eagle: ['#3A2A1E', '#F6F4EE'],
+};
 
 export class Fx {
   constructor(rng) { this.rng = rng; this.p = []; this.texts = []; this.rings = []; this.steam = []; }
@@ -32,6 +37,11 @@ export class Fx {
   }
   flash(x, y, r) { this.rings.push({ x, y, r, t: 0, life: 0.18, c: '#FFFFFF', fill: true }); }
   puff(x, y) { this.add({ k: 'puff', x, y, vx: 0, vy: -10, life: 0.5, t: 0, s: 5 }); }
+  // a startled bird sheds a few feathers that drift down like leaves
+  feathers(x, y, bird) {
+    const r = this.rng, cols = FEATHER[bird] || FEATHER.crow;
+    for (let i = 0; i < 9; i++) this.add({ k: 'leaf', x: x + r.range(-10, 10), y: y + r.range(-10, 10), vx: r.range(-110, 110), vy: r.range(-120, -10), life: r.range(1.4, 2.4), t: 0, rot: r.range(0, 6), vr: r.range(-4, 4), c: r.pick(cols), s: r.range(4, 7) });
+  }
   stars(x, y) { const r = this.rng; for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; this.add({ k: 'star', x, y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120 - 60, life: 0.8, t: 0, s: r.range(4, 7) }); } }
 
   update(dt) {

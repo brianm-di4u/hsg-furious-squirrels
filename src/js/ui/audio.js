@@ -83,6 +83,9 @@ export function sfx(name, arg) {
     case 'lose': [392, 349, 330, 262].forEach((f, i) => tone(f, 0.28, { type: 'triangle', vol: 0.08, at: i * 0.16 })); break;
     case 'buy': tone(988, 0.07, { type: 'square', vol: 0.05, filter: 3000 }); tone(1319, 0.12, { type: 'square', vol: 0.05, at: 0.07, filter: 3000 }); break;
     case 'land': tone(160, 0.08, { type: 'sine', vol: 0.08 }); break;
+    // birds: a two-note goose honk, or a jay/crow squawk (other birds chirp)
+    case 'honk': for (let i = 0; i < 2; i++) tone(330 - i * 40, 0.13, { type: 'sawtooth', vol: 0.07, at: i * 0.16, slide: 0.8, filter: 1400 }); break;
+    case 'squawk': if (arg === 'jay' || arg === 'crow') { tone(arg === 'crow' ? 520 : 900, 0.16, { type: 'sawtooth', vol: 0.06, slide: 0.7, filter: 2600 }); noise(0.1, { vol: 0.05, freq: 2400, q: 1.5 }); } else for (let i = 0; i < 3; i++) tone(2600 + i * 400, 0.05, { type: 'sine', vol: 0.05, at: i * 0.05, slide: 1.2 }); break;
     case 'steam': noise(0.5, { vol: 0.03, type: 'highpass', freq: 5000 }); break;
     default: break;
   }
