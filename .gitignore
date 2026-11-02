@@ -14,3 +14,6 @@ tools/out/
 # Review captures (regenerated from screenshots; review record only)
 reviews/**/*.png
 /reviews/loop-*/calibration.jpg
+
+# Scratch scripts (local experiments)
+/tools/dev/

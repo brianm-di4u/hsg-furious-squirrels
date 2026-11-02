@@ -1,5 +1,6 @@
-// Zero-dependency geo helpers. Copied from games/Cart Racing/tools/geo/geo-lib.mjs (same author, MIT); RAW now points at
-// that game's git-ignored DEM tiles (override with FS_GEO_RAW).
+// Zero-dependency geo helpers. Copied from hsg-tub-rally's tools/geo/geo-lib.mjs (same author, MIT); RAW points at the
+// workspace's shared, git-ignored DEM tiles in reference/geo/elevation/, else at hsg-tub-rally's art-src/geo/raw/ beside
+// this repo (override with FS_GEO_RAW).
 //
 //   readTiff(buf)          single-band uncompressed float32 TIFF (strips or tiles, II or MM), as returned by the
 //                          USGS 3DEP ImageServer exportImage call, plus its GeoTIFF extent when the tags are present.
@@ -15,7 +16,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const RAW = process.env.FS_GEO_RAW || path.resolve(ROOT, '..', 'Cart Racing', 'art-src', 'geo', 'raw');
+const SHARED_DEMS = path.resolve(ROOT, '..', '..', 'reference', 'geo', 'elevation');
+export const RAW = process.env.FS_GEO_RAW
+  || (fs.existsSync(SHARED_DEMS) ? SHARED_DEMS : path.resolve(ROOT, '..', 'hsg-tub-rally', 'art-src', 'geo', 'raw'));
 
 // ---------------------------------------------------------------------------------------------------------------
 // TIFF
@@ -132,7 +135,7 @@ export function lineLength(pts) {
 /**
  * new Dem([{ file, bbox? }]) where bbox = {west,south,east,north} or [west,south,east,north].
  * The GeoTIFF extent inside the file wins over a supplied bbox (the 3DEP service silently widens the requested
- * extent to keep pixels square in degrees: games/trivia's dem-downtown.tif asked for 34.495-34.535 but holds
+ * extent to keep pixels square in degrees: the trivia DEM dem-downtown.tif asked for 34.495-34.535 but holds
  * 34.4909-34.5391). Tiles are tried finest-first; a tile is used when the point and its 2x2 bilinear
  * neighbourhood are inside it and finite.
  */

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BANK = process.env.FS_TRIVIA_BANK || path.resolve(ROOT, '..', 'trivia', 'data', 'questions.json');
+const BANK = process.env.FS_TRIVIA_BANK || path.resolve(ROOT, '..', 'hsg-trivia', 'data', 'questions.json');
 
 // id -> which Row stretch it belongs to (for picking a fact that matches the backdrop)
 export const LANDMARK_IDS = {

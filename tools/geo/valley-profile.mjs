@@ -2,7 +2,7 @@
 //
 //   node tools/geo/valley-profile.mjs            -> research/valley-profile.json (+ a summary on stdout)
 //
-// Samples the USGS 3DEP DEM tiles that games/Cart Racing fetched (see tools/geo/geo-lib.mjs for the path) along
+// Samples the USGS 3DEP DEM tiles that hsg-tub-rally fetched (see tools/geo/geo-lib.mjs for the path) along
 // east-west transects across Bathhouse Row, and along the "battle line" from the West Mountain Drive viewpoint to
 // the Hot Springs Mountain Tower. Level terrain is a stylized, horizontally compressed version of these profiles.
 import fs from 'node:fs';
@@ -50,7 +50,7 @@ function summarize(p, rowLon = -93.0535) {
   };
 }
 
-const out = { generated: new Date().toISOString(), source: 'USGS 3DEP via games/Cart Racing/art-src/geo/raw (public domain)', raw: RAW, stepM: STEP_M, transects: [] };
+const out = { generated: new Date().toISOString(), source: 'USGS 3DEP DEM tiles fetched by hsg-tub-rally (public domain)', raw: RAW, stepM: STEP_M, transects: [] };
 for (const t of transects) {
   const p = profile(W, t.lat, E, t.lat);
   out.transects.push({ ...t, ...summarize(p), length: p.length, pts: p.pts });
