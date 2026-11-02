@@ -122,7 +122,10 @@ export class Hud {
 
   clearCalls() { this.callT = 0; this.el('call').classList.remove('show'); this.hint(''); }
   call(text, ms = 1200) { const c = this.el('call'); c.textContent = text; c.classList.add('show'); this.callT = ms / 1000; }
-  hint(text) { const h = this.el('hint'); if (this.hintText === text) return; this.hintText = text; h.textContent = text || ''; h.classList.toggle('show', !!text); }
+  hint(text) {
+    const h = this.el('hint'); if (this.hintText === text) return; this.hintText = text; h.textContent = text || ''; h.classList.toggle('show', !!text);
+    if (text) { const s = document.createElement('small'); s.textContent = 'Tap anywhere to close'; h.append(s); }
+  }
 
   drawMinimap() {
     const cv = this.el('minimap');

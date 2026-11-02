@@ -134,6 +134,17 @@ After the stop, defects both critics flagged were fixed but not re-scored:
   - `tools/check-birds.mjs`: 13/13
 - **Released:** `brianm-di4u/hsg-furious-squirrels` tag `v1.2.0` (game PR [hsg-furious-squirrels#2](https://github.com/brianm-di4u/hsg-furious-squirrels/pull/2)), through site PR [hot-springs-games#28](https://github.com/brianm-di4u/hot-springs-games/pull/28) with a retaken in-game shot.
 
+## Update: tutorial hints close (v1.2.1, 2026-11-01)
+- **Player report (phone):** "I can't get the black dialog box to close ever." On Story battle 1, the tutorial hint was cleared only by a throw. It came back at every turn start, the AI's included. The step counter never got past the second tip, so a hint covered the middle of the screen for the whole battle.
+- **Fix:**
+  - Each of the three tips shows once, only on the player's turn.
+  - A tip closes on any tap or click (the box itself, the field or a HUD button) or any key. It also closes on its own after 8 s.
+  - A small "Tap anywhere to close" line sits under the tip.
+  - The box stays click-through, so a slingshot drag can still start on it.
+- **Tests:**
+  - New `tutorial hints close on a tap and never show on AI turns` (mobile, slow).
+  - `--slow`: 77/77.
+
 ## Release
 Shipped on 2026-11-01 as `brianm-di4u/hsg-furious-squirrels` tag `v1.0.0` (public), through site PR [hot-springs-games#20](https://github.com/brianm-di4u/hot-springs-games/pull/20).
 - The Vercel preview and production builds passed.

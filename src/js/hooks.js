@@ -12,7 +12,7 @@ export function installHooks(App, api) {
       camera: { x: +cam.x.toFixed(1), y: +cam.y.toFixed(1), zoom: +cam.zoom.toFixed(3), user: cam.user },
       render: { w: App.renderer.size.w, h: App.renderer.size.h, dpr: App.renderer.size.dpr, artLoaded: !!(App.renderer.art && App.renderer.art.img), backdrop: App.level ? { id: App.level.backdrop, stretch: App.level.stretch, order: App.renderer.art && App.renderer.art.img ? rowOrderFor() : App.renderer.backdrop ? App.renderer.backdrop.order : rowOrderFor() } : null },
       level: App.level ? { id: App.level.id, name: App.level.name, n: App.level.n, stretch: App.level.stretch, season: App.level.season, time: App.level.time } : null,
-      setup: App.setup, steps: App.steps, showPerches: !!App.showPerches, aiActive: !!App.aiActive, lastSaid: App.lastSaid || '', audio: audioState(),
+      setup: App.setup, steps: App.steps, showPerches: !!App.showPerches, aiActive: !!App.aiActive, lastSaid: App.lastSaid || '', hint: App.hud.hintText || '', audio: audioState(),
       fx: App.renderer.fx.count, targetsHit: (App.targetsHit || []).length,
     };
     if (b) {
