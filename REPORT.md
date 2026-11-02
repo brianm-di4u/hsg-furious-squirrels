@@ -132,6 +132,7 @@ After the stop, defects both critics flagged were fixed but not re-scored:
   - `--milestone final --slow`: 76/76
   - `npm test`: 70/70
   - `tools/check-birds.mjs`: 13/13
+- **Released:** `brianm-di4u/hsg-furious-squirrels` tag `v1.2.0` (game PR [hsg-furious-squirrels#2](https://github.com/brianm-di4u/hsg-furious-squirrels/pull/2)), through site PR [hot-springs-games#28](https://github.com/brianm-di4u/hot-springs-games/pull/28) with a retaken in-game shot.
 
 ## Release
 Shipped on 2026-11-01 as `brianm-di4u/hsg-furious-squirrels` tag `v1.0.0` (public), through site PR [hot-springs-games#20](https://github.com/brianm-di4u/hot-springs-games/pull/20).
