@@ -80,7 +80,7 @@ function enterBattleScene() {
   App.paused = false;
   screens.hide();
   hud.show(true); hud.barKey = '';
-  App.tutorialStep = 0; App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
+  App.tutorialStep = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
   sim.drain();
   playTheme(L.time === 'night' ? 'night' : L.time === 'dusk' || L.time === 'sunset' ? 'dusk' : 'day');
   onTurnStart(true);
@@ -104,10 +104,22 @@ function onTurnStart(first) {
   tutorial();
 }
 
+// tutorial tips: each shows once, on the player's own turn, until any tap/key or TIP_MS passes
+const TIPS = ['Drag back from anywhere, like a slingshot, to aim. Let go to throw!', 'Nice! Wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
+const TIP_MS = 8000;
+let tipTimer = 0;
 function tutorial() {
-  if (!App.level || !App.level.tutorial || !App.save.settings.tutorial) { hud.hint(''); return; }
-  const tips = ['Drag back from anywhere, like a slingshot, to aim. Let go to throw!', 'Nice! Wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
-  hud.hint(tips[Math.min(App.tutorialStep, tips.length - 1)] || '');
+  clearTimeout(tipTimer);
+  const q = App.sim && App.sim.active();
+  if (!App.level || !App.level.tutorial || !App.save.settings.tutorial || !q || !App.sim.b.teams[q.team].human || App.tutorialStep >= TIPS.length) { hud.hint(''); return; }
+  hud.hint(TIPS[App.tutorialStep]);
+  tipTimer = setTimeout(dismissTip, TIP_MS);
+}
+function dismissTip() {
+  clearTimeout(tipTimer);
+  if (!hud.hintText) return;
+  hud.hint('');
+  App.tutorialStep++;
 }
 
 function wallNow() { return performance.now() / 1000; }
@@ -130,7 +142,7 @@ function throwNow() {
   if (!sim || sim.b.phase !== 'aim' || !humanTurn() || screens.cur) return false;
   App.showPerches = false;
   const ok = sim.throwNut({});
-  if (ok) { App.tutorialStep = Math.max(App.tutorialStep, 1); hud.hint(''); }
+  if (ok) dismissTip();
   kick();
   return ok;
 }
@@ -384,6 +396,8 @@ const endPtr = (e) => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
+// the hint is click-through, so a tap on it (or anywhere in the battle, HUD buttons included) closes it
+window.addEventListener('pointerdown', () => { if (App.scene === 'battle' && !screens.cur) dismissTip(); });
 canvas.addEventListener('wheel', (e) => { if (App.scene !== 'battle') return; e.preventDefault(); renderer.cam.zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); kick(); }, { passive: false });
 
 function perchAt(sx, sy) {
@@ -406,6 +420,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (App.scene !== 'battle') return;
+  dismissTip();
   const big = e.shiftKey ? 5 : 1;
   let used = true;
   switch (e.code) {

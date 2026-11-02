@@ -67,6 +67,41 @@ export const tests = [
     },
   },
   {
+    name: 'tutorial hints close on a tap and never show on AI turns',
+    viewports: ['mobile'],
+    slow: true,
+    async run(t) {
+      const myAim = () => t.page.waitForFunction(() => { const S = window.__FS.sim; return S.b.turn.team === 0 && S.b.phase === 'aim' && !S.busy(); }, null, { timeout: 20000 });
+      let s = await t.game('newGame', { levelId: 'story-01', seed: 5 });
+      if (s.battle.turn.team !== 0) { t.equal(s.hint, '', 'no hint on the AI turn'); await myAim(); }
+      s = await t.state();
+      t.expect(/Drag back/.test(s.hint), 'first tip shows on the first turn (got "' + s.hint + '")');
+      t.expect(await t.page.$eval('#hint', (h) => h.classList.contains('show') && /Tap anywhere to close/.test(h.textContent)), 'hint is visible with a close note');
+      const box = await t.page.$eval('#hint', (h) => { const r = h.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+      await t.tap(box);
+      s = await t.state();
+      t.equal(s.hint, '', 'tapping the hint closes it');
+      t.equal(s.battle.phase, 'aim', 'the tap does not throw');
+      await t.game('act', 'fire', {});
+      await t.game('act', 'skipFlight');
+      s = await t.state();
+      if (s.battle.turn.team !== 0) t.equal(s.hint, '', 'no hint on the AI turn');
+      await myAim();
+      s = await t.state();
+      t.expect(/Wind/.test(s.hint), 'second tip shows on the next turn (got "' + s.hint + '")');
+      await t.tap([20, Math.round(s.render.h / 2)]);
+      t.equal((await t.state()).hint, '', 'a tap anywhere closes it');
+      // the third tip goes away on its own, then no more tips
+      await t.game('act', 'fire', {}); await t.game('act', 'skipFlight');
+      await myAim();
+      t.expect(/Knock every rival/.test((await t.state()).hint), 'third tip shows');
+      await t.page.waitForFunction(() => window.__game.getState().hint === '', null, { timeout: 10000 });
+      await t.game('act', 'fire', {}); await t.game('act', 'skipFlight');
+      await myAim();
+      t.equal((await t.state()).hint, '', 'no tips once all three have shown');
+    },
+  },
+  {
     name: 'wind bends the arc',
     viewports: ['desktop'],
     async run(t) {
