@@ -145,6 +145,16 @@ After the stop, defects both critics flagged were fixed but not re-scored:
   - New `tutorial hints close on a tap and never show on AI turns` (mobile, slow).
   - `--slow`: 77/77.
 
+## Update: repainted backgrounds (v1.3.0, 2026-11-02)
+
+All ten Bathhouse Row backdrops were repainted. The new paintings put the street lower, so `ART_BASE` in
+`src/js/gfx/renderer.js` is now one value per stretch (middle 0.797, north 0.834, south 0.838) instead of 0.762 for
+all; review captures of the north, south and middle battles show the curb on the valley floor. The new source PNGs
+replace the `art-src/art.json` sources (git-ignored; the workspace keeps copies of the old and new paintings in
+`reference/backgrounds/`) and were packed with the usual tools.
+
+`npm test`: 70/70 passed.
+
 ## Release
 Shipped on 2026-11-01 as `brianm-di4u/hsg-furious-squirrels` tag `v1.0.0` (public), through site PR [hot-springs-games#20](https://github.com/brianm-di4u/hot-springs-games/pull/20).
 - The Vercel preview and production builds passed.

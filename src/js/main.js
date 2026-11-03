@@ -3,7 +3,7 @@
 import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, clamp } from './sim/const.js';
 import { Sim, hashBattle } from './sim/battle.js';
 import { planTurnGen, planTurn } from './sim/ai.js';
-import { Renderer } from './gfx/renderer.js';
+import { Renderer, ART_BASE } from './gfx/renderer.js';
 import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
@@ -517,7 +517,7 @@ function loadArt(L) {
   const img = new Image();
   App.loading++;
   img.src = 'assets/' + file;
-  img.decode().then(() => { const fa = featherArt(img, L); App.art[key] = { img: fa, soft: archArt(fa), w: ent.w, h: ent.h }; if (App.level === L) renderer.art = App.art[key]; })
+  img.decode().then(() => { const fa = featherArt(img, L); App.art[key] = { img: fa, soft: archArt(fa), w: ent.w, h: ent.h, base: ART_BASE[file.split('-')[1]] ?? ART_BASE.middle }; if (App.level === L) renderer.art = App.art[key]; })
     .catch(() => {}).finally(() => { App.loading--; kick(); });
 }
 
