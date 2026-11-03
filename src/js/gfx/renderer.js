@@ -7,7 +7,9 @@ import { TerrainLayer } from './terrainfx.js';
 import { TreeLayer, barkStroke } from './trees.js';
 import { paintBackdrop, paintForestBand, BW, BH, BASE } from './backdrop.js';
 
-export const ART_BASE = 0.762; // street line height in the Codex paintings (pilot: curb at 780 of 1024 px)
+// street line height in the painted backdrops, per Row stretch (2026-11 repaints: curb about 15 px above the asphalt,
+// e.g. middle at 816 of 1024 px)
+export const ART_BASE = { middle: 0.797, north: 0.834, south: 0.838 };
 import { drawSquirrel, emblem, star } from './squirrels.js';
 import { drawNut, NUT_COLORS } from './nuts.js';
 import { Fx, Steam } from './fx.js';
@@ -142,10 +144,10 @@ export class Renderer {
       g.drawImage(this.band.cv, bx, by, bw * cam.zoom, bh * cam.zoom);
     }
     if (this.art && this.art.img) {
-      // paintings keep their own aspect; their street line sits at ART_BASE of the height. They stretch to fill the
+      // paintings keep their own aspect; their street line sits at art.base (ART_BASE) of the height. They stretch to fill the
       // view only up to 1.3 panels wide, so zooming far out doesn't balloon the Row; past that the feathered
       // edges blend into the forest band
-      const vwW = (cam.vw / cam.zoom) * 1.04, w = Math.max(r.w * 0.78, Math.min(vwW, r.w * 1.3)), h = (w * this.art.h) / this.art.w, base = r.y + BASE * (r.h / BH), y = base - h * ART_BASE;
+      const vwW = (cam.vw / cam.zoom) * 1.04, w = Math.max(r.w * 0.78, Math.min(vwW, r.w * 1.3)), h = (w * this.art.h) / this.art.w, base = r.y + BASE * (r.h / BH), y = base - h * this.art.base;
       let [sx, sy] = cam.toScreen(r.x + (r.w - w) / 2, y);
       if (w >= vwW) sx = Math.min(0, Math.max(cam.vw - w * cam.zoom, sx)); // never let an edge into the view
       g.fillStyle = '#6E6E6C'; g.fillRect(sx, sy + h * cam.zoom - 2, w * cam.zoom, 500 * cam.zoom);

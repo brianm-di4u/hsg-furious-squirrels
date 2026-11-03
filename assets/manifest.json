@@ -3,61 +3,61 @@
   "file": "bd-middle-summer-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 324010
+  "bytes": 281358
  },
  "bd-north-summer-day": {
   "file": "bd-north-summer-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 340894
+  "bytes": 349438
  },
  "bd-south-spring-day": {
   "file": "bd-south-spring-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 351580
+  "bytes": 327456
  },
  "bd-middle-spring-day": {
   "file": "bd-middle-spring-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 339284
+  "bytes": 333842
  },
  "bd-middle-fall-day": {
   "file": "bd-middle-fall-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 314062
+  "bytes": 299658
  },
  "bd-north-fall-day": {
   "file": "bd-north-fall-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 353844
+  "bytes": 372550
  },
  "bd-south-fall-day": {
   "file": "bd-south-fall-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 335748
+  "bytes": 341790
  },
  "bd-south-winter-day": {
   "file": "bd-south-winter-day.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 385274
+  "bytes": 403324
  },
  "bd-middle-winter-night": {
   "file": "bd-middle-winter-night.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 394092
+  "bytes": 292234
  },
  "bd-north-summer-night": {
   "file": "bd-north-summer-night.webp",
   "w": 2048,
   "h": 1365,
-  "bytes": 293948
+  "bytes": 267968
  },
  "tex-soil": {
   "file": "tex-soil.webp",
