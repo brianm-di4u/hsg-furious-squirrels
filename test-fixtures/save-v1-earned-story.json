@@ -1,0 +1,457 @@
+{
+  "v": 1,
+  "settings": {
+    "sound": true,
+    "music": true,
+    "volume": 0.5,
+    "reducedMotion": null,
+    "aimGuide": "auto",
+    "turnTimer": 0,
+    "textScale": 1,
+    "difficulty": "medium",
+    "tutorial": true
+  },
+  "story": {
+    "team": 0,
+    "unlocked": 1,
+    "stars": {},
+    "nuts": []
+  },
+  "quick": {
+    "level": "story-01",
+    "team": 0,
+    "size": 3,
+    "rounds": 1,
+    "wind": "normal",
+    "steam": "on",
+    "birds": "some",
+    "loadout": "all",
+    "difficulty": "medium"
+  },
+  "stats": {
+    "battles": 0,
+    "wins": 0,
+    "kos": 0,
+    "bestShot": 0
+  },
+  "resume": {
+    "setup": {
+      "mode": "story",
+      "levelId": "story-01",
+      "team": 0,
+      "difficulty": "medium",
+      "loadout": "story",
+      "unlocked": [],
+      "birds": "off",
+      "seed": 57950,
+      "battle": null
+    },
+    "battle": {
+      "v": 1,
+      "seed": 57950,
+      "levelId": "story-01",
+      "mode": "story",
+      "difficulty": "medium",
+      "practice": false,
+      "round": 1,
+      "rounds": 1,
+      "roundWins": [
+        0,
+        0
+      ],
+      "phase": "aim",
+      "windLevel": 0.45,
+      "wind": 0.21745112893869853,
+      "steamLevel": 420,
+      "turn": {
+        "team": 0,
+        "sq": 1,
+        "n": 2,
+        "stamina": 300,
+        "moved": 0
+      },
+      "teams": [
+        {
+          "id": "rustlers",
+          "acorns": 60,
+          "human": true,
+          "inventory": {},
+          "next": 0,
+          "stats": {
+            "throws": 1,
+            "hits": 0,
+            "kos": 0,
+            "dmg": 0,
+            "best": 0
+          },
+          "aim": {
+            "angle": 44,
+            "power": 0.61,
+            "nut": "acorn"
+          }
+        },
+        {
+          "id": "tails",
+          "acorns": 64,
+          "human": false,
+          "inventory": {},
+          "next": 1,
+          "stats": {
+            "throws": 1,
+            "hits": 1,
+            "kos": 0,
+            "dmg": 5.8,
+            "best": 6
+          },
+          "aim": {
+            "angle": 24.8,
+            "power": 0.751,
+            "nut": "acorn"
+          },
+          "ai": {
+            "target": 1,
+            "k": 1
+          }
+        }
+      ],
+      "squirrels": [
+        {
+          "id": 0,
+          "team": 0,
+          "name": "Hazel",
+          "grip": 64,
+          "out": false,
+          "perch": "B0:4:1",
+          "x": 351.5564991174581,
+          "y": 303.8055132044547,
+          "facing": 1,
+          "fall": null,
+          "dummy": false,
+          "koAt": null
+        },
+        {
+          "id": 1,
+          "team": 0,
+          "name": "Rusty",
+          "grip": 58.2,
+          "out": false,
+          "perch": "B1:2:1",
+          "x": 528.0098090547324,
+          "y": 365.75123251603645,
+          "facing": 1,
+          "fall": null,
+          "dummy": false,
+          "koAt": null
+        },
+        {
+          "id": 10,
+          "team": 1,
+          "name": "Ash",
+          "grip": 64,
+          "out": false,
+          "perch": "B3:4:1",
+          "x": 1716.443500882542,
+          "y": 323.80551320445477,
+          "facing": -1,
+          "fall": null,
+          "dummy": false,
+          "koAt": null
+        },
+        {
+          "id": 11,
+          "team": 1,
+          "name": "Pebble",
+          "grip": 64,
+          "out": false,
+          "perch": "B4:2:1",
+          "x": 1539.9901909452676,
+          "y": 363.75123251603645,
+          "facing": -1,
+          "fall": null,
+          "dummy": false,
+          "koAt": null
+        }
+      ],
+      "trees": [
+        {
+          "b": [
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 34,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 38,
+              "broken": false
+            }
+          ]
+        },
+        {
+          "b": [
+            {
+              "hp": 54,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 24,
+              "broken": false
+            },
+            {
+              "hp": 54,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            }
+          ]
+        },
+        {
+          "b": [
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 50,
+              "broken": false
+            },
+            {
+              "hp": 38,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            }
+          ]
+        },
+        {
+          "b": [
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 34,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 38,
+              "broken": false
+            }
+          ]
+        },
+        {
+          "b": [
+            {
+              "hp": 24,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 54,
+              "broken": false
+            },
+            {
+              "hp": 54,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            }
+          ]
+        },
+        {
+          "b": [
+            {
+              "hp": 46,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 42,
+              "broken": false
+            },
+            {
+              "hp": 50,
+              "broken": false
+            },
+            {
+              "hp": 38,
+              "broken": false
+            },
+            {
+              "hp": 46,
+              "broken": false
+            }
+          ]
+        }
+      ],
+      "craters": [],
+      "settle": 0.35000000000000026,
+      "falling": [],
+      "nuts": [],
+      "log": [
+        {
+          "type": "round",
+          "round": 1
+        },
+        {
+          "type": "throw",
+          "sq": 0,
+          "kind": "acorn",
+          "angle": 44,
+          "power": 0.61
+        },
+        {
+          "type": "rustle",
+          "x": 1475.5740260665189,
+          "y": 416.061210362258
+        },
+        {
+          "type": "wood",
+          "tree": 4,
+          "branch": 0,
+          "hp": 24
+        },
+        {
+          "type": "impact",
+          "kind": "acorn",
+          "on": "wood",
+          "x": 1489.6036436764894,
+          "y": 431.04227825179515,
+          "r": 18,
+          "burst": false,
+          "ball": false
+        },
+        {
+          "type": "shotDone",
+          "team": 0,
+          "sq": 0,
+          "kind": "acorn",
+          "dmg": 0,
+          "kos": 0,
+          "breaks": 0
+        },
+        {
+          "type": "turn",
+          "team": 1,
+          "sq": 10,
+          "wind": 0.26657107319894907
+        },
+        {
+          "type": "throw",
+          "sq": 10,
+          "kind": "acorn",
+          "angle": 24.8,
+          "power": 0.751
+        },
+        {
+          "type": "rustle",
+          "x": 585.6633087800026,
+          "y": 352.1685572549301
+        },
+        {
+          "type": "wood",
+          "tree": 1,
+          "branch": 2,
+          "hp": 24
+        },
+        {
+          "type": "hit",
+          "sq": 1,
+          "dmg": 5.8,
+          "grip": 58.2,
+          "x": 528.0098090547324,
+          "y": 345.75123251603645
+        },
+        {
+          "type": "impact",
+          "kind": "acorn",
+          "on": "wood",
+          "x": 571.3474537545103,
+          "y": 360.94175870464994,
+          "r": 18,
+          "burst": false,
+          "ball": false
+        },
+        {
+          "type": "shotDone",
+          "team": 1,
+          "sq": 10,
+          "kind": "acorn",
+          "dmg": 5.8,
+          "kos": 0,
+          "breaks": 0
+        },
+        {
+          "type": "turn",
+          "team": 0,
+          "sq": 1,
+          "wind": 0.21745112893869853
+        }
+      ],
+      "rng": {
+        "sim": -1895458703,
+        "ai": -695059155,
+        "birds": 21387
+      },
+      "result": null,
+      "size": 2,
+      "birdLevel": "off",
+      "birds": [],
+      "birdT": 0,
+      "flightStep": 186,
+      "tapAt": null,
+      "shot": null
+    },
+    "levelRev": 2
+  }
+}

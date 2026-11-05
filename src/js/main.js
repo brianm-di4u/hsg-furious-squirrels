@@ -9,7 +9,7 @@ import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
 import { Screens } from './ui/screens.js';
 import { initAudio, setAudio, sfx, playTheme, audioState } from './ui/audio.js';
-import { loadSave, writeSave, DEFAULT_SAVE } from './save.js';
+import { loadSave, writeSave, refreshSave, beginBattleSave, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
@@ -45,15 +45,37 @@ function applySettings() {
   document.body.classList.toggle('reduced', App.reduced);
   setAudio(s);
 }
-function persist() { writeSave(App.save); }
+function saveConflict() {
+  hud.call('Saved battle changed in another tab', 4500);
+  say('This battle is still playable here. Resume the saved battle from the title, or start a new battle.');
+}
+function persist(intent = 'merge', fields = [], expectedResume) {
+  const before = JSON.stringify(App.save.settings);
+  const ok = writeSave(App.save, { intent, fields: Array.isArray(fields) ? fields : [fields], expectedResume, notify: saveConflict });
+  if (before !== JSON.stringify(App.save.settings)) { applySettings(); App.guideKey = ''; }
+  return ok;
+}
+function freshSave() { refreshSave(App.save, saveConflict); applySettings(); }
 
 // ---------------------------------------------------------------------------------------------------------------
 // battles
 function storyInventory(n) { return STORY.filter((L) => L.n <= n && L.unlock).map((L) => L.unlock); }
 
 function startBattle(setup) {
-  const L = ALL[setup.levelId];
+  let L = ALL[setup.levelId];
   if (!L) throw new Error('no level ' + setup.levelId);
+  const saved = beginBattleSave(App.save, { mode: setup.mode, resume: !!setup.battle, levelNumber: L.n || 0, notify: saveConflict });
+  applySettings();
+  if (!saved.started) {
+    if (saved.reason === 'locked') return screens.show('story', { levels: STORY });
+    return showTitle();
+  }
+  if (saved.resume) {
+    setup = { ...saved.resume.setup, battle: saved.resume.battle }; L = ALL[setup.levelId];
+    if (!L || (L.rev || 1) !== (saved.resume.levelRev || 1)) {
+      App.save.resume = null; persist('invalidate', [], saved.resume); return showTitle();
+    }
+  }
   const playerTeam = setup.team ?? 0;
   const seed = setup.seed ?? App.nextSeed ?? (Date.now() & 0xffff);
   const opts = {
@@ -99,7 +121,7 @@ function onTurnStart(first) {
   if (!first) say(`${q.name}'s turn, ${TEAMS[q.team].name}. Wind ${Math.round(Math.abs(sim.b.wind) * 10)}${sim.b.wind > 0.02 ? ' to the right' : sim.b.wind < -0.02 ? ' to the left' : ''}.`);
   if (tm.human && App.setup.mode === 'story') {
     App.save.resume = { setup: { ...App.setup, battle: null }, battle: sim.toJSON(), levelRev: App.level.rev || 1 };
-    persist();
+    persist('turn');
   }
   tutorial();
 }
@@ -200,38 +222,40 @@ App.onMenu = (act, d) => {
   const s = App.save;
   switch (act) {
     case 'story':
+      freshSave();
       if (s.story.team == null) return screens.show('pickTeam', { next: 'story' });
       return screens.show('story', { levels: STORY });
-    case 'team': s.story.team = +d.v; persist(); return screens.show('story', { levels: STORY });
+    case 'team': s.story.team = +d.v; persist('family'); return screens.show('story', { levels: STORY });
     case 'switchTeam': return screens.show('pickTeam', { next: 'story' });
     case 'play': {
+      freshSave();
       const L = ALL[d.v];
       if (!L) return;
       if (L.practice) return App.onMenu('practice', {});
       if (/^story-/.test(L.id)) return startBattle({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
       return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team, birds: s.quick.birds });
     }
-    case 'quick': return screens.show('quick', { levels: STORY });
-    case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist(); return screens.refresh();
-    case 'quickGo': { const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
+    case 'quick': freshSave(); return screens.show('quick', { levels: STORY });
+    case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist('quick', d.k); return screens.refresh();
+    case 'quickGo': { freshSave(); const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
     case 'credits': return screens.show('credits');
     case 'set': {
       const v = d.v === 'true' ? true : d.v === 'false' ? false : d.v === 'auto' && d.k === 'reducedMotion' ? null : isNaN(+d.v) || d.v === '' ? d.v : +d.v;
-      s.settings[d.k] = v; persist(); applySettings(); App.guideKey = '';
+      s.settings[d.k] = v; persist('settings', d.k); applySettings(); App.guideKey = '';
       return screens.refresh();
     }
     case 'resetProgress': return screens.show('confirmReset');
-    case 'resetYes': { const keep = s.settings; App.save = DEFAULT_SAVE(); App.save.settings = keep; persist(); return screens.show('settings'); }
+    case 'resetYes': { const keep = s.settings; App.save = DEFAULT_SAVE(); App.save.settings = keep; persist('reset'); applySettings(); return screens.show('settings'); }
     case 'back':
       if (App.scene === 'battle') return screens.show('pause');
       return showTitle();
     case 'resume': App.paused = false; screens.hide(); kick(); return;
     case 'restart': return startBattle({ ...App.setup, battle: null, seed: undefined });
     case 'again': return startBattle({ ...App.setup, battle: null, seed: undefined });
-    case 'menu': s.resume = null; persist(); return showTitle();
+    case 'menu': if (App.setup?.mode === 'story') { s.resume = null; persist('clear'); } else persist(); return showTitle();
     case 'resumeBattle': { const r = s.resume; if (r) return startBattle({ ...r.setup, battle: r.battle }); return; }
     case 'buy': { const r = App.sim.buy(App.sim.b.teams.findIndex((t) => t.human), d.kind); if (r.ok) sfx('buy'); return screens.refresh(); }
     case 'nextRound': aiShop(); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
@@ -251,7 +275,7 @@ function showTitle() {
   renderer.cam.frame(0, 330, W, 1110, 0, true);
   screens.show('title'); decorateScreen();
   // a battle saved on an older layout of its level can't be resumed (its trees and perches no longer line up)
-  { const r = App.save.resume; if (r && (!ALL[r.setup.levelId] || (ALL[r.setup.levelId].rev || 1) !== (r.levelRev || 1))) { App.save.resume = null; persist(); } }
+  { const r = App.save.resume; if (r && (!ALL[r.setup?.levelId] || (ALL[r.setup.levelId].rev || 1) !== (r.levelRev || 1))) { App.save.resume = null; persist('invalidate', [], r); } }
   if (App.save.resume) {
     const nav = screens.root.querySelector('.menu');
     const b = document.createElement('button'); b.className = 'btn teal'; b.type = 'button'; b.textContent = 'Resume battle'; b.dataset.act = 'resumeBattle';
@@ -287,7 +311,7 @@ function battleOver() {
   }
   if (App.setup.mode !== 'practice') { s.stats.battles++; if (win) s.stats.wins++; }
   s.stats.kos += myStats.kos; s.stats.bestShot = Math.max(s.stats.bestShot, myStats.best);
-  persist();
+  persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
     win, practice: App.setup.mode === 'practice', stars, unlock, next,

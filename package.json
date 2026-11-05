@@ -10,6 +10,8 @@
     "check": "node tools/check-levels.mjs",
     "balance": "node tools/balance.mjs",
     "build": "node shared/tools/inline.mjs .",
-    "test": "node shared/test-harness/run.mjs ."
+    "test": "node shared/test-harness/run.mjs .",
+    "pretest": "node --test tests-node/save.test.mjs",
+    "test:save": "node --test tests-node/save.test.mjs"
   }
 }
