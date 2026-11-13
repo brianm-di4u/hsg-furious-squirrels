@@ -167,6 +167,7 @@ const TEMPLATES = {
       <h2>Settings</h2>
       ${field('Sound', seg('sound', s.sound, [[true, 'On'], [false, 'Off']]))}
       ${field('Music', seg('music', s.music, [[true, 'On'], [false, 'Off']]))}
+      ${field('Ambience', seg('ambience', s.ambience, [[true, 'On'], [false, 'Off']]))}
       ${field('Volume', seg('volume', s.volume, [[0.25, 'Low'], [0.5, 'Medium'], [0.8, 'High']]))}
       ${field('Motion', seg('reducedMotion', s.reducedMotion == null ? 'auto' : s.reducedMotion, [['auto', 'System'], [false, 'Full'], [true, 'Reduced']]))}
       ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By skill'], ['always', 'Always long'], ['off', 'Off']]))}

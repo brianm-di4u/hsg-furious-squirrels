@@ -6,7 +6,7 @@ let mem = null;
 
 export const DEFAULT_SAVE = () => ({
   v: 1,
-  settings: { sound: true, music: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
+  settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
   story: { team: null, unlocked: 1, stars: {}, nuts: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0 },
@@ -38,6 +38,7 @@ function decoded(s) {
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
+  if (typeof out.settings.ambience !== 'boolean') out.settings.ambience = d.settings.ambience;
   out.settings.volume = typeof out.settings.volume === 'number' && Number.isFinite(out.settings.volume) ? Math.min(1, Math.max(0, out.settings.volume)) : d.settings.volume;
   out.story.unlocked = Math.min(STORY_LEVELS, Math.max(1, Math.floor(out.story.unlocked)));
   for (const [id, n] of Object.entries(out.story.stars)) { if (number(n)) out.story.stars[id] = Math.min(3, Math.floor(n)); else delete out.story.stars[id]; }

@@ -1,6 +1,6 @@
 // Furious Squirrels: app shell. Owns the battle Sim, the renderer, HUD and screens, input, the camera director,
 // AI turns and saves. The rules live in sim/ (no DOM); this file only drives them.
-import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, clamp } from './sim/const.js';
+import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, STEAM_LEVELS, clamp } from './sim/const.js';
 import { Sim, hashBattle } from './sim/battle.js';
 import { planTurnGen, planTurn } from './sim/ai.js';
 import { Renderer, ART_BASE } from './gfx/renderer.js';
@@ -8,7 +8,8 @@ import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
 import { Screens } from './ui/screens.js';
-import { initAudio, setAudio, sfx, playTheme, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
+import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
+import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 
@@ -137,7 +138,7 @@ function enterBattleScene() {
   hud.show(true); hud.barKey = '';
   App.tutorialStep = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
   sim.drain();
-  playTheme(L.time === 'night' ? 'night' : L.time === 'dusk' || L.time === 'sunset' ? 'dusk' : 'day');
+  setTension(false); playTheme(themeFor(L)); playAmbience(sceneFor(L));
   onTurnStart(true);
   frameCamera(true);
   kick();
@@ -291,7 +292,7 @@ App.onMenu = (act, d) => {
     case 'menu': if (App.setup?.mode === 'story') { s.resume = null; persist('clear'); } else persist(); return showTitle();
     case 'resumeBattle': { const r = s.resume; if (r) return startBattle({ ...r.setup, battle: r.battle }); return; }
     case 'buy': { const r = App.sim.buy(App.sim.b.teams.findIndex((t) => t.human), d.kind); if (r.ok) sfx('buy'); return screens.refresh(); }
-    case 'nextRound': aiShop(); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
+    case 'nextRound': playTheme(themeFor(App.level)); aiShop(); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
     case 'locked': return;
     default: return;
   }
@@ -316,7 +317,7 @@ function showTitle() {
     b.addEventListener('click', () => App.onMenu('resumeBattle', {}));
     nav.insertBefore(b, nav.children[1]);
   }
-  playTheme('title');
+  setTension(false); playTheme('title'); playAmbience(sceneFor(L));
   kick();
 }
 
@@ -818,6 +819,35 @@ function updateAI() {
   return true;
 }
 
+// The wind, the steam and the music's tension follow the battle a few times a second.
+const STEAM_EARSHOT = 400; // world units beyond the edge of the view within which the steam can still be heard
+const BIRD_AMBIENCE = { off: 0.2, some: 0.6, lots: 1 }; // how many birds the ambience carries, by the battle's birds setting
+const TENSION_SECONDS = 10; // the music tightens when the turn timer has this long left
+let soundT = 0;
+function tensionNow() {
+  const sim = App.sim, b = sim && sim.b;
+  if (!b || App.scene !== 'battle' || b.practice || b.phase === 'roundEnd' || b.phase === 'battleEnd') return false;
+  for (let i = 0; i < b.teams.length; i++) if (sim.alive(i) === 1 && b.squirrels.filter((q) => q.team === i && !q.dummy).length > 1) return true;
+  const tt = App.save.settings.turnTimer;
+  return !!(tt && b.phase === 'aim' && humanTurn() && wallNow() - App.turnStart > tt - TENSION_SECONDS);
+}
+function updateSoundscape() {
+  const sim = App.sim;
+  if (!sim || App.paused || performance.now() - soundT < 120) return;
+  soundT = performance.now();
+  const b = sim.b, cam = renderer.cam, st = App.level && App.level.steam, battle = App.scene === 'battle';
+  ambienceParam('wind', battle ? Math.round(Math.min(1, Math.abs(b.wind)) * 20) / 20 : 0.3);
+  ambienceParam('birds', BIRD_AMBIENCE[b.birdLevel] ?? 0.2);
+  let steam = 0;
+  if (st && b.steamLevel > 0) {
+    const reach = cam.vw / 2 / cam.zoom + STEAM_EARSHOT, dx = Math.max(0, Math.abs(cam.x - st.x) - st.w / 2);
+    steam = Math.max(0, 1 - dx / reach) * (0.35 + 0.65 * Math.min(1, b.steamLevel / STEAM_LEVELS.strong));
+  }
+  ambienceParam('steam', Math.round(steam * 20) / 20);
+  setTension(tensionNow());
+  if (screens.cur === 'shop' || screens.cur === 'results') playTheme(screens.cur); // the calm tunes for the acorn shop and the results card
+}
+
 function frame(now) {
   rafId = 0; inFrame = true;
   try {
@@ -829,6 +859,7 @@ function frame(now) {
     if (resized && App.sim) frameCamera(true);
     pollPad();
     pauseAudio(App.paused && App.scene === 'battle');
+    updateSoundscape();
     let busy = false;
     const sim = App.sim;
     if (sim && App.scene === 'battle' && !App.paused && !App.testPaused && !screens.cur) {

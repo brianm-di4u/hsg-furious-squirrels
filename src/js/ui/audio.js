@@ -1,10 +1,13 @@
 // Sound: WebAudio synthesis only (no audio files). Starts on the first key or touch (browser autoplay rules),
 // quiet by default and mutable. Bus layout and tone/noise primitives after games/Cart Racing/src/js/ui/audio.js
-// (Hot Springs Games, MIT). Music: original short ragtime-and-banjo loops on a tiny step sequencer.
+// (Hot Springs Games, MIT). Cues are the short effects below; music and ambience come from audiokit.js (scores and
+// scenes in music.js). Sound effects, Music and Ambience each have a switch, and all three obey the master Sound switch.
+import { makeAudioKit, measureAudio } from './audiokit.js';
+import { SCORES, SCENES } from './music.js';
 
-let ctx = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null;
-const state = { on: true, music: true, vol: 0.5, started: false, theme: null, step: 0, nextT: 0, timer: null, played: 0, paused: false };
-const MUSIC_LEVEL = () => state.music ? (state.paused ? 0.08 : 0.3) : 0;
+let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null;
+const state = { on: true, music: true, ambience: true, vol: 0.5, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
+const FADE_MUSIC = 1.6, FADE_SCENE = 2.5; // seconds a mood or a place takes to cross-fade into the next
 
 export function initAudio(settings) {
   setFlags(settings);
@@ -12,53 +15,75 @@ export function initAudio(settings) {
   window.addEventListener('keydown', start);
   window.addEventListener('pointerdown', start);
 }
-function setFlags(s) { state.on = s.sound !== false; state.music = s.music !== false; state.vol = s.volume ?? 0.5; }
+function setFlags(s) { state.on = s.sound !== false; state.music = s.music !== false; state.ambience = s.ambience !== false; state.vol = s.volume ?? 0.5; }
+function applyLevels() { if (!kit) return; kit.music.level(state.music ? 1 : 0); kit.amb.level(state.ambience ? 1 : 0); }
+// Music and ambience are held (faded out, nothing scheduled) on the pause card and in a hidden tab.
+function syncHold() { if (!kit) return; if (state.paused || state.hidden) kit.hold(); else kit.release(); }
+function runScheduler(on) {
+  if (!kit) return;
+  if (on && !state.timer) { kit.start(); state.timer = true; } else if (!on && state.timer) { kit.stop(); state.timer = false; }
+}
 
 function unlock() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = state.on ? state.vol * 0.45 : 0; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = state.on ? state.vol * 0.45 : 0;
+    // a limiter on the master keeps music, ambience and the loudest cue from clipping together
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -8; limiter.knee.value = 6; limiter.ratio.value = 14; limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    master.connect(limiter); limiter.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
-    musicBus = ctx.createGain(); musicBus.gain.value = MUSIC_LEVEL(); musicBus.connect(master);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     let s = 12345;
     for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
     ctx.onstatechange = () => { if (ctx && ctx.state === 'interrupted' && !document.hidden) ctx.resume().catch(() => {}); };
+    kit = makeAudioKit(ctx, master, { seed: (Math.random() * 0x7fffffff) >>> 0, music: state.music ? 1 : 0, ambience: state.ambience ? 1 : 0 });
     state.started = true;
+    for (const [k, v] of Object.entries(state.params)) kit.amb.set(k, v, 0.01);
+    kit.music.intensity(state.tension ? 1 : 0);
+    if (state.scene) kit.amb.play(SCENES[state.scene], { fade: FADE_SCENE });
     if (state.theme) playTheme(state.theme, true);
-  } catch (e) { ctx = null; }
+    state.hidden = !!document.hidden;
+    syncHold();
+    runScheduler(!state.hidden);
+  } catch (e) { ctx = null; kit = null; }
 }
 
 export function setAudio(settings) {
   setFlags(settings);
   if (!ctx) return;
   master.gain.setTargetAtTime(state.on ? state.vol * 0.45 : 0, ctx.currentTime, 0.05);
-  musicBus.gain.setTargetAtTime(MUSIC_LEVEL(), ctx.currentTime, 0.05);
+  applyLevels();
 }
-// The pause menu keeps the music but ducks it, so a paused battle does not sound like it is still running.
+// The pause card fades the music and ambience out, so a paused battle does not sound like it is still running.
 export function pauseAudio(flag) {
   flag = !!flag;
   if (state.paused === flag) return;
   state.paused = flag;
-  if (ctx) musicBus.gain.setTargetAtTime(MUSIC_LEVEL(), ctx.currentTime, 0.05);
+  syncHold();
 }
-// A hidden tab (or a page being put away) suspends the context and the note scheduler; coming back resumes both
-// from "now", so notes the throttled timer missed are not fired as one burst.
+// A hidden tab (or a page being put away) suspends the context and the scheduler; coming back resumes both from
+// "now", so bars the throttled timer missed are not fired as one burst.
 export function handleVisibility(hidden) {
   if (!ctx) return;
+  state.hidden = !!hidden;
   if (hidden) {
-    if (state.timer) clearInterval(state.timer);
-    state.timer = null;
+    runScheduler(false);
+    syncHold();
     ctx.suspend().catch(() => {});
   } else {
     ctx.resume().catch(() => {});
-    if (state.theme && !state.timer) startScheduler();
+    syncHold();
+    runScheduler(true);
   }
 }
-export function audioState() { return { started: state.started, on: state.on, music: state.music, vol: state.vol, theme: state.theme, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: !!state.timer, musicPaused: state.paused }; }
+export function audioState() {
+  const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3) };
+}
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
   if (!ctx) return;
@@ -100,9 +125,9 @@ export function sfx(name, arg) {
     case 'boing': tone(300, 0.28, { type: 'sine', vol: 0.12, slide: 2.2 }); tone(600, 0.2, { type: 'sine', vol: 0.05, at: 0.05, slide: 1.5 }); break;
     case 'chitter': for (let i = 0; i < 4; i++) tone((arg ? 2200 : 1800) + (i % 2) * 300, 0.04, { type: 'square', vol: 0.035, at: i * 0.055, filter: 4000 }); break;
     case 'ko': tone(900, 0.7, { type: 'sine', vol: 0.12, slide: 0.3 }); noise(0.4, { vol: 0.08, type: 'highpass', freq: 3000, at: 0.5 }); break;
-    case 'cheer': for (let i = 0; i < 4; i++) tone([523, 659, 784, 1046][i], 0.18, { type: 'triangle', vol: 0.09, at: i * 0.09 }); noise(0.6, { vol: 0.05, freq: 1500, q: 0.6 }); break;
-    case 'win': [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, 0.22, { type: 'triangle', vol: 0.1, at: i * 0.12 })); break;
-    case 'lose': [392, 349, 330, 262].forEach((f, i) => tone(f, 0.28, { type: 'triangle', vol: 0.08, at: i * 0.16 })); break;
+    case 'cheer': if (kit) kit.music.duck(6, 500); for (let i = 0; i < 4; i++) tone([523, 659, 784, 1046][i], 0.18, { type: 'triangle', vol: 0.09, at: i * 0.09 }); noise(0.6, { vol: 0.05, freq: 1500, q: 0.6 }); break;
+    case 'win': if (kit) kit.music.duck(6, 700); [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, 0.22, { type: 'triangle', vol: 0.1, at: i * 0.12 })); break;
+    case 'lose': if (kit) kit.music.duck(6, 700); [392, 349, 330, 262].forEach((f, i) => tone(f, 0.28, { type: 'triangle', vol: 0.08, at: i * 0.16 })); break;
     case 'buy': tone(988, 0.07, { type: 'square', vol: 0.05, filter: 3000 }); tone(1319, 0.12, { type: 'square', vol: 0.05, at: 0.07, filter: 3000 }); break;
     case 'land': tone(160, 0.08, { type: 'sine', vol: 0.08 }); break;
     // birds: a two-note goose honk, or a jay/crow squawk (other birds chirp)
@@ -113,35 +138,48 @@ export function sfx(name, arg) {
   }
 }
 
-// ---- music: a ragtime-ish loop per mood, 8th-note steps ----------------------------------------------------
-const N = (n) => 440 * Math.pow(2, (n - 69) / 12);
-const THEMES = {
-  title: { bpm: 112, bass: [48, 0, 55, 0, 52, 0, 55, 0, 50, 0, 57, 0, 53, 0, 57, 0], mel: [72, 0, 76, 79, 0, 76, 74, 72, 74, 0, 77, 81, 79, 0, 77, 74] },
-  day: { bpm: 104, bass: [48, 0, 52, 0, 55, 0, 52, 0, 53, 0, 57, 0, 55, 0, 52, 0], mel: [0, 72, 0, 74, 76, 0, 79, 0, 77, 0, 76, 74, 72, 0, 0, 0] },
-  dusk: { bpm: 92, bass: [45, 0, 52, 0, 48, 0, 52, 0, 41, 0, 48, 0, 43, 0, 50, 0], mel: [0, 69, 72, 0, 76, 0, 74, 72, 0, 69, 0, 72, 71, 0, 0, 0] },
-  night: { bpm: 80, bass: [45, 0, 0, 0, 52, 0, 0, 0, 41, 0, 0, 0, 43, 0, 0, 0], mel: [0, 0, 76, 0, 0, 74, 0, 0, 72, 0, 0, 69, 0, 0, 71, 0] },
-};
+// ---- music and ambience (the engine is audiokit.js) ----------------------------------------------------
 export function playTheme(name, force) {
   if (state.theme === name && !force) return;
   state.theme = name;
-  if (!ctx) return;
-  state.step = 0;
-  startScheduler();
+  if (kit) kit.music.play(SCORES[name] || SCORES.day, { fade: FADE_MUSIC });
 }
-function startScheduler() {
-  if (state.timer) clearInterval(state.timer);
-  const th = THEMES[state.theme] || THEMES.day, stepDur = 60 / th.bpm / 2;
-  state.nextT = ctx.currentTime + 0.05;
-  state.timer = setInterval(() => {
-    if (!ctx) return;
-    if (state.nextT < ctx.currentTime - 0.1) state.nextT = ctx.currentTime + 0.05; // skip steps that are already past
-    while (state.nextT < ctx.currentTime + 0.2) {
-      const i = state.step % 16, at = Math.max(0, state.nextT - ctx.currentTime);
-      if (th.bass[i]) tone(N(th.bass[i]), stepDur * 1.6, { type: 'triangle', vol: 0.12, at, bus: musicBus, filter: 900 });
-      if (th.mel[i]) { tone(N(th.mel[i]), stepDur * 0.9, { type: 'square', vol: 0.035, at, bus: musicBus, filter: 2200 }); tone(N(th.mel[i]) * 2, stepDur * 0.4, { type: 'triangle', vol: 0.02, at, bus: musicBus }); }
-      if (i % 4 === 2) noise(0.03, { vol: 0.02, type: 'highpass', freq: 6000, at, bus: musicBus });
-      state.step++; state.nextT += stepDur;
-    }
-  }, 60);
+export function stopMusic() { state.theme = null; if (kit) kit.music.stop(FADE_MUSIC); }
+export function playAmbience(name) {
+  if (state.scene === name) return;
+  state.scene = name;
+  if (kit) kit.amb.play(SCENES[name], { fade: FADE_SCENE });
 }
-export function stopMusic() { if (state.timer) clearInterval(state.timer); state.timer = null; state.theme = null; }
+// 'wind' (0..1), 'steam' (0..1, how near the steam is to the view) and 'birds' (0..1) move the ambience beds.
+export function ambienceParam(name, v) {
+  if (state.params[name] === v) return;
+  state.params[name] = v;
+  if (kit) kit.amb.set(name, v, 0.6);
+}
+// Extra percussion, a higher melody and a quicker tempo while a family is down to one squirrel or time runs short.
+export function setTension(on) {
+  on = !!on;
+  if (state.tension === on) return;
+  state.tension = on;
+  if (kit) kit.music.intensity(on ? 1 : 0);
+}
+
+// Test hooks: every piece by name, and a render of one piece or scene on its own offline context at the level it
+// ships (before the master volume), which never touches the live audio or the settings.
+export function audioList() { return { music: Object.keys(SCORES), ambience: Object.keys(SCENES) }; }
+const RENDER_PARAMS = { wind: 0.6, steam: 0.6, birds: 1 };
+export function audioRender(name, seconds = 60, wantWav = false, opts = {}) {
+  const score = SCORES[name], scene = SCENES[name];
+  if (!score && !scene) return Promise.reject(new Error('unknown piece: ' + name));
+  return measureAudio((oc, dest) => {
+    const k = makeAudioKit(oc, dest, { seed: 7 });
+    if (score) { k.music.intensity(opts.intensity || 0); k.music.play(score, { at: 0, fade: 0.02 }); }
+    else { for (const [p, v] of Object.entries({ ...RENDER_PARAMS, ...opts })) k.amb.set(p, v, 0.01); k.amb.play(scene, { at: 0, fade: 0.02 }); }
+    k.scheduleUntil(seconds);
+    return () => {
+      if (!score) return { scene: name };
+      const info = k.music.info();
+      return { ...info, bpm: score.bpm, formSeconds: +(info.formBars * (score.beats || 4) * 60 / score.bpm).toFixed(1) };
+    };
+  }, seconds, { wav: wantWav });
+}

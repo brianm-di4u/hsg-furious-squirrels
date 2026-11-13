@@ -1,7 +1,7 @@
 // window.__game test hooks (shared/test-harness/README.md contract; MECHANICS.md §13). All results are JSON.
 import { NUT_ORDER } from './sim/const.js';
 import { rowOrderFor } from './gfx/backdrop.js';
-import { audioState } from './ui/audio.js';
+import { audioState, audioList, audioRender } from './ui/audio.js';
 
 export function installHooks(App, api) {
   const summary = () => {
@@ -44,6 +44,8 @@ export function installHooks(App, api) {
       return summary();
     },
     isIdle() { return api.idle(); },
+    audioList() { return audioList(); },
+    audioRender(name, seconds, wantWav, opts) { return audioRender(name, seconds, wantWav, opts); },
     step(n = 1) { for (let i = 0; i < n; i++) api.stepOnce(); App.kick(); return summary(); },
     pause() { App.testPaused = true; return true; },
     resume() { App.testPaused = false; App.paused = false; App.kick(); return true; },
