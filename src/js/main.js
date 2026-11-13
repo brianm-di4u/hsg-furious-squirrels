@@ -8,7 +8,7 @@ import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
 import { Screens } from './ui/screens.js';
-import { initAudio, setAudio, sfx, playTheme, audioState } from './ui/audio.js';
+import { initAudio, setAudio, sfx, playTheme, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 
@@ -781,6 +781,7 @@ function frame(now) {
     const resized = renderer.resize();
     if (resized && App.sim) frameCamera(true);
     pollPad();
+    pauseAudio(App.paused && App.scene === 'battle');
     let busy = false;
     const sim = App.sim;
     if (sim && App.scene === 'battle' && !App.paused && !App.testPaused && !screens.cur) {
@@ -846,7 +847,9 @@ function showError(err) {
 }
 
 window.addEventListener('resize', () => kick());
-document.addEventListener('visibilitychange', () => kick());
+document.addEventListener('visibilitychange', () => { handleVisibility(document.hidden); kick(); });
+window.addEventListener('pagehide', () => handleVisibility(true));
+window.addEventListener('pageshow', () => handleVisibility(document.hidden));
 
 // ---------------------------------------------------------------------------------------------------------------
 // boot

@@ -3,11 +3,12 @@
 // (Hot Springs Games, MIT). Music: original short ragtime-and-banjo loops on a tiny step sequencer.
 
 let ctx = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null;
-const state = { on: true, music: true, vol: 0.5, started: false, theme: null, step: 0, nextT: 0, timer: null, played: 0 };
+const state = { on: true, music: true, vol: 0.5, started: false, theme: null, step: 0, nextT: 0, timer: null, played: 0, paused: false };
+const MUSIC_LEVEL = () => state.music ? (state.paused ? 0.08 : 0.3) : 0;
 
 export function initAudio(settings) {
   setFlags(settings);
-  const start = () => { if (!state.started) unlock(); };
+  const start = () => { if (!state.started) unlock(); else if (ctx && ctx.state !== 'running' && !document.hidden) ctx.resume().catch(() => {}); };
   window.addEventListener('keydown', start);
   window.addEventListener('pointerdown', start);
 }
@@ -20,11 +21,12 @@ function unlock() {
     ctx = new AC();
     master = ctx.createGain(); master.gain.value = state.on ? state.vol * 0.45 : 0; master.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
-    musicBus = ctx.createGain(); musicBus.gain.value = state.music ? 0.3 : 0; musicBus.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = MUSIC_LEVEL(); musicBus.connect(master);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     let s = 12345;
     for (let i = 0; i < d.length; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
+    ctx.onstatechange = () => { if (ctx && ctx.state === 'interrupted' && !document.hidden) ctx.resume().catch(() => {}); };
     state.started = true;
     if (state.theme) playTheme(state.theme, true);
   } catch (e) { ctx = null; }
@@ -34,9 +36,29 @@ export function setAudio(settings) {
   setFlags(settings);
   if (!ctx) return;
   master.gain.setTargetAtTime(state.on ? state.vol * 0.45 : 0, ctx.currentTime, 0.05);
-  musicBus.gain.setTargetAtTime(state.music ? 0.3 : 0, ctx.currentTime, 0.05);
+  musicBus.gain.setTargetAtTime(MUSIC_LEVEL(), ctx.currentTime, 0.05);
 }
-export function audioState() { return { started: state.started, on: state.on, music: state.music, vol: state.vol, theme: state.theme, ctx: ctx ? ctx.state : 'none', played: state.played }; }
+// The pause menu keeps the music but ducks it, so a paused battle does not sound like it is still running.
+export function pauseAudio(flag) {
+  flag = !!flag;
+  if (state.paused === flag) return;
+  state.paused = flag;
+  if (ctx) musicBus.gain.setTargetAtTime(MUSIC_LEVEL(), ctx.currentTime, 0.05);
+}
+// A hidden tab (or a page being put away) suspends the context and the note scheduler; coming back resumes both
+// from "now", so notes the throttled timer missed are not fired as one burst.
+export function handleVisibility(hidden) {
+  if (!ctx) return;
+  if (hidden) {
+    if (state.timer) clearInterval(state.timer);
+    state.timer = null;
+    ctx.suspend().catch(() => {});
+  } else {
+    ctx.resume().catch(() => {});
+    if (state.theme && !state.timer) startScheduler();
+  }
+}
+export function audioState() { return { started: state.started, on: state.on, music: state.music, vol: state.vol, theme: state.theme, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: !!state.timer, musicPaused: state.paused }; }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
   if (!ctx) return;
@@ -103,11 +125,16 @@ export function playTheme(name, force) {
   if (state.theme === name && !force) return;
   state.theme = name;
   if (!ctx) return;
+  state.step = 0;
+  startScheduler();
+}
+function startScheduler() {
   if (state.timer) clearInterval(state.timer);
-  const th = THEMES[name] || THEMES.day, stepDur = 60 / th.bpm / 2;
-  state.step = 0; state.nextT = ctx.currentTime + 0.05;
+  const th = THEMES[state.theme] || THEMES.day, stepDur = 60 / th.bpm / 2;
+  state.nextT = ctx.currentTime + 0.05;
   state.timer = setInterval(() => {
     if (!ctx) return;
+    if (state.nextT < ctx.currentTime - 0.1) state.nextT = ctx.currentTime + 0.05; // skip steps that are already past
     while (state.nextT < ctx.currentTime + 0.2) {
       const i = state.step % 16, at = Math.max(0, state.nextT - ctx.currentTime);
       if (th.bass[i]) tone(N(th.bass[i]), stepDur * 1.6, { type: 'triangle', vol: 0.12, at, bus: musicBus, filter: 900 });
