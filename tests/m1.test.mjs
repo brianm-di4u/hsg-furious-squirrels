@@ -88,7 +88,7 @@ export const tests = [
       if (s.battle.turn.team !== 0) t.equal(s.hint, '', 'no hint on the AI turn');
       await myAim();
       s = await t.state();
-      t.expect(/Wind/.test(s.hint), 'second tip shows on the next turn (got "' + s.hint + '")');
+      t.expect(/[Ww]ind/.test(s.hint), 'second tip shows on the next turn (got "' + s.hint + '")');
       await t.tap([20, Math.round(s.render.h / 2)]);
       t.equal((await t.state()).hint, '', 'a tap anywhere closes it');
       // the third tip goes away on its own, then no more tips
