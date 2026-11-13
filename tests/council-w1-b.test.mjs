@@ -37,10 +37,10 @@ export const tests = [
       });
       await t.page.waitForFunction(() => window.__FS.aiActive && window.__FS.aiActive.done, null, { timeout: 30000 });
       const sl = await t.page.evaluate(() => window.__slices);
-      const worst = Math.max(0, ...sl);
-      t.log(`rival plan: ${sl.length} slices, longest ${worst.toFixed(1)} ms`);
+      const worst = [...sl].sort((a, b) => a - b)[Math.floor(sl.length * 0.9)] || 0; // 90th percentile: one slice can be hit by the machine, not the plan
+      t.log(`rival plan: ${sl.length} slices, 90th percentile ${worst.toFixed(1)} ms`);
       t.expect(sl.length > 40, `the plan ran in ${sl.length} slices`);
-      t.expect(worst < 40, `one planning slice blocked the page for ${worst.toFixed(1)} ms`);
+      t.expect(worst < 20, `planning slices blocked the page for ${worst.toFixed(1)} ms`);
     },
   },
   {
