@@ -634,7 +634,7 @@ function archArt(src) {
 
 // ---------------------------------------------------------------------------------------------------------------
 // the frame
-let rafId = 0, last = 0, acc = 0, inFrame = false;
+let rafId = 0, last = 0, acc = 0, inFrame = false, errorKicked = false;
 function kick() { if (!rafId && !inFrame) { last = performance.now(); rafId = requestAnimationFrame(frame); } }
 App.kick = kick;
 
@@ -849,7 +849,12 @@ function frame(now) {
     const ambient = !App.reduced && !document.hidden;
     if (busy || App.loading) { rafId = requestAnimationFrame(frame); }
     else if (ambient) { setTimeout(() => { if (!rafId) { last = performance.now() - 33; rafId = requestAnimationFrame(frame); } }, 33); }
-  } catch (err) { showError(err); }
+    errorKicked = false;
+  } catch (err) {
+    showError(err);
+    inFrame = false;
+    if (!errorKicked) { errorKicked = true; kick(); } // one more frame, so the title can still animate; a repeating error stops here
+  }
   inFrame = false;
 }
 
@@ -871,8 +876,19 @@ function updateGuide() {
 function showError(err) {
   console.error(err);
   const el = document.getElementById('boot-error');
-  el.hidden = false; el.textContent = 'Something went wrong: ' + (err && err.message ? err.message : err);
+  el.hidden = false; el.textContent = 'Something went wrong: ' + (err && err.message ? err.message : err) + ' ';
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = 'Back to menu';
+  b.addEventListener('click', backToMenu);
+  el.append(b);
 }
+function backToMenu() {
+  const el = document.getElementById('boot-error');
+  el.hidden = true; el.textContent = ''; errorKicked = false;
+  App.sim = null; App.aiActive = null; App.pendingEnd = null; App.paused = false;
+  try { showTitle(); } catch (err) { showError(err); }
+}
+window.addEventListener('error', (e) => showError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showError(e.reason));
 
 window.addEventListener('resize', () => kick());
 document.addEventListener('visibilitychange', () => { handleVisibility(document.hidden); kick(); });

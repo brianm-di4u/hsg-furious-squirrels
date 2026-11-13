@@ -102,3 +102,36 @@ for (const [kind, damage] of Object.entries(BAD_BATTLES)) {
     },
   });
 }
+
+tests.push({
+  name: 'S6-07 an error in the frame loop offers Back to menu and the game recovers',
+  viewports: ['desktop'],
+  allowConsoleErrors: true,
+  async run(t) {
+    await t.game('newGame', { levelId: 'gray', seed: 7 });
+    await t.page.evaluate(() => { window.__FS.sim.idle = () => { throw new Error('boom from the frame'); }; window.__FS.kick(); });
+    await t.page.waitForSelector('#boot-error:not([hidden]) button', { timeout: 3000 });
+    t.expect(/boom from the frame/.test(await t.page.textContent('#boot-error')), 'the error is shown');
+    await t.page.click('#boot-error button');
+    await t.waitFrames(3);
+    const s = await t.state();
+    t.equal(s.scene, 'title', 'Back to menu returns to the title');
+    t.expect(await t.page.evaluate(() => document.getElementById('boot-error').hidden), 'the error bar is gone');
+    await t.game('act', 'menu', 'quick');
+    t.equal((await t.state()).screen, 'quick', 'menus work again');
+  },
+});
+tests.push({
+  name: 'S6-07 an uncaught error and a rejected promise are shown with Back to menu',
+  viewports: ['desktop'],
+  allowConsoleErrors: true,
+  async run(t) {
+    for (const kind of ['error', 'rejection']) {
+      await t.page.evaluate((k) => { if (k === 'error') setTimeout(() => { throw new Error('late error'); }); else Promise.reject(new Error('late rejection')); }, kind);
+      await t.page.waitForSelector('#boot-error:not([hidden]) button', { timeout: 3000 });
+      t.expect(/late (error|rejection)/.test(await t.page.textContent('#boot-error')), kind + ' is shown');
+      await t.page.click('#boot-error button');
+      t.expect(await t.page.evaluate(() => document.getElementById('boot-error').hidden), kind + ': bar dismissed');
+    }
+  },
+});
