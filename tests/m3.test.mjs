@@ -27,7 +27,7 @@ export const tests = [
       t.equal(story.filter((L) => L.unlock).map((L) => L.unlock).join(','), 'chinquapin,pecan,hickory,walnut,sweetgum,hedgeapple', 'unlock order');
       t.equal(new Set(story.map((L) => L.stretch)).size, 3, 'all three Row stretches used');
       t.equal(new Set(story.map((L) => L.season)).size, 4, 'all four seasons used');
-      const raw = fs.readFileSync(path.join(ROOT, '..', '..', 'research', 'bathhouse-row-layout.md'), 'utf8');
+      const raw = fs.readFileSync(path.join(ROOT, 'research', 'town-content.md'), 'utf8');
       t.expect(/Superior[\s\S]*Hale[\s\S]*Maurice[\s\S]*Fordyce[\s\S]*Quapaw[\s\S]*Ozark[\s\S]*Buckstaff[\s\S]*Lamar/.test(raw), 'research lists the Row north to south');
     },
   },
