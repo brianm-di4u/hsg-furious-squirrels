@@ -121,6 +121,7 @@ const TEMPLATES = {
       <h2>${d.win ? 'Victory!' : d.practice ? 'Practice done' : 'So close!'}</h2>
       <p class="winner">${d.winnerName ? `${d.winnerName} win the valley` : ''}</p>
       ${d.stars != null ? starStr(d.stars) : ''}
+      ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>

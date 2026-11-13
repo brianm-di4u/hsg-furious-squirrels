@@ -333,10 +333,11 @@ function battleOver() {
   const sim = App.sim, b = sim.b, res = b.result, L = App.level, s = App.save;
   const me = b.teams.findIndex((t) => t.human);
   const win = res.battleWinner === me;
+  const myTurns = Math.ceil(b.turn.n / 2); // this family's turns: the count par is judged by
   const myStats = b.teams[me].stats;
   let stars = null, unlock = null, next = null;
   if (App.setup.mode === 'story') {
-    const outs = b.squirrels.filter((q) => q.team === me && q.out).length, myTurns = Math.ceil(b.turn.n / 2);
+    const outs = b.squirrels.filter((q) => q.team === me && q.out).length;
     stars = win ? 1 + (outs === 0 ? 1 : 0) + (myTurns <= L.par ? 1 : 0) : 0;
     s.story.stars[L.id] = Math.max(s.story.stars[L.id] || 0, stars);
     if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
@@ -350,7 +351,7 @@ function battleOver() {
   screens.show('results', {
     win, practice: App.setup.mode === 'practice', stars, unlock, next,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
-    stats: myStats, turns: b.turn.n, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
+    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
   });
   decorateScreen();
   say(win ? 'Victory!' : 'Battle over.');
