@@ -515,7 +515,10 @@ function cycleNut(dir) {
 }
 
 const padPrev = {};
+let padT = 0, padTimer = 0;
+// the stick is read on its own clock, so aiming works while the render loop sleeps (reduced motion) and its speed does not follow the frame rate
 function pollPad() {
+  const nowT = performance.now(), dtw = padT ? Math.min(0.1, (nowT - padT) / 1000) : 0; padT = nowT;
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   for (const p of pads) {
     if (!p || !p.connected) continue;
@@ -527,8 +530,8 @@ function pollPad() {
       if (m.up || m.down || m.left || m.right || m.cancel) screens.nav(m);
       if (edge('a') && document.activeElement && document.activeElement.click) document.activeElement.click();
     } else if (App.scene === 'battle') {
-      if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 1.2, 0);
-      if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.012);
+      if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
+      if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
       if (edge('a')) { if (App.sim.b.phase === 'flight') tapNow(); else throwNow(); }
       if (edge('lb')) cycleNut(-1);
       if (edge('rb')) cycleNut(1);
@@ -542,6 +545,12 @@ function pollPad() {
   }
   return false;
 }
+function watchPad() {
+  if (padTimer) return;
+  padTimer = setInterval(() => { if (!pollPad()) { clearInterval(padTimer); padTimer = 0; } }, 16);
+}
+window.addEventListener('gamepadconnected', watchPad);
+if (navigator.getGamepads && [...navigator.getGamepads()].some((p) => p && p.connected)) watchPad(); // a pad that was already live when the page loaded
 
 // ---------------------------------------------------------------------------------------------------------------
 // art

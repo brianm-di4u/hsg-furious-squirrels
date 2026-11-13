@@ -28,4 +28,25 @@ export const tests = [
       t.expect(rule.includes(`within ${par} turns`) && /keep every squirrel/.test(rule), `star rule is stated (got "${rule}")`);
     },
   },
+  {
+    name: 'S1-05 the gamepad works with the render loop asleep (reduced motion)',
+    viewports: ['desktop'],
+    reducedMotion: true,
+    initScript: padInit,
+    async run(t) {
+      await myTurn(t);
+      await t.page.evaluate(() => window.dispatchEvent(new Event('gamepadconnected')));
+      await t.waitFrames(20);
+      const a0 = (await t.state()).battle.teams[0].aim.angle;
+      await t.page.evaluate(() => { window.__pad.axes[0] = -1; });
+      await t.page.waitForTimeout(600);
+      await t.page.evaluate(() => { window.__pad.axes[0] = 0; });
+      const a1 = (await t.state()).battle.teams[0].aim.angle;
+      t.expect(a1 - a0 > 25, `a held stick turns the angle at about 72 degrees a second (${a0} -> ${a1})`);
+      await t.page.evaluate(() => { window.__pad.buttons[0].pressed = true; });
+      await t.page.waitForTimeout(150);
+      await t.page.evaluate(() => { window.__pad.buttons[0].pressed = false; });
+      t.equal((await t.state()).battle.phase, 'flight', 'A throws');
+    },
+  },
 ];
