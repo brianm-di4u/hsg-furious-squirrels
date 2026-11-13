@@ -71,7 +71,9 @@ export const tests = [
     async run(t) {
       await t.game('newGame', { levelId: 'story-09', seed: 6, difficulty: 'hard' });
       t.expect(await t.page.evaluate(() => !!window.__FS.sim), 'battle ready');
-      // the browser runs the planner in 6 ms slices: measure frames while the AI is thinking
+      // the level's images are still decoding right after newGame, and that work is not the planner's: wait it out
+      await t.page.waitForFunction(() => window.__FS.loading === 0, null, { timeout: 8000 });
+      // the browser runs the planner in 4 ms slices: measure frames while the AI is thinking
       await t.page.evaluate(() => { const S = window.__FS.sim; S.b.teams.forEach((tm) => { tm.human = false; }); window.__FS.aiActive = null; window.__FS.kick(); });
       const f = await t.frameCost(1200);
       t.log(`AI thinking: ${f.taskMs.toFixed(2)} ms task/frame at ${f.fps.toFixed(0)} fps`);
