@@ -10,6 +10,11 @@ const wrapOsc = () => {
   };
 };
 
+const grabNoise = () => {
+  const make = BaseAudioContext.prototype.createBuffer;
+  BaseAudioContext.prototype.createBuffer = function (...a) { const b = make.apply(this, a); window.__noise = b; return b; };
+};
+
 export const tests = [
   {
     name: 'S1-01 the rival plans in short slices',
@@ -60,6 +65,22 @@ export const tests = [
       await t.page.waitForFunction(() => window.__freqs.includes(900), null, { timeout: 8000 });
       await t.page.waitForTimeout(1200);
       t.expect(await cheered(), 'rival squirrel knocked out: the cheer plays');
+    },
+  },
+  {
+    name: 'S5-13 the noise buffer does not repeat after a short cycle',
+    viewports: ['desktop'],
+    initScript: grabNoise,
+    async run(t) {
+      await t.page.keyboard.press('Shift');
+      await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
+      const r = await t.page.evaluate(() => {
+        const d = window.__noise.getChannelData(0), P = 10466;
+        let same = 0;
+        for (let i = 20000; i < 30000; i++) if (d[i] === d[i + P]) same++;
+        return { same };
+      });
+      t.expect(r.same < 100, `noise repeats with the old 10466-sample period in ${r.same} of 10000 samples`);
     },
   },
 ];

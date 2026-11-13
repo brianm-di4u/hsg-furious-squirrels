@@ -25,7 +25,7 @@ function unlock() {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     let s = 12345;
-    for (let i = 0; i < d.length; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
+    for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
     ctx.onstatechange = () => { if (ctx && ctx.state === 'interrupted' && !document.hidden) ctx.resume().catch(() => {}); };
     state.started = true;
     if (state.theme) playTheme(state.theme, true);
