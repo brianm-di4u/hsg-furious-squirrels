@@ -131,3 +131,9 @@ test('a save from a newer version is refused and left untouched', async () => {
   const r = rig({ v: 2, future: true }), a = await r.tab(); const before = r.raw;
   a.s.settings.sound = false; assert.equal(a.write('settings', ['sound']), false); assert.equal(r.raw, before);
 });
+
+test('out-of-range settings and progress are clamped when a save is read', async () => {
+  const bad = copy(fixture); Object.assign(bad.settings, { textScale: 'abc', volume: -3 }); Object.assign(bad.story, { unlocked: 99, stars: { a: 99, b: 'x', c: 2 } });
+  const r = rig(bad), a = await r.tab();
+  assert.equal(a.s.settings.textScale, 1); assert.equal(a.s.settings.volume, 0); assert.equal(a.s.story.unlocked, 12); assert.deepEqual(a.s.story.stars, { a: 3, c: 2 });
+});

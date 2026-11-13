@@ -1,6 +1,7 @@
 // Saves: one versioned JSON object in localStorage, wrapped in try/catch with an in-memory fallback so the game
 // works when storage is blocked. Pattern from games/Cart Racing/src/js/save.js (Hot Springs Games, MIT).
 const KEY = 'hsg-furious-squirrels-v1';
+const STORY_LEVELS = 12;
 let mem = null;
 
 export const DEFAULT_SAVE = () => ({
@@ -35,6 +36,11 @@ function decoded(s) {
   out.story.nuts = Array.isArray(out.story.nuts) ? out.story.nuts.slice() : [];
   for (const key of ['unlocked']) if (!number(out.story[key])) out.story[key] = d.story[key];
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
+  // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
+  if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
+  out.settings.volume = typeof out.settings.volume === 'number' && Number.isFinite(out.settings.volume) ? Math.min(1, Math.max(0, out.settings.volume)) : d.settings.volume;
+  out.story.unlocked = Math.min(STORY_LEVELS, Math.max(1, Math.floor(out.story.unlocked)));
+  for (const [id, n] of Object.entries(out.story.stars)) { if (number(n)) out.story.stars[id] = Math.min(3, Math.floor(n)); else delete out.story.stars[id]; }
   // The existing v1 setup/battle/levelRev group stays opaque. Layout validity is checked by main.
   if (out.resume !== null && !object(out.resume)) return null;
   for (const key of ['progressGeneration', 'resumeGeneration', 'resumeRevision']) {

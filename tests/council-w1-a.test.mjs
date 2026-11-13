@@ -172,3 +172,22 @@ tests.push({
     t.equal(after.resume, null, 'the old slot is cleared');
   },
 });
+
+tests.push({
+  name: 'S6-11 out-of-range saved settings and progress are clamped on load',
+  viewports: ['desktop'],
+  async run(t) {
+    await t.game('act', 'clearSave');
+    await t.reload();
+    const save = { v: 1, settings: { textScale: 'abc', volume: 7 }, story: { unlocked: 99, stars: { 'story-01': 99, 'story-02': 'x' } } };
+    await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, save]);
+    await t.reload();
+    const s = await t.state();
+    t.equal(s.settings.textScale, 1, 'text size falls back to 100%');
+    t.equal(await t.page.evaluate(() => document.documentElement.style.getPropertyValue('--text-scale')), '1', 'CSS text scale is a number');
+    t.equal(s.settings.volume, 1, 'volume is capped at 1');
+    t.equal(s.save.story.unlocked, 12, 'unlocked is capped at the twelve levels');
+    t.equal(s.save.story.stars['story-01'], 3, 'stars are capped at 3');
+    t.expect(!('story-02' in s.save.story.stars), 'a non-numeric star count is dropped');
+  },
+});
