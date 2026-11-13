@@ -788,7 +788,7 @@ function updateAI() {
   if (!App.aiActive) App.aiActive = { gen: planTurnGen(sim, diff), t0: wallNow(), plan: null, done: false, n: b.turn.n, team: b.turn.team, sim };
   const A = App.aiActive;
   if (!A.done) {
-    const r = A.gen.next(performance.now() + 6); // the planner ends its slice by that time
+    const r = A.gen.next(performance.now() + 4); // the planner ends its slice by that time
     if (r.done) { A.plan = r.value; A.done = true; }
     return true;
   }
