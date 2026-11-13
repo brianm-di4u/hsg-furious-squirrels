@@ -157,3 +157,18 @@ tests.push({
     t.equal(after.quick.level, 'story-01', 'the repaired level is saved');
   },
 });
+
+tests.push({
+  name: 'S4-26 a saved battle from an older level layout is dropped with a notice',
+  viewports: ['desktop'],
+  async run(t) {
+    const saved = await storyResumeSave(t);
+    saved.resume.levelRev = 99;
+    await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, saved]);
+    await t.reload();
+    t.equal(await t.page.locator('button[data-act="resumeBattle"]').count(), 0, 'no Resume button for the old battle');
+    t.expect(/saved before an update/i.test(await t.page.textContent('#screens')), 'the title explains why');
+    const after = await t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
+    t.equal(after.resume, null, 'the old slot is cleared');
+  },
+});

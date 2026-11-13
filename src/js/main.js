@@ -47,6 +47,7 @@ function applySettings() {
 }
 // A one-line notice on the title screen (shown once); during a battle it also goes out as a call.
 let titleNotice = '';
+const OLD_BATTLE = 'This battle was saved before an update and could not be resumed';
 function showNotice(text) { say(text); titleNotice = text; paintNotice(); }
 function paintNotice() {
   if (!titleNotice || App.scene !== 'title') return;
@@ -95,7 +96,7 @@ function startBattle(setup) {
   if (saved.resume) {
     setup = { ...saved.resume.setup, battle: saved.resume.battle }; L = ALL[setup.levelId];
     if (!L || (L.rev || 1) !== (saved.resume.levelRev || 1)) {
-      App.save.resume = null; persist('invalidate', [], saved.resume); return showTitle();
+      App.save.resume = null; persist('invalidate', [], saved.resume); showTitle(); showNotice(OLD_BATTLE); return;
     }
   }
   const playerTeam = setup.team ?? 0;
@@ -308,7 +309,7 @@ function showTitle() {
   screens.show('title'); decorateScreen();
   checkSaveNotice(); paintNotice();
   // a battle saved on an older layout of its level can't be resumed (its trees and perches no longer line up)
-  { const r = App.save.resume; if (r && (!ALL[r.setup?.levelId] || (ALL[r.setup.levelId].rev || 1) !== (r.levelRev || 1))) { App.save.resume = null; persist('invalidate', [], r); } }
+  { const r = App.save.resume; if (r && (!ALL[r.setup?.levelId] || (ALL[r.setup.levelId].rev || 1) !== (r.levelRev || 1))) { App.save.resume = null; persist('invalidate', [], r); showNotice(OLD_BATTLE); } }
   if (App.save.resume) {
     const nav = screens.root.querySelector('.menu');
     const b = document.createElement('button'); b.className = 'btn teal'; b.type = 'button'; b.textContent = 'Resume battle'; b.dataset.act = 'resumeBattle';
