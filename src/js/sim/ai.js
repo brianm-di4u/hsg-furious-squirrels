@@ -111,7 +111,14 @@ function evalShot(sim, q, kind, a, p, target) {
   return { a, p, s: score(sim, q, kind, pred.impact, target), pred, tapAt: null };
 }
 
-function* search(sim, q, kind, P, target, grid) {
+// Slices are timed by the clock, not by a count of evaluations: each resume hands the generator the time its next
+// slice must end by (`gen.next(deadline)`), and it yields as soon as an evaluation finishes past that time.
+// Resumed with nothing (planTurn), it never yields.
+function* pace(T) {
+  if (T.until != null && performance.now() >= T.until) T.until = yield 0;
+}
+
+function* search(sim, q, kind, P, target, grid, T) {
   const save = sim.b.wind;
   sim.b.wind = save * P.wind;
   let best = null, n = 0;
@@ -119,7 +126,8 @@ function* search(sim, q, kind, P, target, grid) {
     for (let a = grid.a0; a <= grid.a1; a += grid.da) for (let p = grid.p0; p <= grid.p1 + 1e-9; p += grid.dp) {
       const r = evalShot(sim, q, kind, a, p, target);
       if (!best || r.s > best.s) best = r;
-      if (++n % 60 === 0) yield n;
+      n++;
+      yield* pace(T);
     }
     // refine around the best
     const ra = grid.da / 4, rp = grid.dp / 4, c = best;
@@ -127,7 +135,8 @@ function* search(sim, q, kind, P, target, grid) {
       const a = c.a + i * ra, p = clamp(c.p + j * rp, 0.05, 1);
       const r = evalShot(sim, q, kind, a, p, target);
       if (r.s > best.s) best = r;
-      if (++n % 60 === 0) yield n;
+      n++;
+      yield* pace(T);
     }
   } finally { sim.b.wind = save; }
   best.n = n;
@@ -142,6 +151,7 @@ export function* planTurnGen(sim, difficulty = 'medium', force = {}) {
   const P = DIFF[difficulty] || DIFF.medium, rng = sim.rng('ai'), b = sim.b;
   const q = sim.active();
   if (!q) return null;
+  const T = { until: yield 0 };
   const tm = b.teams[q.team];
   const mem = tm.ai || (tm.ai = { target: null, k: 1 });
   let target = pickTarget(sim, q);
@@ -152,20 +162,20 @@ export function* planTurnGen(sim, difficulty = 'medium', force = {}) {
     const reach = [...sim.reach().keys()].filter((id) => id !== q.perch);
     const cands = [];
     for (let i = 0; i < 3 && reach.length; i++) cands.push(reach.splice(rng.int(reach.length), 1)[0]);
-    const here = yield* search(sim, q, 'acorn', P, target, QUICK);
+    const here = yield* search(sim, q, 'acorn', P, target, QUICK, T);
     let bestS = here.s;
     const ox = q.x, oy = q.y;
     for (const id of cands) {
       const n = sim.graphs[q.team].byId.get(id);
       q.x = n.x; q.y = n.y;
-      const r = yield* search(sim, q, 'acorn', P, target, QUICK);
+      const r = yield* search(sim, q, 'acorn', P, target, QUICK, T);
       if (r.s > bestS + 6) { bestS = r.s; move = id; }
     }
     q.x = ox; q.y = oy;
   }
   if (move) { sim.move(move); target = pickTarget(sim, q) || target; }
   const kind = force.nut && sim.canUse(q.team, force.nut) ? force.nut : chooseNut(sim, q.team, P, rng, target);
-  const best = yield* search(sim, q, kind, P, target, FULL);
+  const best = yield* search(sim, q, kind, P, target, FULL, T);
   const tapAt = best.tapAt;
   // bracketing: repeated shots at the same target get steadier
   if (mem.target === target.id) mem.k = Math.max(0.3, mem.k * (1 - P.bracket));
