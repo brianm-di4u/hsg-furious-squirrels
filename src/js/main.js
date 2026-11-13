@@ -104,7 +104,17 @@ function startBattle(setup) {
   if (setup.loadout === 'acorn') { opts.loadout = 'story'; opts.unlocked = []; }
   if (setup.mode === 'practice') opts.loadout = 'practice';
   App.setup = { ...setup, seed };
-  App.sim = setup.battle ? new Sim(L, opts, JSON.parse(JSON.stringify(setup.battle))) : new Sim(L, opts);
+  const B = setup.battle;
+  try {
+    if (B && !(Array.isArray(B.squirrels) && Array.isArray(B.teams) && Array.isArray(B.trees) && B.rng && typeof B.rng === 'object')) throw new Error('damaged saved battle');
+    App.sim = B ? new Sim(L, opts, JSON.parse(JSON.stringify(B))) : new Sim(L, opts);
+  } catch (err) {
+    if (!B) throw err;
+    // a damaged resume slot would otherwise leave a dead Resume button for good
+    App.save.resume = null; persist('invalidate', [], saved.resume);
+    showTitle(); showNotice('That saved battle could not be loaded');
+    return;
+  }
   App.level = L;
   enterBattleScene();
 }

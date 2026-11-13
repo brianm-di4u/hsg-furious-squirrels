@@ -65,3 +65,40 @@ tests.push({
     t.equal(await t.page.evaluate((k) => localStorage.getItem(k), SAVE_KEY), raw, 'the newer save is not overwritten');
   },
 });
+
+// a real Story resume slot, made by playing into level 1
+async function storyResumeSave(t) {
+  await t.game('act', 'clearSave');
+  await t.reload();
+  await t.game('act', 'menu', 'story');
+  await t.game('act', 'menu', 'team', { v: '0' });
+  await t.seed(35594); // a seed where the player's family throws first, so the resume slot is written at once
+  await t.game('act', 'menu', 'play', { v: 'story-01' });
+  await t.page.waitForFunction((k) => { try { return !!JSON.parse(localStorage.getItem(k)).resume.battle; } catch { return false; } }, SAVE_KEY, { timeout: 5000 }).catch(() => {});
+  const saved = await t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
+  t.expect(saved && saved.resume && saved.resume.battle, 'playing a Story level writes a resume slot');
+  return saved;
+}
+const BAD_BATTLES = { 'empty battle': () => ({}), 'missing squirrels and rng': (r) => ({ ...r.battle, squirrels: null, rng: undefined }) };
+for (const [kind, damage] of Object.entries(BAD_BATTLES)) {
+  tests.push({
+    name: `S6-02 resuming a saved battle with ${kind} drops the slot instead of throwing`,
+    viewports: ['desktop'],
+    async run(t) {
+      const saved = await storyResumeSave(t);
+      saved.resume.battle = damage(saved.resume);
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, saved]);
+      await t.reload();
+      t.equal(await t.page.locator('button[data-act="resumeBattle"]').count(), 1, 'Resume battle is offered');
+      await t.page.locator('button[data-act="resumeBattle"]').click();
+      await t.waitFrames(3);
+      const s = await t.state();
+      t.equal(s.scene, 'title', 'still on the title screen');
+      t.equal(await t.page.locator('button[data-act="resumeBattle"]').count(), 0, 'the dead Resume button is gone');
+      t.expect(/could not be loaded/i.test(await t.page.textContent('#screens')), 'the title says the battle could not be loaded');
+      const after = await t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
+      t.equal(after.resume, null, 'the damaged slot is cleared in the save');
+      t.expect((await t.page.textContent('#boot-error')) === '', 'no error bar');
+    },
+  });
+}
