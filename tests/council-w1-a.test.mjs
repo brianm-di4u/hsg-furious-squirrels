@@ -135,3 +135,25 @@ tests.push({
     }
   },
 });
+
+tests.push({
+  name: 'S6-08 Quick Battle with a level id that no longer exists still starts',
+  viewports: ['desktop'],
+  async run(t) {
+    await t.game('act', 'clearSave');
+    await t.reload();
+    const raw = await t.page.evaluate((k) => localStorage.getItem(k), SAVE_KEY);
+    const save = raw ? JSON.parse(raw) : { v: 1 };
+    save.quick = { ...(save.quick || {}), level: 'nope' };
+    await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, save]);
+    await t.reload();
+    await t.game('act', 'menu', 'quick');
+    await t.game('act', 'menu', 'quickGo');
+    await t.waitFrames(3);
+    const s = await t.state();
+    t.equal(s.scene, 'battle', 'the battle starts');
+    t.equal(s.level.id, 'story-01', 'on the first Story level');
+    const after = await t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
+    t.equal(after.quick.level, 'story-01', 'the repaired level is saved');
+  },
+});

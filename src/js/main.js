@@ -72,6 +72,11 @@ function persist(intent = 'merge', fields = [], expectedResume) {
   checkSaveNotice();
   return ok;
 }
+// a saved Quick Battle level that no longer exists falls back to the first Story level
+function fixQuickLevel() {
+  if (ALL[App.save.quick.level]) return;
+  App.save.quick.level = 'story-01'; persist('quick', 'level');
+}
 function freshSave() { refreshSave(App.save, saveConflict); applySettings(); checkSaveNotice(); }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -80,7 +85,7 @@ function storyInventory(n) { return STORY.filter((L) => L.n <= n && L.unlock).ma
 
 function startBattle(setup) {
   let L = ALL[setup.levelId];
-  if (!L) throw new Error('no level ' + setup.levelId);
+  if (!L) { showTitle(); showNotice('That battlefield could not be found'); return; }
   const saved = beginBattleSave(App.save, { mode: setup.mode, resume: !!setup.battle, levelNumber: L.n || 0, notify: saveConflict });
   applySettings();
   if (!saved.started) {
@@ -262,9 +267,9 @@ App.onMenu = (act, d) => {
       if (/^story-/.test(L.id)) return startBattle({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
       return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team, birds: s.quick.birds });
     }
-    case 'quick': freshSave(); return screens.show('quick', { levels: STORY });
+    case 'quick': freshSave(); fixQuickLevel(); return screens.show('quick', { levels: STORY });
     case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist('quick', d.k); return screens.refresh();
-    case 'quickGo': { freshSave(); const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
+    case 'quickGo': { freshSave(); fixQuickLevel(); const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
