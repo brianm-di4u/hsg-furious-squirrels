@@ -92,7 +92,9 @@ test('failed Reset cannot later erase newer foreign earned data without a fresh 
   const r = rig(fixture), a = await r.tab(), b = await r.tab(); r.storage.writeBlocked = true; assert.equal(a.reset(), false); r.storage.writeBlocked = false; earn(b, 3); b.write('result'); const protectedValue = r.saved; a.s.settings.sound = false; a.write('settings', ['sound']); assert.deepEqual(r.saved.story, protectedValue.story); assert.deepEqual(r.saved.stats, protectedValue.stats); assert.equal(a.notices.length, 1); a.reset(); assert.deepEqual(r.saved.story, a.m.DEFAULT_SAVE().story);
 });
 test('corrupt wrong-version malformed-token and blocked bytes cannot authorize a run overwrite', async () => {
-  for (const raw of ['{bad', JSON.stringify({v:2}), JSON.stringify({...fixture,resumeRevision:42})]) { const r = rig(); r.raw = raw; const a = await r.tab(); a.begin(); turn(a); assert.equal(a.write('turn'), false); assert.equal(r.raw, raw); }
+  // S6-01: only a newer-version save is refused; damaged ones are kept as -bad and replaced (see the damaged-save test below)
+  { const raw = JSON.stringify({v:2}), r = rig(); r.raw = raw; const a = await r.tab(); a.begin(); turn(a); assert.equal(a.write('turn'), false); assert.equal(r.raw, raw); }
+  for (const raw of ['{bad', JSON.stringify({...fixture,resumeRevision:42})]) { const r = rig(); r.raw = raw; const a = await r.tab(); a.begin(); turn(a); assert.equal(a.write('turn'), true); assert.equal(r.saved.v, 1); }
 });
 test('partial accepted sections default safely while optional opaque run fields remain intact', async () => {
   const optional = copy(fixture); delete optional.resume.battle.rng; optional.resume.battle.future = { keep:true }; const r = rig(optional), a = await r.tab(); a.s.settings.sound = false; a.write('settings', ['sound']); assert.deepEqual(r.saved.resume, optional.resume);
@@ -113,4 +115,19 @@ test('current hook Object.assign settings/story plus ordinary persist retains it
 });
 test('a stale post-reset map cannot begin a formerly unlocked Story level', async () => {
   const value=copy(fixture);value.story.unlocked=8;const r=rig(value),a=await r.tab(),b=await r.tab();b.reset();const begun=a.begin('story',false,8);assert.equal(begun.started,false);assert.equal(begun.reason,'locked');assert.equal(r.saved.resume,null);assert.equal(r.saved.story.unlocked,1);
+});
+
+test('damaged saves (truncated, empty, null) are kept as -bad and overwritten by the next write', async () => {
+  for (const raw of ['{"v":1,"settings":{"sou', '{}', 'null']) {
+    const r = rig(), a = await r.tab(); r.raw = raw;
+    const saved = []; const set = globalThis.window.localStorage.setItem; globalThis.window.localStorage.setItem = function (k, v) { saved.push(k); return set.call(this, k, v); };
+    a.s.settings.sound = false; assert.equal(a.write('settings', ['sound']), true, raw);
+    assert.equal(r.saved.settings.sound, false); assert.equal(r.saved.v, 1);
+    assert.ok(saved.some(k => k.endsWith('-bad')), 'a copy of the damaged text is kept');
+    assert.equal((await r.tab()).m.takeSaveNotice() !== undefined, true);
+  }
+});
+test('a save from a newer version is refused and left untouched', async () => {
+  const r = rig({ v: 2, future: true }), a = await r.tab(); const before = r.raw;
+  a.s.settings.sound = false; assert.equal(a.write('settings', ['sound']), false); assert.equal(r.raw, before);
 });

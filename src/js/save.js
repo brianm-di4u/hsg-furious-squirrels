@@ -42,13 +42,25 @@ function decoded(s) {
   }
   return out;
 }
+// A save that cannot be read is damaged: keep a copy under KEY-bad and treat the slot as empty so the next write
+// replaces it. Only a save from a newer version (v > 1) is refused, and left alone.
+let notice_ = '', raised = { bad: false, newer: false };
+const raise = (kind, text) => { if (!raised[kind]) { raised[kind] = true; notice_ = text; } };
+export function takeSaveNotice() { const n = notice_; notice_ = ''; return n; }
 function read() {
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return { valid: true, save: DEFAULT_SAVE() };
-    const save = decoded(JSON.parse(raw));
-    return { valid: !!save, save };
-  } catch { return { valid: false, save: null }; }
+  let raw;
+  try { raw = window.localStorage.getItem(KEY); } catch { return { valid: false, save: null }; }
+  if (!raw) return { valid: true, save: DEFAULT_SAVE() };
+  let parsed = null, save = null;
+  try { parsed = JSON.parse(raw); save = decoded(parsed); } catch { save = null; }
+  if (save) return { valid: true, save };
+  if (object(parsed) && typeof parsed.v === 'number' && parsed.v > 1) {
+    raise('newer', 'This save is from a newer version of the game, so progress will not be saved');
+    return { valid: false, save: null };
+  }
+  try { window.localStorage.setItem(KEY + '-bad', raw); } catch { /* storage full or blocked: the copy is best effort */ }
+  raise('bad', 'Saved data could not be read, starting fresh');
+  return { valid: true, save: DEFAULT_SAVE() };
 }
 function sync(s, value) {
   for (const key of Object.keys(s)) if (!Object.hasOwn(value, key)) delete s[key];

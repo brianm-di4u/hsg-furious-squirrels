@@ -109,6 +109,7 @@ body.reduced .call, body.reduced .hint { transition: none; }
 .panel h3 { margin: 14px 0 6px; font: 800 calc(18px * var(--text-scale)) var(--font-ui); color: var(--gold); }
 .panel p, .panel li { font-size: calc(16px * var(--text-scale)); line-height: 1.45; }
 .panel .sub { margin-top: -4px; opacity: 0.92; }
+.title-wrap .notice { display: block; margin: 6px auto 0; }
 .menu { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .menu.row { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 .menu.sticky { position: sticky; isolation: isolate; bottom: -18px; margin: 14px -22px -18px; padding: 12px 22px 14px; background: var(--sign); border-top: 3px solid var(--sign-edge); box-shadow: 0 -10px 14px rgba(62,50,38,0.85); }
