@@ -49,4 +49,21 @@ export const tests = [
       t.equal((await t.state()).battle.phase, 'flight', 'A throws');
     },
   },
+  {
+    name: 'S2-11 Space and Enter on a focused HUD button do not throw',
+    viewports: ['desktop'],
+    async run(t) {
+      await myTurn(t);
+      await t.page.focus('#b-cam');
+      await t.page.keyboard.press('Enter');
+      await t.page.keyboard.press('Space');
+      await t.waitFrames(5);
+      t.equal((await t.state()).battle.phase, 'aim', 'still aiming');
+      await t.page.evaluate(() => document.activeElement.blur());
+      await t.page.keyboard.press('Space');
+      t.equal((await t.state()).battle.phase, 'flight', 'Space with no control focused still throws');
+      const help = await t.page.evaluate(() => { window.__game.scene('help'); return document.body.textContent; });
+      t.expect(/Gamepad/.test(help) && /Z\/X zoom/.test(help), 'How to Play lists the keys and the gamepad');
+    },
+  },
 ];

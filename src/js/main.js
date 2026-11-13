@@ -488,6 +488,7 @@ window.addEventListener('keydown', (e) => {
     case 'ArrowUp': nudgeAim(0, big / 100); break;
     case 'ArrowDown': nudgeAim(0, -big / 100); break;
     case 'Space': case 'Enter': case 'NumpadEnter':
+      if (e.target && e.target.closest && e.target.closest('#hud button')) return; // activates the focused HUD button, not a throw
       if (e.repeat) break;
       if (App.sim.b.phase === 'flight') tapNow(); else throwNow();
       break;

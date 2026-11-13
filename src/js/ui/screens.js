@@ -150,6 +150,11 @@ const TEMPLATES = {
         <div class="card"><b>5. Wind and steam</b><br>The flag shows wind (0–10). The steam over Bathhouse Row lifts nuts that fly through it (game rule).</div>
         <div class="card"><b>6. Knock them out!</b><br>Hits shake a squirrel's grip loose. At zero grip, or after a long tumble to the ground, it's out: into the leaf pile, unhurt. Out of squirrels, out of the round.</div>
       </div>
+      <h3>Controls</h3>
+      <div class="cards">
+        <div class="card"><b>Keyboard</b><br>←/→ angle, ↑/↓ power (Shift for big steps). Space or Enter throws, and taps a flying nut. 1–7 or Q/E pick a nut. M moves; then A/D/W/S step between perches. Z/X zoom, C recenters the view, P or Esc pauses.</div>
+        <div class="card"><b>Gamepad</b><br>Left stick aims. A throws, and taps a flying nut. LB/RB pick a nut, left/right on the D-pad step between perches, Start pauses.</div>
+      </div>
       <h3>The nuts</h3>
       ${NUT_ORDER.map((k) => `<div class="nutrow"><canvas data-nut="${k}"></canvas><div><b>${NUTS[k].key}. ${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div></div>`).join('')}
       <nav class="menu row sticky"><span class="help-more" aria-hidden="true">↓ more below</span>${btn('back', 'Back', 'autofocus data-back', 'btn primary')}</nav>
