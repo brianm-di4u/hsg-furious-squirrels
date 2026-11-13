@@ -160,7 +160,7 @@ function onTurnStart(first) {
 }
 
 // tutorial tips: each shows once, on the player's own turn, until any tap/key or TIP_MS passes
-const TIPS = ['Drag back from anywhere, like a slingshot, to aim. Let go to throw!', 'Nice! Wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
+const TIPS = ['Drag back from anywhere, like a slingshot, to aim. Let go to throw!', 'Next: wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
 const TIP_MS = 8000;
 let tipTimer = 0;
 function tutorial() {

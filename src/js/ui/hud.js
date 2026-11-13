@@ -125,6 +125,8 @@ export class Hud {
   hint(text) {
     const h = this.el('hint'); if (this.hintText === text) return; this.hintText = text; h.textContent = text || ''; h.classList.toggle('show', !!text);
     if (text) { const s = document.createElement('small'); s.textContent = 'Tap anywhere to close'; h.append(s); }
+    // on a phone the tip sits just above the controls, where it cannot cover the squirrel being aimed
+    h.style.bottom = text && window.innerWidth <= 700 ? `${Math.max(0, window.innerHeight - this.root.querySelector('.bottom').getBoundingClientRect().top + 8)}px` : '';
   }
 
   drawMinimap() {

@@ -66,4 +66,33 @@ export const tests = [
       t.expect(/Gamepad/.test(help) && /Z\/X zoom/.test(help), 'How to Play lists the keys and the gamepad');
     },
   },
+  {
+    name: 'S2-14 the tips do not say Nice after a miss and sit clear of the squirrel on a phone',
+    viewports: ['mobile'],
+    async run(t) {
+      const myAim = () => t.page.waitForFunction(() => { const S = window.__FS.sim; return S.b.turn.team === 0 && S.b.phase === 'aim' && !S.busy(); }, null, { timeout: 20000 });
+      const place = () => t.page.evaluate(() => {
+        const A = window.__FS, h = document.getElementById('hint').getBoundingClientRect(), b = document.querySelector('#hud .bottom').getBoundingClientRect();
+        const q = A.sim.active(), [x, y] = A.renderer.cam.toScreen(q.x, q.y - 20);
+        return { hb: h.bottom, bt: b.top, hl: h.left, hr: h.right, ht: h.top, x, y };
+      });
+      let s = await t.game('newGame', { levelId: 'story-01', seed: 5 });
+      if (s.battle.turn.team !== 0) await myAim();
+      await t.waitFrames(5);
+      for (const step of ['first', 'second']) {
+        s = await t.state();
+        if (step === 'second') t.expect(/^Next: wind/.test(s.hint), `second tip (got "${s.hint}")`);
+        else t.expect(/Drag back/.test(s.hint), 'first tip shows');
+        const r = await place();
+        t.expect(r.hb <= r.bt + 1 && r.bt - r.hb < 40, `${step} tip sits just above the controls (${r.hb} vs ${r.bt})`);
+        t.expect(!(r.x >= r.hl && r.x <= r.hr && r.y >= r.ht && r.y <= r.hb), `${step} tip does not cover the active squirrel`);
+        if (step === 'first') {
+          await t.tap([20, Math.round(s.render.h / 2)]);
+          await t.game('act', 'fire', {}); await t.game('act', 'skipFlight');
+          await myAim(); await t.waitFrames(5);
+        }
+      }
+    },
+  },
+
 ];
