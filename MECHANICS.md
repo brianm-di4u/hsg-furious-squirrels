@@ -155,6 +155,10 @@ x  += vx*DT;  y += vy*DT;  then sweep-test terrain, trees, squirrels (the owner 
    | Medium | 3° | 3.5% | full | yes: remembers the last miss vector and corrects 50% | situational | yes |
    | Hard | 1° | 1.2% | full | 80% | best expected damage | to a perch with a clear line |
 
+   | Sharp | 1.1° | 1.2% | full | yes: 60% | mostly situational | often |
+
+   Sharp (S3-04) sits between Medium and Hard. The rival's skill is a number on a 0–3 scale (Easy, Medium, Sharp, Hard); a Story level's `skill` field in `levels/*.json` shifts it up or down (a gentler first battle, a harder finale), blending between tiers (`aiTier`, `params` in `ai.js`). Quick Battles use the tier as picked. Each star is saved with the highest tier it was earned on (`story.starTier`).
+
    The AI never sees the future: noise is drawn from the `ai` stream after the search.
 5. **Pacing:** the AI "thinks" for 0.6–1.2 s (wall clock), then animates its aim from the current angle to the target angle over 0.5 s, so the player can read it.
 6. **Cost:** the search runs about 600–800 short simulations, each ending at its first impact. That is budgeted at under 40 ms on desktop and is split across frames with a generator, so the UI never hitches.
@@ -221,7 +225,7 @@ Caches are rebuilt only on size or DPR change. There is no per-frame `shadowBlur
 - Key `hsg-furious-squirrels-v1`: one versioned JSON object, wrapped in try/catch with an in-memory fallback. Copied from Tub Rally's `save.js`.
 - Fields:
   - `settings` {sound, music, volume, reducedMotion, aimGuide, turnTimer, hudScale, keys}
-  - `story` {unlocked: n, stars: {levelId: 0–3}, nuts: [...], acorns: n (the purse)}
+  - `story` {unlocked: n, stars: {levelId: 0–3}, nuts: [...], acorns: n (the purse), starTier: {levelId: [t, t, t]} (highest tier, 1 Easy to 4 Hard, on which a run reached 1, 2 and 3 stars; stars from before this field count as Medium)}
   - `quick` {last setup, including `birds`: off | some | lots}
   - `stats` {battles, wins, kos, bestShot}
   - optional `resume`: the `battle` object, saved at the start of each turn, with `levelRev` (dropped when the level's layout revision changes)

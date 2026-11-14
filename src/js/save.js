@@ -3,12 +3,14 @@
 import { ACORNS, PURSE_CAP } from './sim/const.js';
 const KEY = 'hsg-furious-squirrels-v1';
 const STORY_LEVELS = 12;
+const TIER_NAMES = ['easy', 'medium', 'sharp', 'hard'];
+const TIER_COUNT = 4; // difficulty tiers a star can be earned on: 1 Easy, 2 Medium, 3 Sharp, 4 Hard (0 = not earned)
 let mem = null;
 
 export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
-  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start },
+  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {} },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0 },
   resume: null,
@@ -23,6 +25,12 @@ let serial = 0;
 const revision = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + '-' + (++serial) + '-' + Math.random().toString(36).slice(2);
 const epoch = s => s.progressGeneration ?? null;
 const slot = s => ({ generation: s.resumeGeneration ?? null, revision: s.resumeRevision ?? null, resume: s.resume });
+// The highest tier each star of a level was earned on. Stars a player already had before tiers were recorded count as
+// earned on Medium, and a star count that outruns its record is filled in the same way.
+export function starTiers(story, id) {
+  const n = Math.min(3, story.stars[id] || 0), rec = Array.isArray(story.starTier?.[id]) ? story.starTier[id] : [];
+  return [0, 1, 2].map((i) => rec[i] || (i < n ? 2 : 0));
+}
 const progress = s => ({ epoch: epoch(s), story: s.story, quick: s.quick, stats: s.stats, slot: slot(s) });
 // observed tracks already captured local mutations, not successful persistence.
 // Pending intents survive reads/rebases/failures; only setItem success acknowledges them.
@@ -36,11 +44,19 @@ function decoded(s) {
   out.story.stars = { ...(object(out.story.stars) ? out.story.stars : {}) };
   out.story.nuts = Array.isArray(out.story.nuts) ? out.story.nuts.slice() : [];
   for (const key of ['unlocked']) if (!number(out.story[key])) out.story[key] = d.story[key];
-  // the Story purse (acorns carried between battles); a save from before it has none and loads with the starting purse
+  // the Story purse (acorns carried between battles) and, per level, the highest difficulty each of its three stars
+  // (won, nobody out, within par) was earned on; a save from before both has neither and loads with the defaults
   out.story.acorns = number(out.story.acorns) ? Math.min(PURSE_CAP, Math.floor(out.story.acorns)) : d.story.acorns;
+  out.story.starTier = object(out.story.starTier) ? { ...out.story.starTier } : {};
+  for (const [id, slots] of Object.entries(out.story.starTier)) {
+    if (Array.isArray(slots) && slots.length === 3 && slots.every((n) => Number.isInteger(n) && n >= 0 && n <= TIER_COUNT)) out.story.starTier[id] = slots.slice();
+    else delete out.story.starTier[id];
+  }
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
+  if (!TIER_NAMES.includes(out.settings.difficulty)) out.settings.difficulty = d.settings.difficulty;
+  if (!TIER_NAMES.includes(out.quick.difficulty)) out.quick.difficulty = d.quick.difficulty;
   if (typeof out.settings.ambience !== 'boolean') out.settings.ambience = d.settings.ambience;
   out.settings.volume = typeof out.settings.volume === 'number' && Number.isFinite(out.settings.volume) ? Math.min(1, Math.max(0, out.settings.volume)) : d.settings.volume;
   out.story.unlocked = Math.min(STORY_LEVELS, Math.max(1, Math.floor(out.story.unlocked)));
@@ -88,14 +104,18 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, acorns: null };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
     if (s.story.unlocked > before.story.unlocked) earned.unlocked = s.story.unlocked;
     for (const key of ['battles', 'wins', 'kos']) earned.stats[key] = Math.max(0, s.stats[key] - before.stats[key]);
     if (s.stats.bestShot > before.stats.bestShot) earned.bestShot = s.stats.bestShot;
+    for (const [id, slots] of Object.entries(s.story.starTier || {})) {
+      const old = before.story.starTier?.[id] || [0, 0, 0];
+      if (Array.isArray(slots) && slots.some((n, i) => n > (old[i] || 0))) put(earned.tiers, id, slots);
+    }
     if (number(s.story.acorns) && s.story.acorns !== before.story.acorns) earned.acorns = s.story.acorns;
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -121,6 +141,10 @@ function merged(latest, callback) {
     value.story.nuts = [...new Set([...value.story.nuts, ...e.nuts])];
     for (const key of ['battles', 'wins', 'kos']) value.stats[key] += e.stats[key];
     value.stats.bestShot = Math.max(value.stats.bestShot, e.bestShot);
+    for (const [id, slots] of Object.entries(e.tiers || {})) {
+      const old = value.story.starTier[id] || [0, 0, 0];
+      put(value.story.starTier, id, slots.map((n, i) => Math.max(n, old[i] || 0)));
+    }
     if (e.acorns != null) value.story.acorns = e.acorns;
   } else notice(callback);
   let resumeApplied = false;

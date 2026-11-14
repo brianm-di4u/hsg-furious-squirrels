@@ -156,6 +156,9 @@ body.reduced .stars .on { animation: none; }
 .lvl { font-size: calc(13.5px * var(--text-scale)) !important; min-height: 84px; padding: 8px; border-radius: 14px; border: 3px solid var(--sign-edge); background: var(--sign-dark); color: var(--cream); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font: 700 calc(13px * var(--text-scale)) / 1.15 var(--font-ui); text-align: center; }
 .lvl .n { font: 900 calc(22px * var(--text-scale)) var(--font-head); color: var(--gold); }
 .lvl .st { color: var(--gold); letter-spacing: 1px; }
+.lvl .st .t3 { color: #7FD6C8; }
+.lvl .st .t4 { color: #FF9B6A; }
+.lvl .tier { font-size: 0.8em; opacity: 0.9; letter-spacing: 0.04em; }
 .banked { margin: 6px 0; }
 .nutrow.pack { flex-wrap: wrap; row-gap: 4px; }
 .nutrow.pack .what { flex: 1 1 120px; min-width: 0; }

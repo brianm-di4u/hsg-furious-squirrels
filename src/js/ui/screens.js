@@ -2,6 +2,7 @@
 // Esc / B goes back. Structure after games/Cart Racing/src/js/ui/screens.js (Hot Springs Games, MIT).
 import { NUTS, NUT_ORDER, NUT_CAP, TEAMS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
+import { starTiers } from '../save.js';
 
 export class Screens {
   constructor(root, app) { this.root = root; this.app = app; this.cur = null; this.data = {}; }
@@ -38,6 +39,7 @@ const btn = (act, label, extra = '', cls = 'btn') => `<button type="button" clas
 const seg = (k, cur, opts) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" class="btn small" data-act="set" data-k="${k}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
 const field = (label, inner) => `<div class="field"><label>${label}</label>${inner}</div>`;
 const starStr = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[0, 1, 2].map((i) => (i < n ? `<span class="on" style="animation-delay:${0.25 + i * 0.2}s">★</span>` : '<span class="off">★</span>')).join('')}</span>`;
+const TIER_NAME = ['', 'Easy', 'Medium', 'Sharp', 'Hard']; // difficulty tier numbers saved with each star
 const FICTION = 'A made-up squirrel rivalry set in real Hot Springs, Arkansas.';
 
 const TEMPLATES = {
@@ -75,11 +77,11 @@ const TEMPLATES = {
       <h2>The Valley Nut Feud</h2>
       <p class="sub">${TEAMS[st.team ?? 0].name} vs. ${TEAMS[1 - (st.team ?? 0)].name}. Win battles to unlock new nuts, and carry your acorns to the next one. <span class="label-fiction">game fiction</span></p>
       <div class="map">${levels.map((L, i) => {
-        const open = L.n <= st.unlocked, s = st.stars[L.id] || 0;
-        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars` : ', locked'}">
-          <span class="n">${L.n}</span><span>${L.name}</span><span class="st">${open ? '★'.repeat(s) + '☆'.repeat(3 - s) : '🔒'}</span></button>`;
+        const open = L.n <= st.unlocked, s = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = s ? tiers[Math.min(3, s) - 1] : 0, note = top && top !== 2 ? TIER_NAME[top] : '';
+        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars${note ? ' on ' + note : ''}` : ', locked'}">
+          <span class="n">${L.n}</span><span>${L.name}</span><span class="st">${open ? [0, 1, 2].map((i) => (i < s ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('') : '🔒'}</span>${note ? `<span class="tier">${note}</span>` : ''}</button>`;
       }).join('')}</div>
-      ${field('Difficulty', seg('difficulty', app.save.settings.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']]))}
+      ${field('Difficulty', seg('difficulty', app.save.settings.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']]))}
       <nav class="menu row">${btn('switchTeam', 'Switch family')}${btn('back', 'Back', 'data-back')}</nav>
     </div>`;
   },
@@ -97,7 +99,7 @@ const TEMPLATES = {
       ${field('Steam updraft', `<div class="seg">${[['off', 'Off'], ['on', 'On'], ['strong', 'Strong']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="steam" data-v="${v}" aria-pressed="${q.steam === v}">${l}</button>`).join('')}</div>`)}
       ${field('Birds', `<div class="seg">${[['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="birds" data-v="${v}" aria-pressed="${(q.birds || 'some') === v}">${l}</button>`).join('')}</div>`)}
       ${field('Nuts', `<div class="seg"><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="all" aria-pressed="${q.loadout === 'all'}">All seven</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="story" aria-pressed="${q.loadout === 'story'}">Story unlocks</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="acorn" aria-pressed="${q.loadout === 'acorn'}">Acorns only</button></div>`)}
-      ${field('Rival skill', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="difficulty" data-v="${v}" aria-pressed="${q.difficulty === v}">${l}</button>`).join('')}</div>`)}
+      ${field('Rival skill', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="difficulty" data-v="${v}" aria-pressed="${q.difficulty === v}">${l}</button>`).join('')}</div>`)}
       <nav class="menu row">${btn('quickGo', 'Start battle', 'autofocus', 'btn primary')}${btn('back', 'Back', 'data-back')}</nav>
     </div>`;
   },
@@ -135,6 +137,7 @@ const TEMPLATES = {
       <p class="winner">${d.winnerName ? `${d.winnerName} win the valley` : ''}</p>
       ${d.stars != null ? starStr(d.stars) : ''}
       ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
+      ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>

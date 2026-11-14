@@ -16,6 +16,7 @@ export function installHooks(App, api) {
       fx: App.renderer.fx.count, targetsHit: (App.targetsHit || []).length,
     };
     if (b) {
+      out.rivalTier = +api.rivalTier().toFixed(3);
       out.battle = {
         phase: b.phase, round: b.round, rounds: b.rounds, roundWins: b.roundWins, mode: b.mode, practice: b.practice, difficulty: b.difficulty,
         turn: { ...b.turn }, wind: +b.wind.toFixed(4), steam: b.steamLevel, result: b.result,

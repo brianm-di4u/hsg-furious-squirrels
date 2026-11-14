@@ -5,11 +5,27 @@
 import { NUTS, SQ_UP, GRIP, clamp } from './const.js';
 import { segDist } from './trees.js';
 
+const SHARP_SA = 1.1;
 export const DIFF = {
-  easy: { sa: 3.8, sp: 0.045, wind: 0.6, special: 0.25, move: 0.08, bracket: 0.25, think: [0.9, 1.4] },
+  easy: { sa: 3.8, sp: 0.045, wind: 0.6, special: 0.25, move: 0.08, bracket: 0.25, think: [0.9, 1.4], rand: true },
   medium: { sa: 2.0, sp: 0.022, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1] },
+  // between Medium and Hard (S3-04): roughly the geometric middle of their aim noise, so each step is a similar jump
+  sharp: { sa: SHARP_SA, sp: 0.0124, wind: 1, special: 0.68, move: 0.45, bracket: 0.6, think: [0.6, 1.0] },
   hard: { sa: 0.6, sp: 0.007, wind: 1, special: 0.8, move: 0.6, bracket: 0.7, think: [0.5, 0.9] },
 };
+// The skill scale the rival sits on: 0 Easy, 1 Medium, 2 Sharp, 3 Hard. A Story level nudges it up or down with its
+// `skill` field (levels/*.json), so the campaign ramps inside whichever tier the player picked. Between two tiers the
+// settings are blended (aim noise geometrically, the rest linearly).
+export const TIERS = ['easy', 'medium', 'sharp', 'hard'];
+export function aiTier(name, offset = 0) { const i = TIERS.indexOf(name); return clamp((i < 0 ? 1 : i) + (+offset || 0), 0, 3); }
+function params(d) {
+  if (typeof d === 'string') return DIFF[d] || DIFF.medium;
+  const i = Math.min(3, Math.floor(d)), f = d - i, A = DIFF[TIERS[i]], B = DIFF[TIERS[Math.min(3, i + 1)]];
+  if (f < 1e-6) return A;
+  const lin = (x, y) => x + (y - x) * f, geo = (x, y) => x * Math.pow(y / x, f);
+  return { sa: geo(A.sa, B.sa), sp: geo(A.sp, B.sp), wind: lin(A.wind, B.wind), special: lin(A.special, B.special), move: lin(A.move, B.move),
+    bracket: lin(A.bracket, B.bracket), think: [lin(A.think[0], B.think[0]), lin(A.think[1], B.think[1])], rand: d < 0.5 };
+}
 const TAPPED = { chinquapin: 1, pecan: 1, sweetgum: 1 };
 
 function pickTarget(sim, q) {
@@ -54,7 +70,7 @@ function chooseNut(sim, team, P, rng, target) {
   const inv = sim.b.teams[team].inventory;
   const have = Object.keys(inv).filter((k) => inv[k] > 0);
   if (!have.length || !rng.chance(P.special)) return 'acorn';
-  if (P === DIFF.easy) return rng.pick(have);
+  if (P.rand) return rng.pick(have);
   // situational preferences: big blast on clustered rivals, hedge apple downhill, trio at range, pecan on branches
   const foes = sim.b.squirrels.filter((e) => e.team !== team && !e.out);
   const close = target ? foes.filter((e) => Math.hypot(e.x - target.x, e.y - target.y) < 90).length : 0;
@@ -148,7 +164,7 @@ const QUICK = { a0: 10, a1: 75, da: 7.5, p0: 0.35, p1: 1, dp: 0.09 };
 
 // The whole turn: maybe move, choose a nut, aim, add noise. Returns {move, nut, angle, power, tapAt, target}.
 export function* planTurnGen(sim, difficulty = 'medium', force = {}) {
-  const P = DIFF[difficulty] || DIFF.medium, rng = sim.rng('ai'), b = sim.b;
+  const P = params(difficulty), rng = sim.rng('ai'), b = sim.b;
   const q = sim.active();
   if (!q) return null;
   const T = { until: yield 0 };
@@ -185,6 +201,7 @@ export function* planTurnGen(sim, difficulty = 'medium', force = {}) {
   return { move, nut: kind, angle: Math.round(angle * 10) / 10, power: Math.round(power * 1000) / 1000, tapAt, target: target.id, sims: best.n, think: rng.range(P.think[0], P.think[1]) };
 }
 
+// difficulty: a tier name, or a number on the 0..3 scale from aiTier()
 export function planTurn(sim, difficulty, force) {
   const it = planTurnGen(sim, difficulty, force);
   let r = it.next();

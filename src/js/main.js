@@ -2,7 +2,7 @@
 // AI turns and saves. The rules live in sim/ (no DOM); this file only drives them.
 import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, STEAM_LEVELS, ACORNS, PURSE_CAP, NUT_CAP, clamp } from './sim/const.js';
 import { Sim, hashBattle, aiBuys, aiShop } from './sim/battle.js';
-import { planTurnGen, planTurn } from './sim/ai.js';
+import { planTurnGen, planTurn, aiTier, TIERS } from './sim/ai.js';
 import { Renderer, ART_BASE } from './gfx/renderer.js';
 import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
@@ -10,13 +10,13 @@ import { Hud } from './ui/hud.js';
 import { Screens } from './ui/screens.js';
 import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
-import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, DEFAULT_SAVE } from './save.js';
+import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
 const ALL = typeof LEVELS !== 'undefined' ? LEVELS : {};
 const STORY = Object.values(ALL).filter((L) => /^story-/.test(L.id)).sort((a, b) => a.n - b.n);
-const GUIDE = { easy: 0.4, medium: 0.22, hard: 0 };
+const GUIDE = { easy: 0.4, medium: 0.22, sharp: 0.1, hard: 0 };
 
 const App = {
   scene: 'boot', ready: false, loading: 0, paused: false, testPaused: false, time: 0, clock: null, steps: 0,
@@ -357,11 +357,15 @@ function battleOver() {
   const win = res.battleWinner === me;
   const myTurns = Math.ceil(b.turn.n / 2); // this family's turns: the count par is judged by
   const myStats = b.teams[me].stats;
-  let stars = null, unlock = null, next = null;
+  let stars = null, unlock = null, next = null, tier = null;
   if (App.setup.mode === 'story') {
     const outs = b.squirrels.filter((q) => q.team === me && q.out).length;
     stars = win ? 1 + (outs === 0 ? 1 : 0) + (myTurns <= L.par ? 1 : 0) : 0;
     s.story.stars[L.id] = Math.max(s.story.stars[L.id] || 0, stars);
+    // the difficulty each star was earned on: slot i holds the highest tier on which a run reached i + 1 stars
+    const ti = TIERS.indexOf(App.setup.difficulty);
+    tier = ti < 0 ? 2 : ti + 1;
+    s.story.starTier[L.id] = starTiers(s.story, L.id).map((t, i) => (i < stars ? Math.max(t, tier) : t));
     if (App.setup.purse != null) s.story.acorns = clamp(Math.floor(b.teams[me].acorns), 0, PURSE_CAP);
     if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
     if (win && STORY[L.n]) next = STORY[L.n].id;
@@ -372,7 +376,7 @@ function battleOver() {
   persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
-    win, practice: App.setup.mode === 'practice', stars, unlock, next,
+    win, practice: App.setup.mode === 'practice', stars, unlock, next, tier,
     banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
@@ -813,13 +817,16 @@ function updateVis(dt) {
   return busy;
 }
 
+// A Story level nudges the rival up or down the skill scale (its `skill` field); Quick Battles use the tier as picked.
+function rivalTier() { return aiTier(App.setup.difficulty || 'medium', App.setup.mode === 'story' && App.level ? App.level.skill : 0); }
+
 function updateAI() {
   const sim = App.sim, b = sim.b;
   if (App.scene !== 'battle' || screens.cur || App.paused || App.testPaused || b.phase !== 'aim' || App.pendingEnd) return false;
   // a plan made for another turn (tests and restarts can switch turns) is dropped
   if (App.aiActive && (App.aiActive.n !== b.turn.n || App.aiActive.team !== b.turn.team || App.aiActive.sim !== sim)) App.aiActive = null;
   if (b.teams[b.turn.team].human) return false;
-  const diff = App.setup.difficulty || 'medium';
+  const diff = rivalTier();
   if (!App.aiActive) App.aiActive = { gen: planTurnGen(sim, diff), t0: wallNow(), plan: null, done: false, n: b.turn.n, team: b.turn.team, sim };
   const A = App.aiActive;
   if (!A.done) {
@@ -971,7 +978,7 @@ window.addEventListener('pageshow', () => handleVisibility(document.hidden));
 // ---------------------------------------------------------------------------------------------------------------
 // boot
 installHooks(App, {
-  stepOnce, startBattle, showTitle, frameCamera, battleOver, planTurn, hashBattle, ALL, STORY, persist, applySettings,
+  stepOnce, startBattle, showTitle, rivalTier, frameCamera, battleOver, planTurn, hashBattle, ALL, STORY, persist, applySettings,
   idle: () => App.ready && App.loading === 0 && !(App.sim && App.sim.busy() && App.scene === 'battle') && !App.aiActive && !App.pendingEnd && !App.busy,
 });
 try {

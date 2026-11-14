@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { DIFF, TIERS, aiTier, planTurn } from '../src/js/sim/ai.js';
 import { Sim, aiBuys, aiShop, startInventory } from '../src/js/sim/battle.js';
 import { ACORNS, NUTS, NUT_CAP, PURSE_CAP } from '../src/js/sim/const.js';
 
@@ -26,6 +27,45 @@ const oldSave = () => ({
   story: { team: 0, unlocked: 4, stars: { 'story-01': 3, 'story-02': 2 }, nuts: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 5, wins: 3, kos: 7, bestShot: 40 }, resume: null,
+});
+
+test('S3-04 the skill tiers step down in aim noise and up in cunning from Easy to Hard, Sharp between Medium and Hard', () => {
+  assert.deepEqual(TIERS, ['easy', 'medium', 'sharp', 'hard']);
+  for (let i = 1; i < TIERS.length; i++) {
+    const a = DIFF[TIERS[i - 1]], b = DIFF[TIERS[i]];
+    assert.ok(b.sa < a.sa, `${TIERS[i]} aims truer than ${TIERS[i - 1]}`);
+    assert.ok(b.sp < a.sp, `${TIERS[i]} judges power better`);
+    assert.ok(b.special >= a.special && b.move >= a.move && b.bracket >= a.bracket, `${TIERS[i]} uses specials, moves and zeroes in at least as much`);
+  }
+  assert.ok(DIFF.sharp.sa > DIFF.hard.sa && DIFF.sharp.sa < DIFF.medium.sa);
+});
+
+test('S3-04 aiTier moves a rival along the scale, clamped, and an unknown name means Medium', () => {
+  assert.equal(aiTier('medium'), 1);
+  assert.equal(aiTier('medium', -0.4), 0.6);
+  assert.equal(aiTier('hard', 0.4), 3);
+  assert.equal(aiTier('easy', -0.4), 0);
+  assert.equal(aiTier('nightmare'), 1);
+  assert.equal(aiTier('sharp', undefined), 2);
+});
+
+test('S3-04 every Story level carries a skill that ramps up the campaign and averages out near zero', () => {
+  const sk = story.map((L) => L.skill);
+  assert.equal(sk.length, 12);
+  assert.ok(sk.every((n) => typeof n === 'number' && Math.abs(n) <= 0.5), 'offsets stay within half a tier');
+  for (let i = 1; i < sk.length; i++) assert.ok(sk[i] >= sk[i - 1], 'the rival never gets easier as the story goes on');
+  assert.ok(sk[0] < 0 && sk[11] > 0, 'an easier first battle and a harder finale');
+  assert.ok(Math.abs(sk.reduce((a, b) => a + b, 0) / sk.length) <= 0.1, 'the campaign as a whole is still the Medium of old');
+  assert.equal(all.gray.skill, undefined);
+});
+
+test('S3-04 the rival plans a turn at a fractional tier, and the plan is a legal throw', () => {
+  for (const tier of [0.6, 1.4, 2.5, 3]) {
+    const sim = new Sim(all['story-03'], { seed: 11, mode: 'story', human: [false, false], loadout: 'story', unlocked: ['chinquapin', 'pecan'] });
+    const p = planTurn(sim, tier);
+    assert.ok(p && Number.isFinite(p.angle) && p.power > 0 && p.power <= 1, `tier ${tier} made a plan`);
+    assert.ok(sim.throwNut(p));
+  }
 });
 
 test('S3-01 the satchel shop: both families start from the same purse and buy by the same rules', () => {
@@ -80,4 +120,62 @@ test('S3-01 the purse survives a write and a reload, is held at the cap, and a p
   assert.equal((await r.tab()).s.story.acorns, PURSE_CAP);
   const bad = oldSave(); bad.story.acorns = 'lots';
   assert.equal((await rig(bad).tab()).s.story.acorns, ACORNS.start);
+});
+
+test('S3-01 a save from before this wave loads with the starting purse, no star tiers, and nothing lost', async () => {
+  const r = rig(oldSave()); const a = await r.tab();
+  assert.equal(a.s.story.acorns, ACORNS.start);
+  assert.deepEqual(a.s.story.starTier, {});
+  assert.equal(a.s.story.stars['story-01'], 3);
+  assert.equal(a.s.story.unlocked, 4);
+  assert.deepEqual(a.m.starTiers(a.s.story, 'story-01'), [2, 2, 2], 'old stars count as earned on Medium');
+  assert.deepEqual(a.m.starTiers(a.s.story, 'story-02'), [2, 2, 0]);
+  assert.deepEqual(a.m.starTiers(a.s.story, 'story-09'), [0, 0, 0]);
+  assert.equal(r.saved.story.acorns, undefined, 'reading a save writes nothing');
+});
+
+test('S3-01 the purse and the star tiers survive a write and a reload, and the purse is capped', async () => {
+  const r = rig(oldSave()); const a = await r.tab();
+  a.s.story.acorns = 135; a.s.story.starTier['story-02'] = [3, 3, 0]; a.s.story.stars['story-02'] = 2; a.write('result');
+  assert.equal(r.saved.story.acorns, 135);
+  assert.deepEqual(r.saved.story.starTier['story-02'], [3, 3, 0]);
+  const b = await r.tab();
+  assert.equal(b.s.story.acorns, 135);
+  assert.deepEqual(b.s.story.starTier['story-02'], [3, 3, 0]);
+  b.s.story.acorns = 99999; b.write('result');
+  const c = await r.tab();
+  assert.equal(c.s.story.acorns, PURSE_CAP, 'a hand-edited purse is held at the cap');
+});
+
+test('S3-01 a damaged purse or tier record falls back to the defaults without touching the rest', async () => {
+  const bad = oldSave(); bad.story.acorns = 'lots'; bad.story.starTier = { 'story-01': [9, 1], 'story-02': [3, 2, 1], 'story-03': 'x' };
+  const a = await rig(bad).tab();
+  assert.equal(a.s.story.acorns, ACORNS.start);
+  assert.deepEqual(a.s.story.starTier, { 'story-02': [3, 2, 1] });
+  assert.equal(a.s.story.stars['story-01'], 3);
+  const neg = oldSave(); neg.story.acorns = -5; neg.settings.difficulty = 'nightmare'; neg.quick.difficulty = 7;
+  const b = await rig(neg).tab();
+  assert.equal(b.s.story.acorns, ACORNS.start);
+  assert.equal(b.s.settings.difficulty, 'medium');
+  assert.equal(b.s.quick.difficulty, 'medium');
+  const sharp = oldSave(); sharp.settings.difficulty = 'sharp';
+  assert.equal((await rig(sharp).tab()).s.settings.difficulty, 'sharp');
+});
+
+test('S3-04 two tabs earning on different tiers merge to the highest tier per star', async () => {
+  const r = rig(oldSave()); const a = await r.tab(), b = await r.tab();
+  a.s.story.stars['story-03'] = 3; a.s.story.starTier['story-03'] = [4, 4, 4]; a.s.story.acorns = 80; a.write('result');
+  b.s.story.stars['story-03'] = 2; b.s.story.starTier['story-03'] = [2, 2, 0]; b.s.story.acorns = 150; b.write('result');
+  assert.deepEqual(r.saved.story.starTier['story-03'], [4, 4, 4]);
+  assert.equal(r.saved.story.stars['story-03'], 3);
+  assert.equal(r.saved.story.acorns, 150, 'the purse is the last battle written');
+});
+
+test('S3-01 Reset progress puts the purse and the tiers back to the start', async () => {
+  const r = rig(oldSave()); const a = await r.tab();
+  a.s.story.acorns = 200; a.s.story.starTier['story-01'] = [4, 4, 4]; a.write('result');
+  const settings = a.s.settings; for (const k of Object.keys(a.s)) delete a.s[k];
+  Object.assign(a.s, a.m.DEFAULT_SAVE(), { settings }); a.write('reset');
+  assert.equal(r.saved.story.acorns, ACORNS.start);
+  assert.deepEqual(r.saved.story.starTier, {});
 });

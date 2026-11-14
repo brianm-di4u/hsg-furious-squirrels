@@ -176,4 +176,102 @@ export const tests = [
       t.equal(await purseText(t), 'Your acorns: 60');
     },
   },
+  {
+    name: 'S3-04 stars are recorded with the difficulty they were earned on, and a lower tier never lowers the record',
+    async run(t) {
+      await profile(t, { unlocked: 2, stars: { 'story-02': 2 } }, { difficulty: 'hard' });
+      await t.game('act', 'menu', 'play', { v: 'story-01' });
+      await t.game('scene', 'results');
+      let sv = await saved(t);
+      t.equal(sv.story.stars['story-01'], 3);
+      t.equal(JSON.stringify(sv.story.starTier['story-01']), '[4,4,4]', 'three stars on Hard');
+      t.expect(/Played on Hard/.test(await t.page.textContent('#screens')), 'the results say which tier was played');
+      await snap(t, 'S3-04-results-hard');
+      // replay on Easy: the Hard record stays
+      await t.game('act', 'menu', 'set', { k: 'difficulty', v: 'easy' });
+      await t.game('act', 'menu', 'play', { v: 'story-01' });
+      await t.game('scene', 'results');
+      sv = await saved(t);
+      t.equal(JSON.stringify(sv.story.starTier['story-01']), '[4,4,4]', 'an Easy win does not lower a Hard record');
+      // a Sharp win on a level whose two old stars were Medium
+      await t.game('act', 'menu', 'set', { k: 'difficulty', v: 'sharp' });
+      await t.game('act', 'menu', 'play', { v: 'story-02' });
+      await t.page.click('[data-act="prepGo"]');
+      await t.game('scene', 'results');
+      sv = await saved(t);
+      t.equal(sv.story.stars['story-02'], 3, 'the third star was won');
+      t.equal(JSON.stringify(sv.story.starTier['story-02']), '[3,3,3]', 'all three on Sharp (the old two were Medium, now beaten)');
+      await t.game('act', 'menu', 'story');
+      const marks = await t.page.$$eval('.lvl .tier', (e) => e.map((x) => x.closest('.lvl').dataset.v + ':' + x.textContent));
+      t.equal(marks.join(','), 'story-01:Hard,story-02:Sharp', 'the map marks the tier of each level\'s best stars');
+      t.expect(/3 stars on Hard/.test(await t.page.$eval('.lvl[data-v="story-01"]', (e) => e.getAttribute('aria-label'))), 'and says so to a screen reader');
+      await snap(t, 'S3-04-story-map');
+      await t.checkLayout();
+    },
+  },
+  {
+    name: 'S3-04 Sharp is offered between Medium and Hard on the Story map and in Quick Battle, and is saved',
+    async run(t) {
+      await profile(t, { unlocked: 1 });
+      const seg = () => t.page.$$eval('.seg .btn[data-k="difficulty"]', (b) => b.map((x) => x.textContent));
+      t.equal((await seg()).join('|'), 'Easy|Medium|Sharp|Hard', 'Story map');
+      await click(t, '.seg .btn[data-k="difficulty"][data-v="sharp"]');
+      t.equal((await t.state()).settings.difficulty, 'sharp');
+      await snap(t, 'S3-04-difficulty-row');
+      await t.checkLayout();
+      await t.reload();
+      t.equal((await t.state()).settings.difficulty, 'sharp', 'survives a reload');
+      await t.game('act', 'menu', 'quick');
+      t.equal((await t.page.$$eval('.btn[data-k="difficulty"]', (b) => b.map((x) => x.textContent))).join('|'), 'Easy|Medium|Sharp|Hard', 'Quick Battle rival skill');
+      // a hand-edited save with a tier that does not exist falls back to Medium
+      const sv = await saved(t); sv.settings.difficulty = 'nightmare';
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, sv]);
+      await t.reload();
+      t.equal((await t.state()).settings.difficulty, 'medium');
+    },
+  },
+  {
+    name: 'S3-04 a Story level shifts the rival along the skill scale; Quick Battle uses the tier as picked',
+    viewports: ['desktop'],
+    async run(t) {
+      await profile(t, { unlocked: 12 }, { difficulty: 'medium' });
+      const tierOn = async (id) => { await t.game('act', 'menu', 'play', { v: id }); if ((await t.state()).screen === 'prep') await t.page.click('[data-act="prepGo"]'); return (await t.state()).rivalTier; };
+      t.equal(await tierOn('story-01'), 0.6, 'a gentler rival in the first battle on Medium');
+      t.equal(await tierOn('story-06'), 1, 'today\'s Medium in the middle of the story');
+      t.equal(await tierOn('story-12'), 1.4, 'a harder rival in the finale');
+      await t.game('act', 'menu', 'set', { k: 'difficulty', v: 'hard' });
+      t.equal(await tierOn('story-12'), 3, 'Hard is as hard as the scale goes');
+      await t.game('act', 'menu', 'set', { k: 'difficulty', v: 'easy' });
+      t.equal(await tierOn('story-01'), 0, 'and Easy as easy');
+      await t.game('newGame', { levelId: 'story-12', difficulty: 'sharp', seed: 4 });
+      t.equal((await t.state()).rivalTier, 2, 'a Quick Battle ignores the level skill');
+    },
+  },
+  {
+    name: 'S3-04 the Sharp rival plans in short slices, like the others',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('newGame', { levelId: 'story-09', seed: 6, difficulty: 'sharp' });
+      await t.page.waitForFunction(() => window.__FS.loading === 0, null, { timeout: 30000 });
+      await t.waitFrames(30);
+      await t.page.evaluate(() => {
+        const A = window.__FS; A.sim.b.teams.forEach((tm) => { tm.human = false; });
+        window.__slices = [];
+        A.aiActive = null; A.kick();
+        const hook = () => {
+          const g = A.aiActive && A.aiActive.gen;
+          if (!g) return requestAnimationFrame(hook);
+          const next = g.next.bind(g);
+          g.next = (v) => { const t0 = performance.now(), r = next(v); window.__slices.push(performance.now() - t0); return r; };
+        };
+        hook();
+      });
+      await t.page.waitForFunction(() => window.__FS.aiActive && window.__FS.aiActive.done, null, { timeout: 30000 });
+      const sl = await t.page.evaluate(() => window.__slices);
+      const worst = [...sl].sort((a, b) => a - b)[Math.floor(sl.length * 0.9)] || 0;
+      t.log(`Sharp rival plan: ${sl.length} slices, 90th percentile ${worst.toFixed(1)} ms`);
+      t.expect(sl.length > 40, `the plan ran in ${sl.length} slices`);
+      t.expect(worst < 20, `planning slices blocked the page for ${worst.toFixed(1)} ms`);
+    },
+  },
 ];
