@@ -11,7 +11,7 @@
     "balance": "node tools/balance.mjs",
     "build": "node shared/tools/inline.mjs .",
     "test": "node shared/test-harness/run.mjs .",
-    "pretest": "node --test tests-node/save.test.mjs",
-    "test:save": "node --test tests-node/save.test.mjs"
+    "pretest": "node --test tests-node/save.test.mjs tests-node/council-w2-b.test.mjs",
+    "test:save": "node --test tests-node/save.test.mjs tests-node/council-w2-b.test.mjs"
   }
 }

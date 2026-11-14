@@ -1,7 +1,7 @@
 // Furious Squirrels: app shell. Owns the battle Sim, the renderer, HUD and screens, input, the camera director,
 // AI turns and saves. The rules live in sim/ (no DOM); this file only drives them.
-import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, STEAM_LEVELS, clamp } from './sim/const.js';
-import { Sim, hashBattle } from './sim/battle.js';
+import { DT, W, NUTS, NUT_ORDER, TEAMS, SQ_UP, ANGLE_MIN, ANGLE_MAX, BIRDS, STEAM_LEVELS, ACORNS, PURSE_CAP, NUT_CAP, clamp } from './sim/const.js';
+import { Sim, hashBattle, aiBuys, aiShop } from './sim/battle.js';
 import { planTurnGen, planTurn } from './sim/ai.js';
 import { Renderer, ART_BASE } from './gfx/renderer.js';
 import { SKY } from './gfx/looks.js';
@@ -85,6 +85,21 @@ function freshSave() { refreshSave(App.save, saveConflict); applySettings(); che
 // battles
 function storyInventory(n) { return STORY.filter((L) => L.n <= n && L.unlock).map((L) => L.unlock); }
 
+// The special nuts a battle can offer in the satchel shop: none for Practice and "Acorns only".
+function packKinds(setup) {
+  if (setup.mode === 'practice' || setup.loadout === 'acorn') return [];
+  const kinds = setup.loadout === 'story' ? setup.unlocked || [] : NUT_ORDER;
+  return NUT_ORDER.filter((k) => k !== 'acorn' && kinds.includes(k));
+}
+// Story battles start from the banked purse, Quick Battles from the usual 60. The satchel screen shows when there is
+// something to buy; otherwise the battle starts straight away (battle 1 has no specials to spend on).
+function openPrep(setup) {
+  const purse = setup.mode === 'story' ? App.save.story.acorns : ACORNS.start;
+  const full = { ...setup, purse, buys: {} };
+  if (!packKinds(full).length) return startBattle(full);
+  const L = ALL[setup.levelId];
+  screens.show('prep', { setup: full, bought: {}, kinds: packKinds(full), name: L.n && setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name });
+}
 function startBattle(setup) {
   let L = ALL[setup.levelId];
   if (!L) { showTitle(); showNotice('That battlefield could not be found'); return; }
@@ -109,6 +124,13 @@ function startBattle(setup) {
     practice: setup.mode === 'practice',
   };
   if (setup.loadout === 'acorn') { opts.loadout = 'story'; opts.unlocked = []; }
+  // the shop before round one (S3-01): both families start from the same purse; the player packs what was bought on
+  // the satchel screen and the rival packs by its own rules, so neither has a free edge
+  if (setup.purse != null && setup.mode !== 'practice') {
+    const buys = [{}, {}];
+    buys[playerTeam] = setup.buys || {}; buys[1 - playerTeam] = aiBuys(packKinds(setup), setup.purse);
+    opts.acorns = [setup.purse, setup.purse]; opts.buys = buys;
+  }
   if (setup.mode === 'practice') opts.loadout = 'practice';
   App.setup = { ...setup, seed };
   const B = setup.battle;
@@ -266,12 +288,12 @@ App.onMenu = (act, d) => {
       const L = ALL[d.v];
       if (!L) return;
       if (L.practice) return App.onMenu('practice', {});
-      if (/^story-/.test(L.id)) return startBattle({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
+      if (/^story-/.test(L.id)) return openPrep({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
       return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team, birds: s.quick.birds });
     }
     case 'quick': freshSave(); fixQuickLevel(); return screens.show('quick', { levels: STORY });
     case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist('quick', d.k); return screens.refresh();
-    case 'quickGo': { freshSave(); fixQuickLevel(); const q = s.quick; return startBattle({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
+    case 'quickGo': { freshSave(); fixQuickLevel(); const q = s.quick; return openPrep({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
@@ -288,11 +310,19 @@ App.onMenu = (act, d) => {
       return showTitle();
     case 'resume': App.paused = false; screens.hide(); kick(); return;
     case 'restart': return startBattle({ ...App.setup, battle: null, seed: undefined });
-    case 'again': return startBattle({ ...App.setup, battle: null, seed: undefined });
+    case 'again': if (App.setup.mode === 'story') return App.onMenu('play', { v: App.setup.levelId }); return startBattle({ ...App.setup, battle: null, seed: undefined, buys: App.setup.buys });
     case 'menu': if (App.setup?.mode === 'story') { s.resume = null; persist('clear'); } else persist(); return showTitle();
     case 'resumeBattle': { const r = s.resume; if (r) return startBattle({ ...r.setup, battle: r.battle }); return; }
+    case 'prepBuy': case 'prepUndo': {
+      const pd = screens.data, k = d.kind, left = pd.setup.purse - Object.entries(pd.bought).reduce((n, [q, c]) => n + c * NUTS[q].price, 0), have = 1 + (pd.bought[k] || 0);
+      if (act === 'prepBuy' && have < NUT_CAP && left >= NUTS[k].price) { pd.bought[k] = (pd.bought[k] || 0) + 1; sfx('buy'); say(`${NUTS[k].name} packed. ${left - NUTS[k].price} acorns left.`); }
+      else if (act === 'prepUndo' && pd.bought[k]) { pd.bought[k]--; say(`${NUTS[k].name} taken back. ${left + NUTS[k].price} acorns left.`); }
+      return screens.refresh();
+    }
+    case 'prepGo': { const pd = screens.data; return startBattle({ ...pd.setup, buys: { ...pd.bought } }); }
+    case 'prepBack': return App.onMenu(screens.data.setup.mode === 'story' ? 'story' : 'quick');
     case 'buy': { const r = App.sim.buy(App.sim.b.teams.findIndex((t) => t.human), d.kind); if (r.ok) sfx('buy'); return screens.refresh(); }
-    case 'nextRound': playTheme(themeFor(App.level)); aiShop(); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
+    case 'nextRound': playTheme(themeFor(App.level)); App.sim.b.teams.forEach((tm, t) => { if (!tm.human) aiShop(App.sim, t); }); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
     case 'locked': return;
     default: return;
   }
@@ -321,15 +351,6 @@ function showTitle() {
   kick();
 }
 
-function aiShop() {
-  const b = App.sim.b;
-  b.teams.forEach((tm, t) => {
-    if (tm.human) return;
-    const pref = ['walnut', 'pecan', 'chinquapin', 'sweetgum', 'hedgeapple', 'hickory'];
-    for (let pass = 0; pass < 3; pass++) for (const k of pref) App.sim.buy(t, k);
-  });
-}
-
 function battleOver() {
   const sim = App.sim, b = sim.b, res = b.result, L = App.level, s = App.save;
   const me = b.teams.findIndex((t) => t.human);
@@ -341,6 +362,7 @@ function battleOver() {
     const outs = b.squirrels.filter((q) => q.team === me && q.out).length;
     stars = win ? 1 + (outs === 0 ? 1 : 0) + (myTurns <= L.par ? 1 : 0) : 0;
     s.story.stars[L.id] = Math.max(s.story.stars[L.id] || 0, stars);
+    if (App.setup.purse != null) s.story.acorns = clamp(Math.floor(b.teams[me].acorns), 0, PURSE_CAP);
     if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
     if (win && STORY[L.n]) next = STORY[L.n].id;
     s.resume = null;
@@ -351,6 +373,7 @@ function battleOver() {
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
     win, practice: App.setup.mode === 'practice', stars, unlock, next,
+    banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
   });

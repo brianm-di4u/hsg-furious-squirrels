@@ -73,7 +73,7 @@ const TEMPLATES = {
     return `
     <div class="panel" role="dialog" aria-label="Story map">
       <h2>The Valley Nut Feud</h2>
-      <p class="sub">${TEAMS[st.team ?? 0].name} vs. ${TEAMS[1 - (st.team ?? 0)].name}. Win battles to unlock new nuts. <span class="label-fiction">game fiction</span></p>
+      <p class="sub">${TEAMS[st.team ?? 0].name} vs. ${TEAMS[1 - (st.team ?? 0)].name}. Win battles to unlock new nuts, and carry your acorns to the next one. <span class="label-fiction">game fiction</span></p>
       <div class="map">${levels.map((L, i) => {
         const open = L.n <= st.unlocked, s = st.stars[L.id] || 0;
         return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars` : ', locked'}">
@@ -102,6 +102,19 @@ const TEMPLATES = {
     </div>`;
   },
 
+  prep: (app, { setup, bought, name, kinds }) => {
+    const spent = Object.entries(bought).reduce((n, [k, c]) => n + c * NUTS[k].price, 0), left = setup.purse - spent;
+    return `
+    <div class="panel" role="dialog" aria-label="Pack your satchel">
+      <h2>Pack your satchel</h2>
+      <p class="sub">${name}. Spend acorns on special nuts for this battle (up to ${NUT_CAP} of each). ${setup.mode === 'story' ? 'What you leave unspent stays in your purse. ' : ''}<span class="label-fiction">game rules</span></p>
+      <p><b>Your acorns: ${left}</b> <small>(prices in acorns)</small></p>
+      ${kinds.map((k) => { const have = 1 + (bought[k] || 0); return `<div class="nutrow pack"><canvas data-nut="${k}"></canvas><div class="what"><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div>
+        <span class="price">${have}/${NUT_CAP}</span><span class="steps">${btn('prepUndo', 'Undo', `data-kind="${k}" aria-label="Take back one ${NUTS[k].name}" ${bought[k] ? '' : 'disabled'}`, 'btn small')}${btn('prepBuy', `Buy · ${NUTS[k].price}`, `data-kind="${k}" aria-label="Buy a ${NUTS[k].name} for ${NUTS[k].price} acorns" ${have >= NUT_CAP || left < NUTS[k].price ? 'disabled' : ''}`, 'btn small')}</span></div>`; }).join('')}
+      <nav class="menu row">${btn('prepGo', 'Start battle', 'autofocus', 'btn primary')}${btn('prepBack', 'Back', 'data-back')}</nav>
+    </div>`;
+  },
+
   shop: (app, { team, round, winner }) => {
     const tm = app.sim.b.teams[team];
     return `
@@ -126,8 +139,9 @@ const TEMPLATES = {
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>
         <div><span>Knockouts</span><b>${d.stats.kos}</b></div><div><span>Biggest hit</span><b>${d.stats.best}</b></div>
-        <div><span>Turns</span><b>${d.turns}</b></div><div><span>Acorns</span><b>${d.acorns}</b></div>
+        <div><span>Turns</span><b>${d.turns}</b></div>
       </div>` : ''}
+      ${d.banked != null ? `<p class="banked">Acorns banked: <b>${d.banked}</b> <small>(kept for your next battle)</small></p>` : ''}
       ${d.fact ? `<div class="notes" role="note"><h3>Field Notes</h3>${d.fact.html}<span class="src">Source: ${d.fact.source}</span></div>` : ''}
       <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${btn('again', 'Play again', d.next ? '' : 'autofocus')}${btn('menu', 'Menu', 'data-back')}</nav>
     </div>`,
@@ -141,14 +155,15 @@ const TEMPLATES = {
   help: () => `
     <div class="panel" role="dialog" aria-label="How to play">
       <h2>How to Play</h2>
-      <p class="sub">${FICTION} <span class="label-fiction">Scroll for all six tips and the nut guide ↓</span></p>
+      <p class="sub">${FICTION} <span class="label-fiction">Scroll for all seven tips and the nut guide ↓</span></p>
       <div class="cards">
         <div class="card"><b>1. Aim</b><br>Drag back from anywhere like a slingshot: the direction sets the angle, the length sets the power. Keys: ←/→ angle, ↑/↓ power (Shift for big steps).</div>
         <div class="card"><b>2. Throw</b><br>Let go, press <b>Throw</b>, or press Space/Enter.</div>
         <div class="card"><b>3. Tap for the trick</b><br>While a special nut flies, tap or press Space once to trigger its trick.</div>
         <div class="card"><b>4. Scamper</b><br>Press <b>Move</b> (or M), then pick a glowing perch on your own mountain. Each turn has a little stamina.</div>
         <div class="card"><b>5. Wind and steam</b><br>The flag shows wind (0–10). The steam over Bathhouse Row lifts nuts that fly through it (game rule).</div>
-        <div class="card"><b>6. Knock them out!</b><br>Hits shake a squirrel's grip loose. At zero grip, or after a long tumble to the ground, it's out: into the leaf pile, unhurt. Out of squirrels, out of the round.</div>
+        <div class="card"><b>6. Spend your acorns</b><br>Hits, cracked branches and knockouts earn acorns. Before a battle, pack special nuts in the satchel shop. In the Story, acorns you keep carry over.</div>
+        <div class="card"><b>7. Knock them out!</b><br>Hits shake a squirrel's grip loose. At zero grip, or after a long tumble to the ground, it's out: into the leaf pile, unhurt. Out of squirrels, out of the round.</div>
       </div>
       <h3>Controls</h3>
       <div class="cards">

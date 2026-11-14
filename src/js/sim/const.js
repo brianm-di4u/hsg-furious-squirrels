@@ -37,6 +37,9 @@ export const NUT_ORDER = ['acorn', 'chinquapin', 'pecan', 'walnut', 'hickory', '
 export const NUT_CAP = 3;
 
 export const ACORNS = { hit: 4, branch: 6, ko: 20, roundWin: 40, roundPlayed: 15, start: 60 };
+// The Story purse: acorns carried from battle to battle, spent in the satchel shop before the next one. Capped so
+// replaying an easy battle cannot stockpile without end (topping up all six specials to the limit costs 480).
+export const PURSE_CAP = 240;
 
 // Birds over the valley (MECHANICS.md §6b): airborne obstacles rolled fresh each turn. r: hit radius; v: air
 // speed; alt: height band above the valley floor; keep: how much of a nut's speed survives a glancing bounce;

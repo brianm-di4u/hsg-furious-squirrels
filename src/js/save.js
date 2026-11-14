@@ -1,5 +1,6 @@
 // Saves: one versioned JSON object in localStorage, wrapped in try/catch with an in-memory fallback so the game
 // works when storage is blocked. Pattern from games/Cart Racing/src/js/save.js (Hot Springs Games, MIT).
+import { ACORNS, PURSE_CAP } from './sim/const.js';
 const KEY = 'hsg-furious-squirrels-v1';
 const STORY_LEVELS = 12;
 let mem = null;
@@ -7,7 +8,7 @@ let mem = null;
 export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
-  story: { team: null, unlocked: 1, stars: {}, nuts: [] },
+  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0 },
   resume: null,
@@ -35,6 +36,8 @@ function decoded(s) {
   out.story.stars = { ...(object(out.story.stars) ? out.story.stars : {}) };
   out.story.nuts = Array.isArray(out.story.nuts) ? out.story.nuts.slice() : [];
   for (const key of ['unlocked']) if (!number(out.story[key])) out.story[key] = d.story[key];
+  // the Story purse (acorns carried between battles); a save from before it has none and loads with the starting purse
+  out.story.acorns = number(out.story.acorns) ? Math.min(PURSE_CAP, Math.floor(out.story.acorns)) : d.story.acorns;
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
@@ -85,13 +88,14 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0 };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, acorns: null };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
     if (s.story.unlocked > before.story.unlocked) earned.unlocked = s.story.unlocked;
     for (const key of ['battles', 'wins', 'kos']) earned.stats[key] = Math.max(0, s.stats[key] - before.stats[key]);
     if (s.stats.bestShot > before.stats.bestShot) earned.bestShot = s.stats.bestShot;
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    if (number(s.story.acorns) && s.story.acorns !== before.story.acorns) earned.acorns = s.story.acorns;
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -117,6 +121,7 @@ function merged(latest, callback) {
     value.story.nuts = [...new Set([...value.story.nuts, ...e.nuts])];
     for (const key of ['battles', 'wins', 'kos']) value.stats[key] += e.stats[key];
     value.stats.bestShot = Math.max(value.stats.bestShot, e.bestShot);
+    if (e.acorns != null) value.story.acorns = e.acorns;
   } else notice(callback);
   let resumeApplied = false;
   if (pending.resume) {

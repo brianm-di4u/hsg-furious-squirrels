@@ -140,6 +140,7 @@ x  += vx*DT;  y += vy*DT;  then sweep-test terrain, trees, squirrels (the owner 
   - Prices: chinquapin 30, pecan 30, hickory 35, sweetgum 40, walnut 45, hedge apple 60.
   - The AI buys from a per-difficulty preference list.
   - Acorns (the nut type) are unlimited.
+- **Satchel shop (before round one):** every Story battle that has a special nut unlocked, and every Quick Battle with specials, opens a shop first. Both families start from the same purse and the rival packs by the same rules (`aiBuys`), so neither has a free edge. The Story purse (`story.acorns`, start 60, capped at 240) is what the player has left at the end of each battle; Quick Battles start from 60 and never touch it. Constants: `ACORNS.start`, `PURSE_CAP` in `sim/const.js`.
 
 ## 8. AI
 `src/js/sim/ai.js` aims by search with **the same simulator**:
@@ -220,7 +221,7 @@ Caches are rebuilt only on size or DPR change. There is no per-frame `shadowBlur
 - Key `hsg-furious-squirrels-v1`: one versioned JSON object, wrapped in try/catch with an in-memory fallback. Copied from Tub Rally's `save.js`.
 - Fields:
   - `settings` {sound, music, volume, reducedMotion, aimGuide, turnTimer, hudScale, keys}
-  - `story` {unlocked: n, stars: {levelId: 0–3}, nuts: [...]}
+  - `story` {unlocked: n, stars: {levelId: 0–3}, nuts: [...], acorns: n (the purse)}
   - `quick` {last setup, including `birds`: off | some | lots}
   - `stats` {battles, wins, kos, bestShot}
   - optional `resume`: the `battle` object, saved at the start of each turn, with `levelRev` (dropped when the level's layout revision changes)

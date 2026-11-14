@@ -183,6 +183,7 @@ export const tests = [
       t.equal(s.save.story.stars['story-01'], 2, 'stars survive a reload');
       // a story battle saves a resume point at each human turn
       await t.game('act', 'menu', 'play', { v: 'story-02' });
+      await t.page.evaluate(() => { const b = document.querySelector('[data-act="prepGo"]'); if (b) b.click(); }); // the satchel shop opens first when there is something to buy
       await t.page.evaluate(() => { const S = window.__FS.sim; if (S.b.turn.team !== 0) { S.b.turn.team = 0; S.pickSquirrel(); window.__FS.aiActive = null; } });
       await t.game('act', 'menu', 'resume');
       await t.page.evaluate(() => { const S = window.__FS.sim; S.nextTurn(); S.nextTurn(); });

@@ -156,6 +156,14 @@ body.reduced .stars .on { animation: none; }
 .lvl { font-size: calc(13.5px * var(--text-scale)) !important; min-height: 84px; padding: 8px; border-radius: 14px; border: 3px solid var(--sign-edge); background: var(--sign-dark); color: var(--cream); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font: 700 calc(13px * var(--text-scale)) / 1.15 var(--font-ui); text-align: center; }
 .lvl .n { font: 900 calc(22px * var(--text-scale)) var(--font-head); color: var(--gold); }
 .lvl .st { color: var(--gold); letter-spacing: 1px; }
+.banked { margin: 6px 0; }
+.nutrow.pack { flex-wrap: wrap; row-gap: 4px; }
+.nutrow.pack .what { flex: 1 1 120px; min-width: 0; }
+.nutrow.pack .steps { display: flex; gap: 8px; margin-left: auto; }
+.nutrow.pack .what { margin-right: 0; }
+.nutrow.pack .price { margin-left: 0; }
+.nutrow.pack .btn { width: auto; min-width: 64px; min-height: 44px; }
+.nutrow.pack .btn[data-act="prepBuy"] { width: 112px; }
 .lvl[disabled] { opacity: 1; background: #2E251C; color: #D8CCB0; border-style: dashed; }
 .lvl[disabled] .n { color: #B8A888; }
 @media (max-width: 520px) { .map { grid-template-columns: repeat(3, 1fr); } .panel { padding: 16px 14px 14px; } .panel h2 { font-size: calc(26px * var(--text-scale)); } .logo h1 { font-size: calc(42px * var(--text-scale)); } }

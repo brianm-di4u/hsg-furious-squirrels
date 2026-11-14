@@ -149,6 +149,7 @@ tests.push({
     await t.reload();
     await t.game('act', 'menu', 'quick');
     await t.game('act', 'menu', 'quickGo');
+    await t.page.evaluate(() => { const b = document.querySelector('[data-act="prepGo"]'); if (b) b.click(); }); // the satchel shop opens first when there is something to buy
     await t.waitFrames(3);
     const s = await t.state();
     t.equal(s.scene, 'battle', 'the battle starts');

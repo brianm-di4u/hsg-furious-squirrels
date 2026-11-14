@@ -18,7 +18,8 @@ const NAMES = [
 ];
 
 export class Sim {
-  // opts: {seed, mode, difficulty, teamSize, rounds, wind, steam, birds, loadout, human: [bool, bool], practice}
+  // opts: {seed, mode, difficulty, teamSize, rounds, wind, steam, birds, loadout, human: [bool, bool], practice,
+  //        acorns: [n, n] (starting purse per family), buys: [{kind: n}, {kind: n}] (satchel shop before round one)}
   constructor(level, opts = {}, battle = null) {
     this.level = level;
     this.queue = []; // events for the renderer/audio, drained each frame
@@ -43,6 +44,9 @@ export class Sim {
       birdLevel: opts.birds in BIRD_LEVELS ? opts.birds : 'off', birds: [], birdT: 0,
     };
     if (this.b.practice) { this.b.teams[1].human = false; this.b.birdLevel = 'off'; }
+    // the shop before round one: each family starts from its own purse and buys what it asked for (the same rules as buy())
+    if (Array.isArray(opts.acorns)) this.b.teams.forEach((tm, t) => { if (opts.acorns[t] >= 0) tm.acorns = opts.acorns[t]; });
+    if (Array.isArray(opts.buys)) this.b.teams.forEach((tm, t) => { for (const [k, n] of Object.entries(opts.buys[t] || {})) for (let i = 0; i < n; i++) this.buy(t, k); });
     this.startRound(true);
   }
 
@@ -497,7 +501,7 @@ function isDescendant(def, i, anc) {
   return false;
 }
 
-function startInventory(loadout, unlocked) {
+export function startInventory(loadout, unlocked) {
   const inv = {};
   const kinds = loadout === 'story' && unlocked ? unlocked : NUT_ORDER;
   for (const k of NUT_ORDER) if (k !== 'acorn' && kinds.includes(k)) inv[k] = loadout === 'practice' ? 99 : 1;
@@ -514,6 +518,25 @@ export function hashBattle(b) {
   mix(b.wind); mix(b.turn.n); mix(b.turn.team);
   for (const t of b.teams) { mix(t.acorns); for (const k of Object.keys(t.inventory)) mix(t.inventory[k]); }
   return h >>> 0;
+}
+
+// What the rival family buys, most useful first (it goes through the list up to three times, like a player topping up).
+export const AI_SHOP_ORDER = ['walnut', 'pecan', 'chinquapin', 'sweetgum', 'hedgeapple', 'hickory'];
+// The satchel the rival packs: {kind: n} from the kinds it has (one of each to start) and a purse, by the same rules as buy().
+export function aiBuys(kinds, acorns) {
+  const have = {}, buys = {};
+  for (const k of kinds) have[k] = 1;
+  let left = acorns;
+  for (let pass = 0; pass < 3; pass++) for (const k of AI_SHOP_ORDER) {
+    if (!(k in have) || have[k] >= NUT_CAP || left < NUTS[k].price) continue;
+    left -= NUTS[k].price; have[k]++; buys[k] = (buys[k] || 0) + 1;
+  }
+  return buys;
+}
+
+// Between rounds the rival tops its satchel up with whatever it can afford.
+export function aiShop(sim, team) {
+  for (let pass = 0; pass < 3; pass++) for (const k of AI_SHOP_ORDER) sim.buy(team, k);
 }
 
 export { W };

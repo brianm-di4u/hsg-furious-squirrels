@@ -59,6 +59,7 @@ export const tests = [
       await t.shot('r10-shop');
       // a real battle played out by the AI for both sides, so the results show real numbers
       await t.game('act', 'menu', 'play', { v: 'story-06' });
+      await t.page.evaluate(() => { const b = document.querySelector('[data-act="prepGo"]'); if (b) b.click(); }); // the satchel shop opens first when there is something to buy
       await t.page.evaluate(() => {
         const A = window.__FS, S = A.sim; A.testPaused = true;
         for (let i = 0; i < 80 && S.b.phase !== 'battleEnd'; i++) {
