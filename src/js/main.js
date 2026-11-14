@@ -298,6 +298,8 @@ App.onMenu = (act, d) => {
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
     case 'credits': return screens.show('credits');
+    case 'records': freshSave(); return screens.show('records', { levels: STORY, from: d.from || '' });
+    case 'recordsBack': return d.from === 'story' ? screens.show('story', { levels: STORY }) : showTitle();
     case 'set': {
       const v = d.v === 'true' ? true : d.v === 'false' ? false : d.v === 'auto' && d.k === 'reducedMotion' ? null : isNaN(+d.v) || d.v === '' ? d.v : +d.v;
       s.settings[d.k] = v; persist('settings', d.k); applySettings(); App.guideKey = '';
@@ -351,6 +353,7 @@ function showTitle() {
   kick();
 }
 
+const TIER_KEYS = ['Easy', 'Medium', 'Sharp', 'Hard']; // the saved win counters, in the order of TIERS
 function battleOver() {
   const sim = App.sim, b = sim.b, res = b.result, L = App.level, s = App.save;
   const me = b.teams.findIndex((t) => t.human);
@@ -358,31 +361,46 @@ function battleOver() {
   const myTurns = Math.ceil(b.turn.n / 2); // this family's turns: the count par is judged by
   const myStats = b.teams[me].stats;
   let stars = null, unlock = null, next = null, tier = null;
+  // what this battle may beat, read before the save changes (the Records screen and the "New best!" lines)
+  const before = { turns: s.story.bestTurns[L.id], stars: s.story.stars[L.id] || 0, shot: s.stats.bestShot };
+  const ti = TIERS.indexOf(App.setup.difficulty);
   if (App.setup.mode === 'story') {
     const outs = b.squirrels.filter((q) => q.team === me && q.out).length;
     stars = win ? 1 + (outs === 0 ? 1 : 0) + (myTurns <= L.par ? 1 : 0) : 0;
     s.story.stars[L.id] = Math.max(s.story.stars[L.id] || 0, stars);
     // the difficulty each star was earned on: slot i holds the highest tier on which a run reached i + 1 stars
-    const ti = TIERS.indexOf(App.setup.difficulty);
     tier = ti < 0 ? 2 : ti + 1;
     s.story.starTier[L.id] = starTiers(s.story, L.id).map((t, i) => (i < stars ? Math.max(t, tier) : t));
     if (App.setup.purse != null) s.story.acorns = clamp(Math.floor(b.teams[me].acorns), 0, PURSE_CAP);
+    if (win) s.story.bestTurns[L.id] = Math.min(Math.max(1, myTurns), s.story.bestTurns[L.id] ?? Infinity);
     if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
     if (win && STORY[L.n]) next = STORY[L.n].id;
     s.resume = null;
   }
-  if (App.setup.mode !== 'practice') { s.stats.battles++; if (win) s.stats.wins++; }
+  const practice = App.setup.mode === 'practice';
+  if (!practice) {
+    s.stats.battles++;
+    if (win) { s.stats.wins++; s.stats.streak++; s.stats['wins' + TIER_KEYS[ti < 0 ? 1 : ti]]++; } else s.stats.streak = 0;
+    s.stats.bestStreak = Math.max(s.stats.bestStreak, s.stats.streak);
+  }
   s.stats.kos += myStats.kos; s.stats.bestShot = Math.max(s.stats.bestShot, myStats.best);
+  s.stats.throws += myStats.throws || 0; s.stats.hits += myStats.hits || 0;
+  const records = {
+    // a first win counts as a new best only for a player who had no stars here yet (older saves hold stars but no turns)
+    turns: App.setup.mode === 'story' && win ? { now: Math.max(1, myTurns), was: before.turns ?? null, best: before.turns == null ? !before.stars : Math.max(1, myTurns) < before.turns } : null,
+    shot: !practice && myStats.best > before.shot && before.shot > 0 ? myStats.best : 0,
+    streak: !practice && win && s.stats.streak >= 2 ? s.stats.streak : 0,
+  };
   persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
-    win, practice: App.setup.mode === 'practice', stars, unlock, next, tier,
+    win, practice, records, n: L.n, stars, unlock, next, tier,
     banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
   });
   decorateScreen();
-  say(win ? 'Victory!' : 'Battle over.');
+  say((win ? 'Victory!' : 'Battle over.') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));
 }
 
 function pickFact(L) {

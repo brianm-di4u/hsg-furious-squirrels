@@ -192,3 +192,17 @@ body.reduced .help-more { animation: none; }
   .readout { flex-wrap: wrap; white-space: normal; }
   .readout .trick { white-space: normal; display: block; width: 100%; }
 }
+
+/* ---------- records and "New best!" ---------- */
+.starcount { margin: 4px 0; }
+.newbest { margin: 6px 0; padding: 6px 12px; border-radius: 12px; background: #3E3226; border: 2px solid var(--gold); color: #FFF6C8; }
+.newbest b { color: var(--gold); }
+.lvl .best { font-size: 0.82em; opacity: 0.92; }
+.rec-table { display: grid; gap: 2px; }
+.rec-row { display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1.1fr); align-items: center; gap: 4px 10px; padding: 6px 4px; border-bottom: 1px solid rgba(237,227,200,0.15); font-size: calc(14px * var(--text-scale)); }
+.rec-row .st { color: var(--gold); letter-spacing: 1px; white-space: nowrap; }
+.rec-row .st .t3 { color: #7FD6C8; }
+.rec-row .st .t4 { color: #FF9B6A; }
+.rec-row .rb { text-align: right; }
+@media (max-width: 520px) { .rec-row { grid-template-columns: 1fr auto; } .rec-row .rn { grid-column: 1 / -1; font-weight: 700; } .rec-row .rb { text-align: right; } }
+.starcount.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

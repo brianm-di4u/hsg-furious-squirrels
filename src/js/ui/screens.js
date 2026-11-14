@@ -42,6 +42,16 @@ const starStr = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[0, 1
 const TIER_NAME = ['', 'Easy', 'Medium', 'Sharp', 'Hard']; // difficulty tier numbers saved with each star
 const FICTION = 'A made-up squirrel rivalry set in real Hot Springs, Arkansas.';
 
+const totalStars = (st, levels) => levels.reduce((n, L) => n + Math.min(3, st.stars[L.id] || 0), 0);
+// the "New best!" lines on the results card
+const recordLines = (r) => !r ? '' : [
+  r.turns ? (r.turns.best ? `<p class="newbest"><b>New best!</b> Won in ${turns(r.turns.now)}${r.turns.was ? ` (before: ${r.turns.was})` : ''}.</p>` : `<p class="starrule">Your best here: ${turns(r.turns.was)}.</p>`) : '',
+  r.shot ? `<p class="newbest"><b>New best hit!</b> ${r.shot} grip shaken loose.</p>` : '',
+  r.streak ? `<p class="starrule">Win streak: ${r.streak} in a row.</p>` : '',
+].join('');
+const turns = (n) => n + (n === 1 ? ' turn' : ' turns');
+const pct = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : 'none yet';
+
 const TEMPLATES = {
   title: (app) => `
     <div class="title-wrap">
@@ -53,6 +63,7 @@ const TEMPLATES = {
         ${btn('quick', 'Quick Battle')}
         ${btn('practice', 'Practice Range')}
         ${btn('help', 'How to Play')}
+        ${btn('records', 'Records')}
         ${btn('settings', 'Settings')}
         ${btn('credits', 'Credits')}
       </nav>
@@ -76,10 +87,11 @@ const TEMPLATES = {
     <div class="panel" role="dialog" aria-label="Story map">
       <h2>The Valley Nut Feud</h2>
       <p class="sub">${TEAMS[st.team ?? 0].name} vs. ${TEAMS[1 - (st.team ?? 0)].name}. Win battles to unlock new nuts, and carry your acorns to the next one. <span class="label-fiction">game fiction</span></p>
+      <p class="starcount row"><b>Stars: ${totalStars(st, levels)} / ${levels.length * 3}</b>${btn('records', 'Records', 'data-from="story"', 'btn small')}</p>
       <div class="map">${levels.map((L, i) => {
-        const open = L.n <= st.unlocked, s = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = s ? tiers[Math.min(3, s) - 1] : 0, note = top && top !== 2 ? TIER_NAME[top] : '';
-        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars${note ? ' on ' + note : ''}` : ', locked'}">
-          <span class="n">${L.n}</span><span>${L.name}</span><span class="st">${open ? [0, 1, 2].map((i) => (i < s ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('') : '🔒'}</span>${note ? `<span class="tier">${note}</span>` : ''}</button>`;
+        const open = L.n <= st.unlocked, best = st.bestTurns[L.id], s = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = s ? tiers[Math.min(3, s) - 1] : 0, note = top && top !== 2 ? TIER_NAME[top] : '';
+        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars${note ? ' on ' + note : ''}${best ? `, best ${turns(best)}` : ''}` : ', locked'}">
+          <span class="n">${L.n}</span><span>${L.name}</span><span class="st">${open ? [0, 1, 2].map((i) => (i < s ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('') : '🔒'}</span>${note ? `<span class="tier">${note}</span>` : ''}${open && best ? `<span class="best">Best: ${turns(best)}</span>` : ''}</button>`;
       }).join('')}</div>
       ${field('Difficulty', seg('difficulty', app.save.settings.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']]))}
       <nav class="menu row">${btn('switchTeam', 'Switch family')}${btn('back', 'Back', 'data-back')}</nav>
@@ -138,6 +150,7 @@ const TEMPLATES = {
       ${d.stars != null ? starStr(d.stars) : ''}
       ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
+      ${recordLines(d.records)}
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>
@@ -196,9 +209,36 @@ const TEMPLATES = {
     </div>`;
   },
 
+  records: (app, { levels, from }) => {
+    const st = app.save.story, k = app.save.stats, won = levels.filter((L) => (st.stars[L.id] || 0) > 0).length;
+    const tile = (label, value) => `<div><span>${label}</span><b>${value}</b></div>`;
+    return `
+    <div class="panel" role="dialog" aria-label="Records">
+      <h2>Records</h2>
+      <p class="sub">What this device remembers of your valley battles. Practice is not counted.</p>
+      <h3>All battles</h3>
+      <div class="statgrid">
+        ${tile('Battles', k.battles)}${tile('Wins', k.wins)}
+        ${tile('Win rate', pct(k.wins, k.battles))}${tile('Knockouts', k.kos)}
+        ${tile('Biggest hit', k.bestShot)}${tile('Throw accuracy', pct(k.hits, k.throws))}
+        ${tile('Win streak', k.streak)}${tile('Best streak', k.bestStreak)}
+      </div>
+      <h3>Wins by rival skill</h3>
+      <div class="statgrid">${tile('Easy', k.winsEasy)}${tile('Medium', k.winsMedium)}${tile('Sharp', k.winsSharp)}${tile('Hard', k.winsHard)}</div>
+      <p class="starrule">Wins and throws from before this list was kept are in the totals above, not in the skill split.</p>
+      <h3>The Valley Nut Feud</h3>
+      <p class="starcount"><b>Stars: ${totalStars(st, levels)} / ${levels.length * 3}</b> · Battles won: ${won} of ${levels.length}</p>
+      <div class="rec-table" role="table" aria-label="Best result in each Story battle">
+        ${levels.map((L) => { const n = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = n ? tiers[Math.min(3, n) - 1] : 0, best = st.bestTurns[L.id], open = L.n <= st.unlocked;
+          return `<div class="rec-row" role="row"><span class="rn" role="cell">${L.n}. ${L.name}</span>${open ? `<span class="st" role="cell" aria-label="${n} of 3 stars${top && top !== 2 ? ' on ' + TIER_NAME[top] : ''}">${[0, 1, 2].map((i) => (i < n ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('')}</span><span class="rb" role="cell">${best ? `best ${turns(best)}, par ${L.par}` : n ? 'won' : 'not won yet'}</span>` : '<span class="rb" role="cell">locked</span>'}</div>`; }).join('')}
+      </div>
+      <nav class="menu row">${btn('recordsBack', 'Back', `autofocus data-back data-from="${from || ''}"`, 'btn primary')}</nav>
+    </div>`;
+  },
+
   confirmReset: () => `
     <div class="panel" role="dialog" aria-label="Reset progress" style="width:min(420px,100%)">
-      <h2>Reset progress?</h2><p>This clears Story stars and unlocks on this device.</p>
+      <h2>Reset progress?</h2><p>This clears Story stars, unlocks and records on this device.</p>
       <nav class="menu row">${btn('resetYes', 'Reset')}${btn('settings', 'Cancel', 'autofocus data-back', 'btn primary')}</nav>
     </div>`,
 

@@ -59,7 +59,7 @@ export function installHooks(App, api) {
       else if (['help', 'settings', 'credits'].includes(name)) App.onMenu(name, {});
       else if (name === 'pause') { if (App.scene === 'battle') { App.paused = true; App.screens.show('pause'); } }
       else if (name === 'shop') { if (App.sim) { App.sim.forceRound(0); App.sim.drain(); App.pendingEnd = null; App.screens.show('shop', { team: 0, round: App.sim.b.result.round, winner: 0 }); } }
-      else if (name === 'results') { if (App.sim) { App.sim.forceRound(App.sim.b.teams.findIndex((t) => t.human)); const r = App.sim.b; if (r.phase !== 'battleEnd') { r.phase = 'battleEnd'; r.result.done = true; r.result.battleWinner = r.result.winner; } App.sim.drain(); App.pendingEnd = null; api.battleOver(); } }
+      else if (name === 'results') { if (App.sim) { const me = App.sim.b.teams.findIndex((t) => t.human); App.sim.forceRound(opts.lose ? 1 - me : me); const r = App.sim.b; if (r.phase !== 'battleEnd') { r.phase = 'battleEnd'; r.result.done = true; r.result.battleWinner = r.result.winner; } App.sim.drain(); App.pendingEnd = null; api.battleOver(); } }
       App.kick();
       return summary();
     },

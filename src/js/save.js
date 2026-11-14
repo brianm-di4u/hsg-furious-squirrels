@@ -4,15 +4,17 @@ import { ACORNS, PURSE_CAP } from './sim/const.js';
 const KEY = 'hsg-furious-squirrels-v1';
 const STORY_LEVELS = 12;
 const TIER_NAMES = ['easy', 'medium', 'sharp', 'hard'];
+// counters the Records screen shows that only ever grow: two tabs each add what they earned (streaks are kept apart)
+const TALLIES = ['battles', 'wins', 'kos', 'throws', 'hits', 'winsEasy', 'winsMedium', 'winsSharp', 'winsHard'];
 const TIER_COUNT = 4; // difficulty tiers a star can be earned on: 1 Easy, 2 Medium, 3 Sharp, 4 Hard (0 = not earned)
 let mem = null;
 
 export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
-  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {} },
+  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {} },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
-  stats: { battles: 0, wins: 0, kos: 0, bestShot: 0 },
+  stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
   resume: null,
 });
 
@@ -52,6 +54,9 @@ function decoded(s) {
     if (Array.isArray(slots) && slots.length === 3 && slots.every((n) => Number.isInteger(n) && n >= 0 && n <= TIER_COUNT)) out.story.starTier[id] = slots.slice();
     else delete out.story.starTier[id];
   }
+  // the fewest turns each Story battle was won in (a Records figure); a damaged entry is dropped, never guessed at
+  out.story.bestTurns = object(out.story.bestTurns) ? { ...out.story.bestTurns } : {};
+  for (const [id, n] of Object.entries(out.story.bestTurns)) if (!(Number.isInteger(n) && n >= 1 && n <= 999)) delete out.story.bestTurns[id];
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
@@ -104,18 +109,21 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
     if (s.story.unlocked > before.story.unlocked) earned.unlocked = s.story.unlocked;
-    for (const key of ['battles', 'wins', 'kos']) earned.stats[key] = Math.max(0, s.stats[key] - before.stats[key]);
+    for (const key of TALLIES) earned.stats[key] = Math.max(0, s.stats[key] - before.stats[key]);
+    if (s.stats.bestStreak > before.stats.bestStreak) earned.bestStreak = s.stats.bestStreak;
+    if (s.stats.streak !== before.stats.streak) earned.streak = s.stats.streak;
+    for (const [id, n] of Object.entries(s.story.bestTurns || {})) if (Number.isInteger(n) && n >= 1 && n < (before.story.bestTurns?.[id] ?? Infinity)) earned.turns[id] = n;
     if (s.stats.bestShot > before.stats.bestShot) earned.bestShot = s.stats.bestShot;
     for (const [id, slots] of Object.entries(s.story.starTier || {})) {
       const old = before.story.starTier?.[id] || [0, 0, 0];
       if (Array.isArray(slots) && slots.some((n, i) => n > (old[i] || 0))) put(earned.tiers, id, slots);
     }
     if (number(s.story.acorns) && s.story.acorns !== before.story.acorns) earned.acorns = s.story.acorns;
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -139,7 +147,10 @@ function merged(latest, callback) {
     value.story.unlocked = Math.max(value.story.unlocked, e.unlocked);
     for (const [id, n] of Object.entries(e.stars)) put(value.story.stars, id, Math.max(value.story.stars[id] || 0, n));
     value.story.nuts = [...new Set([...value.story.nuts, ...e.nuts])];
-    for (const key of ['battles', 'wins', 'kos']) value.stats[key] += e.stats[key];
+    for (const key of TALLIES) value.stats[key] += e.stats[key];
+    if (e.streak != null) value.stats.streak = e.streak;
+    value.stats.bestStreak = Math.max(value.stats.bestStreak, e.bestStreak || 0, value.stats.streak);
+    for (const [id, n] of Object.entries(e.turns || {})) value.story.bestTurns[id] = Math.min(n, value.story.bestTurns[id] ?? Infinity);
     value.stats.bestShot = Math.max(value.stats.bestShot, e.bestShot);
     for (const [id, slots] of Object.entries(e.tiers || {})) {
       const old = value.story.starTier[id] || [0, 0, 0];
