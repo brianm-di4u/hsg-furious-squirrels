@@ -3,6 +3,7 @@
 import { NUTS, NUT_ORDER, NUT_CAP, TEAMS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
 import { starTiers } from '../save.js';
+import { blurbFor, FINALE } from '../story.js';
 
 export class Screens {
   constructor(root, app) { this.root = root; this.app = app; this.cur = null; this.data = {}; }
@@ -16,6 +17,8 @@ export class Screens {
     const more = this.root.querySelector('.help-more'), panel = this.root.querySelector('.panel');
     if (more && panel) panel.addEventListener('scroll', () => { more.style.visibility = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 30 ? 'hidden' : ''; });
     this.root.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => { if (!b.disabled) this.app.onMenu(b.dataset.act, b.dataset); }));
+    const bar = this.root.querySelector('#blurb');
+    if (bar) this.root.querySelectorAll('.lvl[data-blurb]').forEach((b) => { const set = () => { bar.textContent = b.dataset.blurb; }; b.addEventListener('focus', set); b.addEventListener('mouseenter', set); });
     const first = this.root.querySelector('[autofocus]:not([disabled])') || this.root.querySelector('button:not([disabled])');
     if (first) first.focus({ preventScroll: true });
   }
@@ -50,6 +53,10 @@ const recordLines = (r) => !r ? '' : [
   r.streak ? `<p class="starrule">Win streak: ${r.streak} in a row.</p>` : '',
 ].join('');
 const turns = (n) => n + (n === 1 ? ' turn' : ' turns');
+// the finale picture, drawn in code from the game's own squirrels and nut icons: both families cheering at one nut pile
+const finaleScene = () => `<div class="finale" aria-hidden="true"><canvas data-sq="0:cheer"></canvas>
+  <div class="pile"><div><canvas data-nut="acorn"></canvas></div><div><canvas data-nut="chinquapin"></canvas><canvas data-nut="hickory"></canvas></div><div><canvas data-nut="walnut"></canvas><canvas data-nut="hedgeapple"></canvas><canvas data-nut="pecan"></canvas></div></div>
+  <canvas data-sq="1:cheer:flip"></canvas></div>`;
 const pct = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : 'none yet';
 
 const TEMPLATES = {
@@ -90,9 +97,10 @@ const TEMPLATES = {
       <p class="starcount row"><b>Stars: ${totalStars(st, levels)} / ${levels.length * 3}</b>${btn('records', 'Records', 'data-from="story"', 'btn small')}</p>
       <div class="map">${levels.map((L, i) => {
         const open = L.n <= st.unlocked, best = st.bestTurns[L.id], s = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = s ? tiers[Math.min(3, s) - 1] : 0, note = top && top !== 2 ? TIER_NAME[top] : '';
-        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? '' : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars${note ? ' on ' + note : ''}${best ? `, best ${turns(best)}` : ''}` : ', locked'}">
+        return `<button type="button" class="lvl" data-act="${open ? 'play' : 'locked'}" data-v="${L.id}" ${open ? `data-blurb="${blurbFor(L.n)}" aria-describedby="blurb"` : 'disabled'} ${L.n === Math.min(st.unlocked, levels.length) ? 'autofocus' : ''} aria-label="Battle ${L.n}: ${L.name}${open ? `, ${s} stars${note ? ' on ' + note : ''}${best ? `, best ${turns(best)}` : ''}` : ', locked'}">
           <span class="n">${L.n}</span><span>${L.name}</span><span class="st">${open ? [0, 1, 2].map((i) => (i < s ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('') : '🔒'}</span>${note ? `<span class="tier">${note}</span>` : ''}${open && best ? `<span class="best">Best: ${turns(best)}</span>` : ''}</button>`;
       }).join('')}</div>
+      <p class="blurb" id="blurb">${blurbFor(Math.min(st.unlocked, levels.length))}</p>
       ${field('Difficulty', seg('difficulty', app.save.settings.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']]))}
       <nav class="menu row">${btn('switchTeam', 'Switch family')}${btn('back', 'Back', 'data-back')}</nav>
     </div>`;
@@ -116,11 +124,12 @@ const TEMPLATES = {
     </div>`;
   },
 
-  prep: (app, { setup, bought, name, kinds }) => {
+  prep: (app, { setup, bought, name, kinds, blurb }) => {
     const spent = Object.entries(bought).reduce((n, [k, c]) => n + c * NUTS[k].price, 0), left = setup.purse - spent;
     return `
     <div class="panel" role="dialog" aria-label="Pack your satchel">
       <h2>Pack your satchel</h2>
+      ${blurb ? `<p class="blurb">${blurb}</p>` : ''}
       <p class="sub">${name}. Spend acorns on special nuts for this battle (up to ${NUT_CAP} of each). ${setup.mode === 'story' ? 'What you leave unspent stays in your purse. ' : ''}<span class="label-fiction">game rules</span></p>
       <p><b>Your acorns: ${left}</b> <small>(prices in acorns)</small></p>
       ${kinds.map((k) => { const have = 1 + (bought[k] || 0); return `<div class="nutrow pack"><canvas data-nut="${k}"></canvas><div class="what"><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div>
@@ -144,9 +153,11 @@ const TEMPLATES = {
 
   results: (app, d) => `
     <div class="panel" role="dialog" aria-label="Battle results">
-      ${d.practice ? '' : `<div class="res-sq" aria-hidden="true"><canvas data-sq="${d.winner >= 0 ? d.winner : 0}:cheer"></canvas><canvas data-sq="${d.winner >= 0 ? 1 - d.winner : 1}:out:flip"></canvas></div>`}
+      ${d.finale ? finaleScene() : d.practice ? '' : `<div class="res-sq" aria-hidden="true"><canvas data-sq="${d.winner >= 0 ? d.winner : 0}:cheer"></canvas><canvas data-sq="${d.winner >= 0 ? 1 - d.winner : 1}:out:flip"></canvas></div>`}
       <h2>${d.win ? 'Victory!' : d.practice ? 'Practice done' : 'So close!'}</h2>
       <p class="winner">${d.winnerName ? `${d.winnerName} win the valley` : ''}</p>
+      ${d.finale ? `<div class="finale-text"><h3>${FINALE.title}</h3>${FINALE.text.map((p) => `<p>${p}</p>`).join('')}</div>` : ''}
+      ${d.line ? `<p class="feudline">${d.line}</p>` : ''}
       ${d.stars != null ? starStr(d.stars) : ''}
       ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
@@ -159,7 +170,7 @@ const TEMPLATES = {
       </div>` : ''}
       ${d.banked != null ? `<p class="banked">Acorns banked: <b>${d.banked}</b> <small>(kept for your next battle)</small></p>` : ''}
       ${d.fact ? `<div class="notes" role="note"><h3>Field Notes</h3>${d.fact.html}<span class="src">Source: ${d.fact.source}</span></div>` : ''}
-      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${btn('again', 'Play again', d.next ? '' : 'autofocus')}${btn('menu', 'Menu', 'data-back')}</nav>
+      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${d.finale ? btn('credits', FINALE.button, 'autofocus', 'btn primary') : ''}${btn('again', 'Play again', d.next || d.finale ? '' : 'autofocus')}${btn('menu', 'Menu', 'data-back')}</nav>
     </div>`,
 
   pause: () => `
@@ -242,7 +253,7 @@ const TEMPLATES = {
       <nav class="menu row">${btn('resetYes', 'Reset')}${btn('settings', 'Cancel', 'autofocus data-back', 'btn primary')}</nav>
     </div>`,
 
-  credits: () => `
+  credits: (app, { from }) => `
     <div class="panel" role="dialog" aria-label="Credits">
       <h2>Credits</h2>
       <p>${FICTION} Every squirrel name, the two families, the nut feud, the acorn shop and the steam updraft are game fiction. Nobody is ever hurt.</p>
@@ -257,6 +268,6 @@ const TEMPLATES = {
       <h3>Made with</h3>
       <ul><li>Hand-written Canvas2D and WebAudio. Backdrop paintings made for this game with Codex from a Blender block-out of the real valley; squirrels modelled in Blender. Sound-effect synthesis after ZzFX by Frank Force (MIT).</li>
       <li>Part of the open-source (MIT) Hot Springs Games collection.</li></ul>
-      <nav class="menu row">${btn('back', 'Back', 'autofocus data-back')}</nav>
+      <nav class="menu row">${btn('creditsBack', 'Back', `autofocus data-back data-from="${from || ''}"`)}</nav>
     </div>`,
 };

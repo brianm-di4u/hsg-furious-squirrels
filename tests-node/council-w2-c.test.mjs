@@ -66,3 +66,54 @@ test('S3-02 Reset progress returns every Records figure to zero', async () => {
   const back = (await r.tab()).s;
   assert.equal(back.stats.winsHard, 0); assert.deepEqual(back.story.bestTurns, {}); assert.equal(back.stats.battles, 0);
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// S4-01: the feud's words are complete, short, and proofread by rule
+import { BLURBS, WIN_LINES, LOSS_LINES, CHEER, FINALE, TAUNTS, GROANS, blurbFor, resultLine } from '../src/js/story.js';
+import fs from 'node:fs';
+import { TEAMS, NUTS } from '../src/js/sim/const.js';
+const all = JSON.parse(fs.readFileSync(new URL('../levels/all.json', import.meta.url), 'utf8'));
+const nWords = (s) => s.trim().split(/\s+/).length;
+const everyLine = () => [...BLURBS, ...WIN_LINES, ...LOSS_LINES, ...Object.values(CHEER).flatMap((c) => [c.win, c.loss]), FINALE.title, ...FINALE.text, ...TAUNTS.flat(), ...GROANS.flat()];
+
+test('S4-01 every battle has a blurb and a loss line, battles 1 to 11 a win line, and battle 12 has the finale', () => {
+  assert.equal(BLURBS.length, 12); assert.equal(LOSS_LINES.length, 12); assert.equal(WIN_LINES.length, 11);
+  assert.ok(FINALE.text.length >= 2 && FINALE.button);
+  assert.equal(blurbFor(1), BLURBS[0]); assert.equal(blurbFor(13), '');
+});
+
+test('S4-01 the lines are short, whole sentences with no stray spacing or template leftovers', () => {
+  for (const line of everyLine().filter((l) => l !== FINALE.title)) {
+    assert.ok(/[.!?"]$/.test(line), 'ends like a sentence: ' + line);
+    assert.ok(/^[A-Z]/.test(line), 'starts with a capital: ' + line);
+    assert.ok(!/ {2}|\s$|^\s/.test(line), 'no stray spaces: ' + line);
+    assert.ok(!/[{}]/.test(line.replace(/\{rival\}|\{home\}/g, '')), 'no broken placeholder: ' + line);
+    assert.ok(nWords(line) <= (FINALE.text.includes(line) ? 50 : 34), 'short enough: ' + line);
+  }
+  for (const b of BLURBS) assert.ok(nWords(b) <= 20, 'blurb is one line: ' + b);
+  for (const t of [...TAUNTS.flat(), ...GROANS.flat()]) assert.ok(nWords(t) <= 6, 'a call-out is a shout: ' + t);
+});
+
+test('S4-01 the words only name places, trees, nuts and families the game already has, and state no figures', () => {
+  const known = new Set(['Rustler', 'Tail']);
+  const add = (s) => String(s || '').split(/[^A-Za-z]+/).forEach((w) => w && known.add(w));
+  for (const L of Object.values(all)) add(L.name);
+  for (const tm of TEAMS) { add(tm.name); add(tm.home); }
+  for (const n of Object.values(NUTS)) add(n.name);
+  for (const line of everyLine()) {
+    assert.ok(!/[0-9]/.test(line), 'no figures or dates in the story: ' + line);
+    const toks = line.split(/ /);
+    toks.forEach((tok, i) => {
+      const w = tok.replace(/[^A-Za-z]/g, '');
+      if (i > 0 && /^[A-Z]/.test(w) && !/[.!?]\"?$/.test(toks[i - 1]) && !tok.startsWith('{')) assert.ok(known.has(w), 'a name the game does not have: ' + w + ' in ' + line);
+    });
+  }
+});
+
+test('S4-01 the result line fills {rival} and {home}, and adds the player\'s own mountain', () => {
+  const win = resultLine(1, true, 0, 'Tails', 'West Mountain');
+  assert.ok(win.includes('The Tails are still') || win.includes('Tails'), win);
+  assert.ok(win.endsWith(CHEER[0].win));
+  assert.ok(resultLine(11, true, 1, 'Rustlers', 'Hot Springs Mountain').includes('Hot Springs Mountain'));
+  assert.ok(resultLine(12, false, 0, 'Tails', 'West Mountain').endsWith(CHEER[0].loss));
+});

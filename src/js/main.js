@@ -12,6 +12,7 @@ import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTe
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
+import { blurbFor, resultLine, TAUNTS, GROANS } from './story.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
 const ALL = typeof LEVELS !== 'undefined' ? LEVELS : {};
@@ -98,7 +99,7 @@ function openPrep(setup) {
   const full = { ...setup, purse, buys: {} };
   if (!packKinds(full).length) return startBattle(full);
   const L = ALL[setup.levelId];
-  screens.show('prep', { setup: full, bought: {}, kinds: packKinds(full), name: L.n && setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name });
+  screens.show('prep', { setup: full, bought: {}, kinds: packKinds(full), blurb: setup.mode === 'story' ? blurbFor(L.n) : '', name: L.n && setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name });
 }
 function startBattle(setup) {
   let L = ALL[setup.levelId];
@@ -158,9 +159,14 @@ function enterBattleScene() {
   App.paused = false;
   screens.hide();
   hud.show(true); hud.barKey = '';
-  App.tutorialStep = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
+  App.tutorialStep = 0; App.tauntN = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
   sim.drain();
   setTension(false); playTheme(themeFor(L)); playAmbience(sceneFor(L));
+  // a new battle opens with its place and a line about it (not on a resumed battle or in Practice)
+  if (!App.setup.battle && App.setup.mode !== 'practice' && L.n) {
+    const head = App.setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name;
+    hud.titleCard(head, blurbFor(L.n), L.stretchLabel || '', 3200); say(`${head}. ${blurbFor(L.n)}`);
+  }
   onTurnStart(true);
   frameCamera(true);
   kick();
@@ -297,7 +303,8 @@ App.onMenu = (act, d) => {
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
-    case 'credits': return screens.show('credits');
+    case 'credits': return screens.show('credits', { from: screens.cur === 'results' ? 'results' : '' });
+    case 'creditsBack': return d.from === 'results' ? App.onMenu('menu', {}) : App.onMenu('back', {});
     case 'records': freshSave(); return screens.show('records', { levels: STORY, from: d.from || '' });
     case 'recordsBack': return d.from === 'story' ? screens.show('story', { levels: STORY }) : showTitle();
     case 'set': {
@@ -394,7 +401,9 @@ function battleOver() {
   persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
-    win, practice, records, n: L.n, stars, unlock, next, tier,
+    win, practice, records, n: L.n, stars,
+    finale: App.setup.mode === 'story' && win && L.n === STORY.length,
+    line: App.setup.mode === 'story' && !App.setup.practice ? resultLine(L.n, win, me, TEAMS[1 - me].short, TEAMS[me].home) : '', unlock, next, tier,
     banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
@@ -767,6 +776,11 @@ function handleEvents() {
         // the cheer is for the rival's loss: when the one human side loses a squirrel it stays quiet
         if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) setTimeout(() => sfx('cheer'), 500);
         hud.call(`${q.name} is out!`, 1400); say(`${q.name} of the ${TEAMS[q.team].short} is out, tumbling into the leaf pile.`);
+        if (!sim.b.practice) {
+          // the family that did it crows, or the family that lost the squirrel groans (taken in turn, not at random)
+          const lost = b.teams[q.team].human, fam = lost ? 1 - q.team : q.team, pool = lost ? TAUNTS[fam] : GROANS[fam], line = pool[App.tauntN++ % pool.length];
+          hud.taunt(`${TEAMS[fam].short}: "${line}"`, 2400); say(`The ${TEAMS[fam].short} call out: ${line}`);
+        }
         // the round's last knockout plays in slow motion (not with reduced motion)
         if (!App.reduced && sim.alive(q.team) === 0 && !sim.b.practice) App.slowT = 0.9;
         break;

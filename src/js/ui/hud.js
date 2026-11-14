@@ -7,6 +7,9 @@ import { TEAM_COLORS } from '../gfx/looks.js';
 const EM = ['<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="10" fill="#E0B23A" stroke="#1A1410" stroke-width="2.5"/></svg>',
   '<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L24 22 L2 22 Z" fill="#2A9D8F" stroke="#1A1410" stroke-width="2.5"/></svg>'];
 
+// a phone in either orientation: the HUD is compacted by the stylesheet at the same limits (max-width 700, max-height 480)
+const compactView = () => window.innerWidth <= 700 || window.innerHeight <= 480;
+
 export class Hud {
   constructor(root, app) {
     this.root = root; this.app = app; this.last = '';
@@ -19,6 +22,8 @@ export class Hud {
       <canvas class="minimap" id="minimap" width="740" height="88" aria-hidden="true"></canvas>
       <div class="hint" id="hint"></div>
       <div class="call" id="call" aria-hidden="true"></div>
+      <div class="taunt" id="taunt" aria-hidden="true"></div>
+      <div class="titlecard" id="titlecard" aria-hidden="true"></div>
       <div class="bottom">
         <div class="nutbar" id="nutbar" role="toolbar" aria-label="Choose a nut"></div>
         <div class="aimbox">
@@ -62,7 +67,7 @@ export class Hud {
     const q = sim.active(), team = b.turn.team, tm = b.teams[team], human = tm.human && !app.aiActive;
     for (const t of [0, 1]) {
       const sq = b.squirrels.filter((s) => s.team === t && !s.dummy);
-      const html = `${EM[t]}<div><div><span class="name-long">${TEAMS[t].name}</span><span class="name-short" ${t ? '' : ''}>${window.innerWidth <= 700 ? TEAMS[t].short : ''}</span></div>
+      const html = `${EM[t]}<div><div><span class="name-long">${TEAMS[t].name}</span><span class="name-short" ${t ? '' : ''}>${compactView() ? TEAMS[t].short : ''}</span></div>
         <div class="pips" aria-label="${sq.filter((s) => !s.out).length} of ${sq.length} squirrels left">${sq.map((s) => `<i class="pip ${s.out ? 'off' : ''}"></i>`).join('')}</div>
         ${b.rounds > 1 ? `<div class="rounds">Rounds ${b.roundWins[t]}</div>` : ''}</div>`;
       const ban = this.el('ban' + t);
@@ -73,7 +78,7 @@ export class Hud {
     const who = q ? q.name : '';
     const phase = b.phase;
     let label = '';
-    const narrow = window.innerWidth <= 700;
+    const narrow = compactView();
     if (phase === 'aim') label = human ? (narrow ? `${who}: aim & throw` : `${who}'s turn: aim and throw`) : `${who} (${TEAMS[team].short}) is aiming${app.aiActive ? '…' : ''}`;
     else if (phase === 'flight') label = (narrow ? '' : 'Nut in the air! ') + (b.nuts[0] && !b.nuts[0].tapped && NUTS[b.nuts[0].kind] && b.nuts[0].kind !== 'acorn' && b.nuts[0].kind !== 'hedgeapple' && tm.human ? 'Tap for trick!' : narrow ? 'Nut in the air!' : '');
     else if (phase === 'settle') label = 'Leaves settling…';
@@ -113,20 +118,37 @@ export class Hud {
     const mv = this.el('b-move');
     mv.disabled = !human || phase !== 'aim' || b.turn.stamina < 20 || app.koHold > 0;
     mv.setAttribute('aria-pressed', String(!!app.showPerches));
-    mv.textContent = app.showPerches ? 'Done' : window.innerWidth <= 700 ? 'Move' : `Move (${Math.round(b.turn.stamina / 3)}%)`;
+    mv.textContent = app.showPerches ? 'Done' : compactView() ? 'Move' : `Move (${Math.round(b.turn.stamina / 3)}%)`;
     mv.setAttribute('aria-label', `Move: ${Math.round(b.turn.stamina / 3)}% stamina left`);
     // call fade
     if (this.callT > 0) { this.callT -= 1 / 60; if (this.callT <= 0) this.el('call').classList.remove('show'); }
+    if (this.cardOn) this.placeCard();
+    if (this.hintText && compactView()) this.placeHint();
     this.drawMinimap();
   }
 
-  clearCalls() { this.callT = 0; this.el('call').classList.remove('show'); this.hint(''); }
+  clearCalls() { this.callT = 0; this.el('call').classList.remove('show'); this.el('taunt').classList.remove('show'); clearTimeout(this.tauntT); this.el('titlecard').classList.remove('show'); clearTimeout(this.cardT); this.cardOn = false; this.hint(''); }
+  // a family's call-out after a knockout: small, under the big call, gone by itself, never takes input
+  taunt(text, ms = 2400) { const t = this.el('taunt'); t.textContent = text; t.classList.add('show'); clearTimeout(this.tauntT); this.tauntT = setTimeout(() => t.classList.remove('show'), ms); }
+  placeCard() { this.el('titlecard').style.bottom = Math.max(0, window.innerHeight - this.root.querySelector('.bottom').getBoundingClientRect().top + 10) + 'px'; }
+  // the place and a line about the battle, for a few seconds as it starts; read aloud elsewhere (the live region)
+  titleCard(head, line, place, ms = 3200) {
+    const c = this.el('titlecard'); c.textContent = '';
+    for (const [tag, text] of [['b', head], ['span', line], ['small', place]]) if (text) { const e = document.createElement(tag); e.textContent = text; c.append(e); }
+    // it sits just above the controls, over the earth under the mountains, where it hides neither squirrel nor HUD
+    this.cardOn = true; this.placeCard();
+    c.classList.add('show'); clearTimeout(this.cardT); this.cardT = setTimeout(() => { c.classList.remove('show'); this.cardOn = false; }, ms);
+  }
   call(text, ms = 1200) { const c = this.el('call'); c.textContent = text; c.classList.add('show'); this.callT = ms / 1000; }
   hint(text) {
     const h = this.el('hint'); if (this.hintText === text) return; this.hintText = text; h.textContent = text || ''; h.classList.toggle('show', !!text);
     if (text) { const s = document.createElement('small'); s.textContent = 'Tap anywhere to close'; h.append(s); }
-    // on a phone the tip sits just above the controls, where it cannot cover the squirrel being aimed
-    h.style.bottom = text && window.innerWidth <= 700 ? `${Math.max(0, window.innerHeight - this.root.querySelector('.bottom').getBoundingClientRect().top + 8)}px` : '';
+    this.placeHint();
+  }
+  // on a phone the tip sits just above the controls (and above the title card while that shows), where it cannot cover the squirrel being aimed
+  placeHint() {
+    const h = this.el('hint');
+    h.style.bottom = this.hintText && compactView() ? `${Math.max(0, window.innerHeight - this.root.querySelector('.bottom').getBoundingClientRect().top + 8 + (this.cardOn ? this.el('titlecard').offsetHeight + 10 : 0))}px` : '';
   }
 
   drawMinimap() {

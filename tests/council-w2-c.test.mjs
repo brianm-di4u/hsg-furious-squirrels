@@ -173,4 +173,116 @@ export const tests = [
       t.equal(r.save.stats.battles, 0); t.equal(JSON.stringify(r.save.story.bestTurns), '{}');
     },
   },
+  // ----- S4-01: the feud's voice -----
+  {
+    name: 'S4-01 the Story map shows a line about the next battle, and the line follows focus',
+    async run(t) {
+      await fresh(t, { unlocked: 3 });
+      await t.game('act', 'menu', 'story');
+      const first = await text(t, '#blurb');
+      t.expect(first.length > 20, 'the strip is filled: ' + first);
+      await t.page.focus('.lvl[data-v="story-01"]');
+      const one = await text(t, '#blurb');
+      t.expect(one !== first && /steam is rising/.test(one), 'focusing battle 1 shows its line: ' + one);
+      t.equal(await t.page.$eval('.lvl[data-v="story-01"]', (e) => e.getAttribute('aria-describedby')), 'blurb', 'screen readers get the line as the description');
+      await snap(t, 'S4-01-map-blurb');
+      await t.game('act', 'menu', 'play', { v: 'story-03' });
+      t.expect(/Gold light over the Row/.test(await text(t)), 'the satchel screen repeats the battle line');
+    },
+  },
+  {
+    name: 'S4-01 a battle opens with a title card that never takes input and fades by itself',
+    async run(t) {
+      await fresh(t, { unlocked: 2 });
+      await t.game('act', 'menu', 'play', { v: 'story-02' });
+      if ((await t.state()).screen === 'prep') await t.page.click('[data-act="prepGo"]');
+      await t.waitForStable(700);
+      const card = await t.page.$eval('#titlecard', (e) => ({ on: e.classList.contains('show'), text: e.textContent, pe: getComputedStyle(e).pointerEvents }));
+      t.expect(card.on, 'the card is showing');
+      t.expect(/Battle 2: Under the Tower/.test(card.text) && /tower rises/.test(card.text) && /North end/.test(card.text), 'place, line and where: ' + card.text);
+      t.equal(card.pe, 'none', 'it takes no input');
+      t.expect((await t.state()).lastSaid.startsWith('Battle 2: Under the Tower'), 'announced to screen readers');
+      fs.mkdirSync(SHOTS, { recursive: true });
+      await t.page.screenshot({ path: SHOTS + '/S4-01-title-card-' + t.viewport + '.png' });
+      const r = await t.game('act', 'aim', { angle: 33 });
+      t.equal(Math.round(r.angle), 33, 'aiming works while the card shows');
+      await t.page.waitForFunction(() => !document.querySelector('#titlecard').classList.contains('show'), null, { timeout: 6000 });
+      await t.game('act', 'menu', 'practice');
+      t.expect(!(await t.page.$eval('#titlecard', (e) => e.classList.contains('show'))), 'Practice has no card');
+    },
+  },
+  {
+    name: 'S4-01 a knockout draws a call-out from the right family, taking turns rather than at random',
+    async run(t) {
+      await fresh(t, { unlocked: 2 });
+      await t.game('act', 'menu', 'play', { v: 'story-01' });
+      const who = await t.page.evaluate(() => { const b = window.__FS.sim.b; return { mine: b.squirrels.filter((q) => q.team === 0).map((q) => q.id), rival: b.squirrels.filter((q) => q.team === 1).map((q) => q.id) }; });
+      const ko = async (id) => { await t.page.evaluate((i) => { const A = window.__FS; A.sim.knockOut(A.sim.b.squirrels.find((q) => q.id === i)); }, id); await t.game('step', 3); return t.page.$eval('#taunt', (e) => ({ on: e.classList.contains('show'), text: e.textContent })); };
+      const a = await ko(who.rival[0]);
+      t.expect(a.on && /^Tails: "/.test(a.text), 'the Tails groan when one of theirs is out: ' + a.text);
+      fs.mkdirSync(SHOTS, { recursive: true });
+      await t.page.screenshot({ path: SHOTS + '/S4-01-taunt-' + t.viewport + '.png' });
+      const b = await ko(who.mine[0]);
+      t.expect(b.on && /^Tails: "/.test(b.text), 'the Tails crow when one of yours is out: ' + b.text);
+      t.expect(a.text !== b.text, 'the lines take turns');
+      t.expect(/call out/.test((await t.state()).lastSaid), 'announced');
+      t.equal(await t.page.$eval('#taunt', (e) => getComputedStyle(e).pointerEvents), 'none');
+      await t.page.waitForFunction(() => !document.querySelector('#taunt').classList.contains('show'), null, { timeout: 6000 });
+      await t.game('setState', { story: { team: 1 } });
+      await t.game('act', 'menu', 'play', { v: 'story-01' });
+      const w2 = await t.page.evaluate(() => window.__FS.sim.b.squirrels.filter((q) => q.team === 1).map((q) => q.id));
+      const c = await ko(w2[0]);
+      t.expect(/^Rustlers: "(Right off|Mind the|West Ridge)/.test(c.text), 'a Tails player who loses a squirrel hears the Rustlers crow: ' + c.text);
+      const d = await ko(await t.page.evaluate(() => window.__FS.sim.b.squirrels.find((q) => q.team === 0).id));
+      t.expect(/^Rustlers: "(Well, shake|Not my best|Leaves in)/.test(d.text), 'and the Rustlers groan when theirs is out: ' + d.text);
+    },
+  },
+  {
+    name: 'S4-01 the result card has a line about the battle for a win and a loss, in the right family voice, and none in Quick',
+    async run(t) {
+      await fresh(t, { unlocked: 3 });
+      await winStory(t, 'story-03');
+      let body = await text(t);
+      t.expect(/Dusk settles over a good win/.test(body) && /West Mountain is hollering your name/.test(body), 'the win line and the family cheer: ' + body.slice(0, 400));
+      await snap(t, 'S4-01-results-win');
+      await t.game('act', 'menu', 'play', { v: 'story-03' });
+      if ((await t.state()).screen === 'prep') await t.page.click('[data-act="prepGo"]');
+      await t.game('scene', 'results', { lose: true });
+      body = await text(t);
+      t.expect(/The light went before the luck did/.test(body) && /always another morning/.test(body), 'the loss line: ' + body.slice(0, 400));
+      t.expect(!/Sunset over the valley/i.test(body), 'no finale for an ordinary loss');
+      await t.game('act', 'menu', 'quick');
+      await t.page.click('[data-act="quickGo"]');
+      if ((await t.state()).screen === 'prep') await t.page.click('[data-act="prepGo"]');
+      await t.game('scene', 'results');
+      t.expect(!(await t.page.$('.feudline')), 'Quick Battle has no Story line');
+    },
+  },
+  {
+    name: 'S4-01 winning battle 12 shows the finale, leads to the Credits and Back goes to the title',
+    async run(t) {
+      await fresh(t, { unlocked: 12 });
+      await winStory(t, 'story-12');
+      t.equal((await t.state()).screen, 'results');
+      const body = await text(t);
+      t.expect(/Sunset over the valley/.test(body) && /one big pile/.test(body), 'the epilogue: ' + body.slice(0, 300));
+      t.expect(await t.page.$('.finale canvas[data-nut]'), 'the nut pile is drawn');
+      t.equal(await t.page.$$eval('.finale canvas[data-sq]', (c) => c.length), 2, 'both families cheer');
+      t.expect(await t.page.$eval('[data-act="credits"]', (e) => e === document.activeElement), 'Roll the credits has focus');
+      t.expect(!/Next battle/.test(body), 'no battle 13');
+      await snap(t, 'S4-01-finale');
+      await t.checkLayout({ allowScrollY: true });
+      await t.page.click('[data-act="credits"]');
+      t.equal((await t.state()).screen, 'credits');
+      await t.page.click('[data-act="creditsBack"]');
+      t.equal((await t.state()).screen, 'title', 'Back from the credits after the finale goes to the title');
+      await t.game('act', 'menu', 'story');
+      await winStory(t, 'story-11');
+      t.expect(!/Sunset over the valley/.test(await text(t)), 'battle 11 has no finale');
+      await t.game('act', 'menu', 'menu');
+      await t.game('act', 'menu', 'credits');
+      await t.page.click('[data-act="creditsBack"]');
+      t.equal((await t.state()).screen, 'title');
+    },
+  },
 ];
