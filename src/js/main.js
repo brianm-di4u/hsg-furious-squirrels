@@ -777,12 +777,14 @@ function handleEvents() {
         sfx('ko');
         // the cheer is for the rival's loss: when the one human side loses a squirrel it stays quiet
         if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) setTimeout(() => sfx('cheer'), 500);
-        hud.call(`${q.name} is out!`, 1400); say(`${q.name} of the ${TEAMS[q.team].short} is out, tumbling into the leaf pile.`);
+        hud.call(`${q.name} is out!`, 1400);
+        let said = `${q.name} of the ${TEAMS[q.team].short} is out, tumbling into the leaf pile.`;
         if (!sim.b.practice) {
           // the family that did it crows, or the family that lost the squirrel groans (taken in turn, not at random)
           const lost = b.teams[q.team].human, fam = lost ? 1 - q.team : q.team, pool = lost ? TAUNTS[fam] : GROANS[fam], line = pool[App.tauntN++ % pool.length];
-          hud.taunt(`${TEAMS[fam].short}: "${line}"`, 2400); say(`The ${TEAMS[fam].short} call out: ${line}`);
+          hud.taunt(`${TEAMS[fam].short}: "${line}"`, 2400); said += ` The ${TEAMS[fam].short} call out: ${line}`;
         }
+        say(said);
         // the round's last knockout plays in slow motion (not with reduced motion)
         if (!App.reduced && sim.alive(q.team) === 0 && !sim.b.practice) App.slowT = 0.9;
         break;
