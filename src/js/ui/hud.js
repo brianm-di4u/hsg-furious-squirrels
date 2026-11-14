@@ -79,7 +79,7 @@ export class Hud {
     const phase = b.phase;
     let label = '';
     const narrow = compactView();
-    if (phase === 'aim') label = human ? (narrow ? `${who}: aim & throw` : `${who}'s turn: aim and throw`) : `${who} (${TEAMS[team].short}) is aiming${app.aiActive ? '…' : ''}`;
+    if (phase === 'aim') label = human ? (narrow ? `${who}: aim & throw` : `${who}'s turn: aim and throw`) : (narrow ? `${who} is aiming${app.aiActive ? '…' : ''}` : `${who} (${TEAMS[team].short}) is aiming${app.aiActive ? '…' : ''}`);
     else if (phase === 'flight') label = (narrow ? '' : 'Nut in the air! ') + (b.nuts[0] && !b.nuts[0].tapped && NUTS[b.nuts[0].kind] && b.nuts[0].kind !== 'acorn' && b.nuts[0].kind !== 'hedgeapple' && tm.human ? 'Tap for trick!' : narrow ? 'Nut in the air!' : '');
     else if (phase === 'settle') label = 'Leaves settling…';
     else label = '';
@@ -111,7 +111,7 @@ export class Hud {
       bt.setAttribute('aria-pressed', String(tm.aim.nut === k));
     });
     const d = NUTS[(phase !== 'aim' && b.shot) ? b.shot.kind : tm.aim.nut];
-    const ro = `${Math.round(tm.aim.angle)}° · ${Math.round(tm.aim.power * 100)}%<span class="trick">${d.name}: ${d.trick}</span>`;
+    const ro = `${Math.round(tm.aim.angle)}° · ${Math.round(tm.aim.power * 100)}%<span class="trick${d === NUTS.acorn ? ' plain' : ''}">${d.name}: ${d.trick}</span>`;
     const r = this.el('readout');
     if (r._h !== ro) { r.innerHTML = ro; r._h = ro; }
     this.el('b-throw').disabled = !human || phase !== 'aim' || app.koHold > 0;
@@ -122,6 +122,9 @@ export class Hud {
     mv.setAttribute('aria-label', `Move: ${Math.round(b.turn.stamina / 3)}% stamina left`);
     // call fade
     if (this.callT > 0) { this.callT -= 1 / 60; if (this.callT <= 0) this.el('call').classList.remove('show'); }
+    // the mini-map strip hangs just under the top row, whatever height that row has at a large text size
+    const tb = Math.round(this.root.querySelector('.top').getBoundingClientRect().bottom);
+    if (tb !== this.topEnd) { this.topEnd = tb; this.el('minimap').style.top = tb + 6 + 'px'; }
     if (this.cardOn) this.placeCard();
     if (this.hintText && compactView()) this.placeHint();
     this.drawMinimap();

@@ -73,32 +73,76 @@ body.reduced .call.show { animation: none; }
 .thinking { display: inline-block; margin-left: 6px; }
 body.reduced .call, body.reduced .hint { transition: none; }
 
-/* phones: portrait layout with a mini-map strip */
+/* phones, portrait (S4-15): one top row (family pips either side, turn and wind stacked between), a thin mini-map strip,
+   a one-line readout, the buttons, and the nut bar: about 30 percent of an 844 px screen instead of 41 */
 @media (max-width: 700px) {
-  .hud .top { flex-wrap: wrap; }
-  .banner { font-size: calc(13px * var(--text-scale)); padding: 4px 8px 4px 6px; gap: 6px; }
-  .banner .name-long { display: none; }
-  .mid { order: 3; width: 100%; flex-direction: row; justify-content: center; min-width: 0; }
-  .turnlabel { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
-  .wind { flex: none; }
+  .hud .top { flex-wrap: nowrap; align-items: center; gap: 6px; }
+  .banner { font-size: calc(13px * var(--text-scale)); padding: 4px 8px 4px 6px; gap: 6px; min-height: 40px; flex: none; }
+  .banner .name-long, .banner .name-short { display: none; }
+  .mid { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: stretch; gap: 3px; }
+  .turnlabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: center; padding: 3px 8px; font-size: calc(12.5px * var(--text-scale)); }
+  .wind { justify-content: center; gap: 6px; padding: 2px 8px; font-size: calc(13px * var(--text-scale)); }
+  .wind canvas { width: 36px; height: 16px; }
+  .wind span { min-width: 0; text-align: center; }
   .wind .aloft { display: none; }
   .call { top: 30%; }
   .hint { top: auto; }
-  .minimap { display: block; position: absolute; border-color: #1A1410; left: 10px; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 104px); height: 44px; border-radius: 10px; border: 2px solid var(--ink); background: rgba(26,20,16,0.55); width: calc(100% - 20px); }
+  .minimap { display: block; position: absolute; left: 10px; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 64px); height: 30px; border-radius: 10px; border: 2px solid var(--ink); background: rgba(26,20,16,0.55); width: calc(100% - 20px); }
   .hud .bottom { flex-direction: column; align-items: stretch; gap: 6px; }
   .aimbox { flex-direction: column; align-items: stretch; gap: 6px; }
-  .readout { text-align: center; padding: 4px 10px; }
-  .readout { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; overflow: hidden; }
-  .readout .trick { display: inline; font-size: calc(11px * var(--text-scale)); max-width: none; overflow: hidden; text-overflow: ellipsis; }
+  /* the angle and power on one line; the trick line shows only for a special nut (the plain acorn needs none) */
+  .readout { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; text-align: left; padding: 3px 10px; }
+  .readout .trick { display: block; flex: 1 1 100%; width: 100%; max-width: none; white-space: normal; font-size: calc(11.5px * var(--text-scale)); line-height: 1.2; }
+  .readout .trick.plain { display: none; }
   .aimrow { justify-content: space-between; }
   .aimrow .btn { flex: 1 1 0; padding: 6px 6px; min-width: 0; }
   .aimrow .throw { flex: 2 1 0; min-width: 0; }
-  .nutbar { order: 2; }
-  .nutbar { gap: 4px; padding: 4px; justify-content: space-between; }
-  .nut { width: 44px; min-height: 54px; padding: 2px 1px; }
-  .nut canvas { width: 28px; height: 28px; }
+  .nutbar { order: 2; gap: 4px; padding: 4px; justify-content: space-between; }
+  .nut { width: 44px; min-height: 48px; padding: 2px 1px; }
+  .nut canvas { width: 26px; height: 26px; }
   .nut .nm { font-size: 10.5px; letter-spacing: -0.3px; }
   .nut .key { display: none; }
+}
+
+@media (max-width: 400px) {
+  .banner { padding: 3px 6px 3px 5px; gap: 4px; }
+  .banner .em { width: 22px; height: 22px; }
+  .banner .pips { gap: 2px; }
+  .banner .pip { width: 8px; height: 8px; }
+  .wind { gap: 4px; padding: 2px 6px; }
+  .wind canvas { width: 28px; }
+}
+
+/* phones, landscape and any short window (S4-15): banners as pips, turn and wind side by side, and one compact bottom
+   row (nut bar, readout, buttons); the mini-map goes, so the playfield keeps about three quarters of the height */
+@media (max-height: 480px) {
+  .hud .top { flex-wrap: nowrap; align-items: center; gap: 6px; padding-top: max(4px, env(safe-area-inset-top)); }
+  .banner { min-height: 36px; padding: 3px 8px 3px 6px; gap: 6px; flex: none; border-radius: 12px; }
+  .banner .name-long, .banner .name-short { display: none; }
+  .banner .pips { margin-top: 0; }
+  .mid { order: 0; width: auto; flex: 1 1 0; min-width: 0; flex-direction: row; justify-content: center; align-items: center; gap: 6px; }
+  .turnlabel { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 3px 10px; font-size: calc(13px * var(--text-scale)); }
+  .wind { flex: none; padding: 2px 8px; font-size: calc(13px * var(--text-scale)); }
+  .wind canvas { width: 36px; height: 16px; }
+  .wind span { min-width: 0; }
+  .wind .aloft { display: none; }
+  .minimap { display: none; }
+  .call { top: 24%; }
+  .hint { top: auto; }
+  .taunt { top: calc(24% + 56px); }
+  .hud .bottom { flex-direction: row; align-items: flex-end; gap: 6px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  .nutbar { order: 0; flex: 1 1 0; min-width: 0; max-width: none; gap: 4px; padding: 3px; }
+  .nut { width: 44px; min-height: 44px; padding: 1px; }
+  .nut canvas { width: 24px; height: 24px; }
+  .nut .nm { font-size: 10px; letter-spacing: -0.3px; }
+  .nut .key, .nut .ct { font-size: 10px; }
+  .aimbox { flex: none; flex-direction: row; align-items: center; gap: 6px; }
+  .readout { display: block; width: 210px; padding: 2px 8px; font-size: calc(13px * var(--text-scale)); text-align: left; white-space: nowrap; }
+  .readout .trick { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; max-width: none; white-space: normal; font-size: calc(11px * var(--text-scale)); line-height: 1.15; }
+  .readout .trick.plain { display: none; }
+  .aimrow { gap: 5px; }
+  .aimrow .btn { padding: 4px 10px; min-width: 44px; }
+  .throw { min-width: 96px; font-size: calc(17px * var(--text-scale)); }
 }
 
 /* ---------- screens ---------- */
@@ -188,10 +232,7 @@ body.reduced .help-more { animation: none; }
 /* disabled HUD controls stay legible (input is locked during flight, not hidden) */
 .hud .btn[disabled], .hud .nut[disabled] { opacity: 0.72; filter: saturate(0.7); }
 .panel .menu.row:last-child { position: sticky; bottom: -18px; background: var(--sign); padding-top: 10px; padding-bottom: 6px; margin-bottom: -6px; }
-@media (max-width: 700px) {
-  .readout { flex-wrap: wrap; white-space: normal; }
-  .readout .trick { white-space: normal; display: block; width: 100%; }
-}
+
 
 /* ---------- records and "New best!" ---------- */
 .starcount { margin: 4px 0; }

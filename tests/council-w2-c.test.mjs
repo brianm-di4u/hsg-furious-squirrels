@@ -285,4 +285,92 @@ export const tests = [
       t.equal((await t.state()).screen, 'title');
     },
   },
+  // ----- S4-15: the phone HUD -----
+  {
+    name: 'S4-15 on a phone the HUD takes under a third of the height in portrait and under a third in landscape, with nothing overlapping',
+    viewports: ['mobile'],
+    async run(t) {
+      await fresh(t, { unlocked: 4 });
+      const hudBox = () => t.page.evaluate(() => {
+        const r = (s) => { const e = document.querySelector(s); if (!e || e.offsetParent === null && getComputedStyle(e).position !== 'fixed') return null; const b = e.getBoundingClientRect(); return b.width ? { l: b.left, t: b.top, r: b.right, b: b.bottom } : null; };
+        const top = ['#ban0', '#ban1', '.mid', '#minimap'].map(r).filter(Boolean), bot = r('.hud .bottom');
+        const topEnd = Math.max(...top.map((x) => x.b)), H = innerHeight;
+        const hit = (a, b) => a && b && a.l < b.r - 1 && b.l < a.r - 1 && a.t < b.b - 1 && b.t < a.b - 1;
+        const [b0, b1, tl, wind, mini] = ['#ban0', '#ban1', '#turnlabel', '#wind', '#minimap'].map(r);
+        return { H, W: innerWidth, topEnd: Math.round(topEnd), botStart: Math.round(bot.t), pct: +(100 * (topEnd + H - bot.t) / H).toFixed(1), play: Math.round(bot.t - topEnd),
+          overlaps: [['ban0/turn', hit(b0, tl)], ['ban1/turn', hit(b1, tl)], ['ban0/wind', hit(b0, wind)], ['ban1/wind', hit(b1, wind)], ['turn/wind', hit(tl, wind)], ['mini/turn', hit(mini, tl)], ['mini/wind', hit(mini, wind)], ['mini/ban', hit(mini, b0) || hit(mini, b1)]].filter(([, x]) => x).map(([n]) => n),
+          small: [...document.querySelectorAll('.hud .btn, .hud .nut')].filter((e) => !e.disabled || true).map((e) => { const q = e.getBoundingClientRect(); return [e.textContent.trim().slice(0, 12), Math.round(q.width), Math.round(q.height)]; }).filter(([, w, h]) => w < 44 || h < 44),
+          overflowX: document.documentElement.scrollWidth > innerWidth };
+      });
+      const rows = [];
+      for (const [w, h, label] of [[390, 844, 'portrait'], [844, 390, 'landscape'], [667, 375, 'small landscape'], [360, 640, 'small portrait']]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('newGame', { levelId: 'story-04', size: 4 });
+        await t.waitForStable(400);
+        const m = await hudBox();
+        rows.push({ label, ...m });
+        t.expect(m.overlaps.length === 0, `${label}: HUD pieces overlap: ${m.overlaps}`);
+        t.expect(m.small.length === 0, `${label}: controls under 44 px: ${JSON.stringify(m.small)}`);
+        t.expect(!m.overflowX, `${label}: no sideways scroll`);
+        t.expect(m.pct <= (h >= 800 || w > h ? 32 : 42), `${label}: HUD takes ${m.pct}% of the height`);
+        if (label !== 'small landscape') {
+          fs.mkdirSync(SHOTS, { recursive: true });
+          await t.page.screenshot({ path: `${SHOTS}/S4-15-${label}-mobile.png` });
+        }
+      }
+      t.log('HUD share of the height: ' + rows.map((r) => `${r.label} ${r.W}x${r.H} ${r.pct}% (playfield ${r.play}px)`).join('; '));
+      fs.mkdirSync('../_council/hsg-furious-squirrels/wave-2/measure', { recursive: true });
+      fs.writeFileSync('../_council/hsg-furious-squirrels/wave-2/measure/hud-after.json', JSON.stringify(rows, null, 1));
+      await t.page.setViewportSize({ width: 390, height: 844 });
+    },
+  },
+  {
+    name: 'S4-15 the tutorial tip and a special nut stay clear of the controls on a phone, in both orientations, even at large text',
+    viewports: ['mobile'],
+    async run(t) {
+      await fresh(t, { unlocked: 1 });
+      await t.game('setState', { settings: { textScale: 1.5 } });
+      for (const [w, h, label] of [[390, 844, 'portrait'], [844, 390, 'landscape']]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('act', 'menu', 'play', { v: 'story-01' });
+        await t.page.waitForFunction(() => document.querySelector('#hint').classList.contains('show'), null, { timeout: 25000 });
+        await t.waitForStable(300);
+        const m = await t.page.evaluate(() => {
+          const r = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+          const hint = document.querySelector('#hint'), hb = r('#hint'), bot = r('.hud .bottom'), top = r('.hud .top');
+          return { shown: hint.classList.contains('show'), hintBottom: Math.round(hb.b), botTop: Math.round(bot.t), hintTop: Math.round(hb.t), topBottom: Math.round(top.b), overflowX: document.documentElement.scrollWidth > innerWidth };
+        });
+        t.expect(m.shown, `${label}: the tip shows`);
+        t.expect(m.hintBottom <= m.botTop, `${label}: the tip ends above the controls (${m.hintBottom} <= ${m.botTop})`);
+        t.expect(m.hintTop >= m.topBottom - 1, `${label}: and below the top row (${m.hintTop} >= ${m.topBottom})`);
+        t.expect(!m.overflowX, `${label}: no sideways scroll at 150% text`);
+        if (label === 'portrait') t.expect(await t.page.evaluate(() => document.querySelector('#minimap').getBoundingClientRect().top >= document.querySelector('.mid').getBoundingClientRect().bottom - 1), 'portrait: the mini-map strip sits under the top row at 150% text');
+        const small = await t.page.$$eval('.hud .btn, .hud .nut', (b) => b.map((e) => { const q = e.getBoundingClientRect(); return [Math.round(q.width), Math.round(q.height)]; }).filter(([w, hh]) => w < 44 || hh < 44));
+        t.equal(small.length, 0, `${label}: controls stay 44 px at 150% text`);
+        fs.mkdirSync(SHOTS, { recursive: true });
+        await t.page.screenshot({ path: `${SHOTS}/S4-15-tip-${label}-mobile.png` });
+      }
+      await t.game('setState', { settings: { textScale: 1 } });
+      await t.page.setViewportSize({ width: 390, height: 844 });
+    },
+  },
+  {
+    name: 'S4-15 a special nut still shows its trick on a phone, and the plain acorn does not spend a line on it',
+    viewports: ['mobile'],
+    async run(t) {
+      await fresh(t, { unlocked: 4 });
+      for (const [w, h] of [[390, 844], [844, 390]]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('newGame', { levelId: 'story-04', loadout: 'all' });
+        await t.waitForStable(300);
+        const acorn = await t.page.$eval('#readout .trick', (e) => ({ shown: getComputedStyle(e).display !== 'none', h: Math.round(e.parentElement.getBoundingClientRect().height) }));
+        t.expect(!acorn.shown, `${w}x${h}: no trick line for the acorn`);
+        await t.page.click('.nut[data-nut="hickory"]');
+        await t.waitForStable(200);
+        const sp = await t.page.$eval('#readout .trick', (e) => { const q = getComputedStyle(e); return { shown: q.display !== 'none', text: e.textContent, clipped: e.scrollHeight > e.clientHeight + 1 && q.webkitLineClamp === 'none' }; });
+        t.expect(sp.shown && /Hickory Hook/.test(sp.text), `${w}x${h}: the trick shows for a special nut: ${sp.text}`);
+      }
+      await t.page.setViewportSize({ width: 390, height: 844 });
+    },
+  },
 ];

@@ -196,6 +196,8 @@ function tutorial() {
   clearTimeout(tipTimer);
   const q = App.sim && App.sim.active();
   if (!App.level || !App.level.tutorial || !App.save.settings.tutorial || !q || !App.sim.b.teams[q.team].human || App.tutorialStep >= TIPS.length) { hud.hint(''); return; }
+  // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
+  if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return; }
   hud.hint(TIPS[App.tutorialStep]);
   tipTimer = setTimeout(dismissTip, TIP_MS);
 }
