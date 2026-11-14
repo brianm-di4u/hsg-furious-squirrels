@@ -21,4 +21,18 @@ export const tests = [
       }
     },
   },
+  {
+    name: 'S5-02 the title and results pieces have their own tempo and stay inside the mix limits',
+    viewports: ['desktop'],
+    async run(t) {
+      const kit = { title: 96, results: 66 }; // the kit's ragtime and spaCalm examples
+      for (const name of ['title', 'results']) {
+        const r = await render(t, name, 60), b = r.built;
+        t.log(`${name}: bpm ${b.bpm} peak ${r.peak} rms ${r.rmsDb} dB silence ${r.longestSilence}s form ${b.formSeconds}s distinct ${b.distinctBars} pitches ${b.pitches}`);
+        t.expect(b.bpm !== kit[name] && b.bpm !== 108, `${name} is not at the tempo of the kit example or the old tune (${b.bpm} bpm)`);
+        t.expect(r.peak >= 0.06 && r.peak <= 0.16 && r.rmsDb >= -40 && r.rmsDb <= -28, `${name} peak ${r.peak}, rms ${r.rmsDb} dB inside the limits`);
+        t.expect(b.formSeconds >= 45 && b.distinctBars >= 6 && b.pitches >= 6 && r.longestSilence <= 2, `${name} form ${b.formSeconds}s, ${b.distinctBars} distinct bars, ${b.pitches} pitches, silence ${r.longestSilence}s`);
+      }
+    },
+  },
 ];
