@@ -35,4 +35,29 @@ export const tests = [
       }
     },
   },
+  {
+    name: 'S4-15 all seven nut chips fit the landscape bar and stay 44 px',
+    viewports: ['mobile'],
+    async run(t) {
+      for (const [w, h] of [[844, 390], [932, 430], [390, 844]]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('newGame', { levelId: 'gray', loadout: 'all' });
+        await t.page.waitForSelector('.hud .nut', { timeout: 15000 });
+        await t.waitForStable(300);
+        const m = await t.page.evaluate(() => {
+          const bar = document.querySelector('.nutbar').getBoundingClientRect(), chips = [...document.querySelectorAll('.nutbar .nut')].map((e) => e.getBoundingClientRect());
+          const last = chips[chips.length - 1];
+          return { n: chips.length, barR: Math.round(bar.right), lastR: Math.round(last.right), lastL: Math.round(last.left), ro: (() => { const r = document.querySelector('.readout'); return r.scrollWidth - r.clientWidth; })(), small: chips.filter((q) => q.width < 44 || q.height < 44).length, scroll: document.querySelector('.nutbar').scrollWidth - document.querySelector('.nutbar').clientWidth };
+        });
+        t.expect(m.n === 7, `${w}x${h}: seven nuts in the bar (${m.n})`);
+        t.expect(m.lastR <= m.barR, `${w}x${h}: the seventh chip ends inside the bar (${m.lastR} <= ${m.barR})`);
+        t.expect(m.scroll <= 0, `${w}x${h}: the bar does not need to scroll (${m.scroll})`);
+        t.expect(m.ro <= 0, `${w}x${h}: the readout text still fits its box (${m.ro})`);
+        fs.mkdirSync(SHOTS, { recursive: true });
+        await t.page.screenshot({ path: `${SHOTS}/S4-15-nutbar-seven-${w}x${h}.png` });
+        t.equal(m.small, 0, `${w}x${h}: every chip is at least 44 px`);
+      }
+      await t.page.setViewportSize({ width: 390, height: 844 });
+    },
+  },
 ];
