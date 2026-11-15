@@ -194,7 +194,7 @@ const TEMPLATES = {
       ${d.loss ? `<p class="losscause">${d.loss.cause}</p><p class="starrule losshint">${d.loss.hint}${d.loss.button ? ` <button type="button" class="btn small" data-act="${d.loss.button}">Aim guide: Always long</button>` : ''}</p>` : ''}
       ${d.line ? `<p class="feudline">${d.line}</p>` : ''}
       ${d.stars != null ? starStr(d.stars) : ''}
-      ${d.par ? `<p class="starrule">Stars: win the battle, ${d.koAllowed ? 'lose at most one squirrel' : 'keep every squirrel in the trees'}, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
+      ${d.par ? `<p class="starrule">Stars: win the battle, ${d.koAllowed ? 'lose at most one squirrel' : 'keep every squirrel in the trees'}${d.rounds > 1 ? ' in each round' : ''}, and win within ${d.par} turns${d.rounds > 1 ? ` over its ${d.rounds} rounds` : ''} (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
       ${recordLines(d.records)}
       ${d.daily ? dailyLines(d.daily) : ''}
@@ -294,7 +294,7 @@ const TEMPLATES = {
       <p class="starcount"><b>Stars: ${totalStars(st, levels)} / ${levels.length * 3}</b> · Battles won: ${won} of ${levels.length}</p>
       <div class="rec-table" role="table" aria-label="Best result in each Story battle">
         ${levels.map((L) => { const n = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = n ? tiers[Math.min(3, n) - 1] : 0, best = st.bestTurns[L.id], open = L.n <= st.unlocked;
-          return `<div class="rec-row" role="row"><span class="rn" role="cell">${L.n}. ${L.name}</span>${open ? `<span class="st" role="cell" aria-label="${n} of 3 stars${top && top !== 2 ? ' on ' + TIER_NAME[top] : ''}">${[0, 1, 2].map((i) => (i < n ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('')}</span><span class="rb" role="cell">${best ? `best ${turns(best)}, par ${L.par}` : n ? 'won' : 'not won yet'}</span>` : '<span class="rb" role="cell">locked</span>'}</div>`; }).join('')}
+          return `<div class="rec-row" role="row"><span class="rn" role="cell">${L.n}. ${L.name}</span>${open ? `<span class="st" role="cell" aria-label="${n} of 3 stars${top && top !== 2 ? ' on ' + TIER_NAME[top] : ''}">${[0, 1, 2].map((i) => (i < n ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('')}</span><span class="rb" role="cell">${best ? `best ${turns(best)}, par ${L.par}${L.rounds > 1 ? ' a round' : ''}` : n ? 'won' : 'not won yet'}</span>` : '<span class="rb" role="cell">locked</span>'}</div>`; }).join('')}
       </div>
       <nav class="menu row">${btn('recordsBack', 'Back', `autofocus data-back data-from="${from || ''}"`, 'btn primary')}${btn('journal', 'Field Notes', `data-from="${from || ''}"`)}</nav>
     </div>`;

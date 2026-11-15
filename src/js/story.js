@@ -80,7 +80,11 @@ export const LEVEL_FACTS = ['hs-0093', 'hs-0094', 'hs-0082', 'n-redbud', 'n-wind
 // stronger player), and the win within the level's par of the family's own turns. KO_ALLOWED was 0 for every size.
 const KO_SIZE = 3, KO_ALLOWED = 1;
 export const koAllowed = (size) => (size >= KO_SIZE ? KO_ALLOWED : 0);
-export function starsFor({ win, outs, size, turns, par }) { return win ? 1 + (outs <= koAllowed(size) ? 1 : 0) + (turns <= par ? 1 : 0) : 0; }
+// A battle of several rounds (P-N02, the finale is best of three) is judged over all the rounds played, by the rule of a one-round battle
+// for each: the squirrels lost across the rounds may be KO_ALLOWED a round, and the par is the level's par a round. `rounds` is the
+// number of rounds played (1 for every other battle, so nothing there moves).
+export const parFor = (par, rounds = 1) => par * Math.max(1, rounds);
+export function starsFor({ win, outs, size, turns, par, rounds = 1 }) { return win ? 1 + (outs <= koAllowed(size) * Math.max(1, rounds) ? 1 : 0) + (turns <= parFor(par, rounds) ? 1 : 0) : 0; }
 
 export function blurbFor(n) { return BLURBS[n - 1] || ''; }
 

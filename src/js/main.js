@@ -13,7 +13,7 @@ import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 import { dayKey, dailyPlan, recordDaily, liveStreak } from './daily.js';
-import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS, koAllowed, starsFor } from './story.js';
+import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS, koAllowed, starsFor, parFor } from './story.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
 const ALL = typeof LEVELS !== 'undefined' ? LEVELS : {};
@@ -455,8 +455,9 @@ function battleOver() {
   const before = { turns: s.story.bestTurns[L.id], stars: s.story.stars[L.id] || 0, shot: s.stats.bestShot };
   const ti = TIERS.indexOf(App.setup.difficulty);
   if (App.setup.mode === 'story') {
-    const outs = b.squirrels.filter((q) => q.team === me && q.out).length;
-    stars = starsFor({ win, outs, size: L.teamSize, turns: myTurns, par: L.par });
+    // every round counts, not only the last (P-N02): the squirrels lost over all of them, and the turns over all of them against a par a round
+    const outs = b.lost ? b.lost[me] : b.squirrels.filter((q) => q.team === me && q.out).length;
+    stars = starsFor({ win, outs, size: L.teamSize, turns: myTurns, par: L.par, rounds: b.played || 1 });
     s.story.stars[L.id] = Math.max(s.story.stars[L.id] || 0, stars);
     // the difficulty each star was earned on: slot i holds the highest tier on which a run reached i + 1 stars
     tier = ti < 0 ? 2 : ti + 1;
@@ -502,7 +503,7 @@ function battleOver() {
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     losses: App.setup.mode === 'story' && !win ? s.story.losses[L.id] || 0 : 0, offerEasy: App.setup.mode === 'story' && !win && (s.story.losses[L.id] || 0) >= LOSS_OFFER && s.settings.difficulty !== 'easy',
     retry: !win && !practice && !daily, daily, loss: !win && !practice ? lossText(b, me, myStats) : null,
-    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, koAllowed: koAllowed(L.teamSize), acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
+    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? parFor(L.par, b.played || 1) : null, rounds: b.played || 1, koAllowed: koAllowed(L.teamSize), acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
   });
   decorateScreen();
   say((win ? 'Victory!' : 'Battle over.') + (daily && daily.won ? ` Daily Duel won in ${daily.turns} ${daily.turns === 1 ? 'turn' : 'turns'}.` : '') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));

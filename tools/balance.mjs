@@ -17,7 +17,7 @@ import { Sim } from '../src/js/sim/battle.js';
 import { planTurn, aiTier } from '../src/js/sim/ai.js';
 import { aiBuys, aiShop } from '../src/js/sim/battle.js';
 import { NUT_ORDER, ACORNS } from '../src/js/sim/const.js';
-import { starsFor } from '../src/js/story.js';
+import { starsFor, parFor } from '../src/js/story.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'levels/all.json'), 'utf8'));
@@ -45,11 +45,11 @@ export function storyBattle(L, seed, me, rival, { shop = true, skill = true, pur
     if (!p) { sim.nextTurn(); continue; }
     sim.throwNut(p); sim.settleNow(); turns++;
   }
-  const outs = sim.b.squirrels.filter((q) => q.team === 0 && q.out).length;
+  const outs = sim.b.lost[0]; // over every round, as the game's results card counts them (P-N02)
   const win = sim.b.result && sim.b.result.battleWinner === 0;
   const myTurns = Math.ceil(sim.b.turn.n / 2);
   const winner = sim.b.result ? sim.b.result.battleWinner : -1;
-  return { win: !!win, firstWon: winner === first, decided: winner === 0 || winner === 1, turns, outs, par: win && myTurns <= L.par, stars: starsFor({ win: !!win, outs, size: L.teamSize, turns: myTurns, par: L.par }) };
+  return { win: !!win, firstWon: winner === first, decided: winner === 0 || winner === 1, turns, outs, par: win && myTurns <= parFor(L.par, sim.b.played), stars: starsFor({ win: !!win, outs, size: L.teamSize, turns: myTurns, par: L.par, rounds: sim.b.played }) };
 }
 
 export function battle(L, seed, d0, d1, size = 3) {

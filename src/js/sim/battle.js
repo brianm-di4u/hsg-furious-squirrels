@@ -25,7 +25,7 @@ export class Sim {
   constructor(level, opts = {}, battle = null) {
     this.level = level;
     this.queue = []; // events for the renderer/audio, drained each frame
-    if (battle) { this.b = battle; birdDefaults(battle); this.rebuild(); return; }
+    if (battle) { this.b = battle; birdDefaults(battle); if (!battle.lost) battle.lost = [0, 0]; if (battle.played == null) battle.played = Math.max(0, battle.round - 1); this.rebuild(); return; }
     const seed = (opts.seed ?? 7) >>> 0;
     const size = clamp(opts.teamSize || level.teamSize || 3, 1, 4);
     const windKey = opts.wind || level.wind || 'normal', steamKey = opts.steam || level.steam || 'on';
@@ -44,6 +44,8 @@ export class Sim {
       squirrels: [], trees: null, craters: [], settle: 0, falling: [], nuts: [], log: [],
       rng: { sim: makeRng(seed ^ 0x5eed).s, ai: makeRng(seed ^ 0xa11ce).s, birds: makeRng(seed ^ 0xb1d5).s }, result: null, size,
       birdLevel: opts.birds in BIRD_LEVELS ? opts.birds : 'off', birds: [], birdT: 0,
+      // rounds finished, and the squirrels each family has lost over all of them (P-N02: a Story star judges every round, not the last)
+      played: 0, lost: [0, 0],
     };
     if (this.b.practice) { this.b.teams[1].human = false; this.b.birdLevel = 'off'; }
     // the shop before round one: each family starts from its own purse and buys what it asked for (the same rules as buy())
@@ -143,6 +145,8 @@ export class Sim {
   endRound(alive) {
     const b = this.b;
     let winner = alive[0] > 0 ? 0 : alive[1] > 0 ? 1 : -1;
+    b.played++;
+    for (let t = 0; t < 2; t++) b.lost[t] += b.squirrels.filter((q) => q.team === t && q.out).length;
     b.teams.forEach((tm) => { tm.acorns += ACORNS.roundPlayed; });
     if (winner >= 0) { b.roundWins[winner]++; b.teams[winner].acorns += ACORNS.roundWin; }
     const need = Math.floor(b.rounds / 2) + 1;

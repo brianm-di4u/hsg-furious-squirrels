@@ -49,3 +49,36 @@ test('S3-13 the walnut is still the bonus once it is unlocked, and nothing is gi
   assert.deepEqual(r.second, r.first, 'battle 1 has only acorns: nothing to give');
 });
 
+// ---- P-N02 ----
+import { starsFor, parFor } from '../src/js/story.js';
+
+test('P-N02 a battle of several rounds is judged over all of them, and a single round is judged as it was', () => {
+  const base = { win: true, size: 4, par: 14 };
+  assert.equal(starsFor({ ...base, outs: 1, turns: 14 }), 3, 'one round: unchanged');
+  assert.equal(starsFor({ ...base, outs: 2, turns: 14 }), 2);
+  assert.equal(starsFor({ ...base, outs: 2, turns: 20, rounds: 2 }), 3, 'two rounds allow two lost squirrels and 28 turns');
+  assert.equal(starsFor({ ...base, outs: 3, turns: 20, rounds: 2 }), 2, 'a third lost squirrel costs the star');
+  assert.equal(starsFor({ ...base, outs: 2, turns: 29, rounds: 2 }), 2, 'and a 29th turn costs the other');
+  assert.equal(starsFor({ ...base, size: 2, outs: 1, turns: 10, rounds: 3 }), 2, 'two a side still lose none');
+  assert.equal(starsFor({ ...base, win: false, outs: 0, turns: 1, rounds: 3 }), 0);
+  assert.equal(parFor(14, 3), 42);
+  assert.equal(parFor(14), 14);
+});
+
+test('P-N02 the Sim counts the squirrels each family lost over every round, and an old saved battle gets defaults', () => {
+  const L = levels['story-12'];
+  const sim = new Sim(L, { seed: 5, mode: 'story', teamSize: 4, rounds: 3, human: [true, false], loadout: 'story', unlocked: [] });
+  assert.deepEqual([sim.b.played, ...sim.b.lost], [0, 0, 0]);
+  sim.forceRound(1); // the rivals win round one: all four of ours are out
+  assert.deepEqual([sim.b.played, ...sim.b.lost], [1, 4, 0]);
+  sim.continueBattle();
+  assert.ok(sim.b.squirrels.every((q) => !q.out), 'the next round starts with everyone back');
+  sim.forceRound(0);
+  sim.continueBattle();
+  sim.forceRound(0);
+  assert.equal(sim.b.phase, 'battleEnd');
+  assert.deepEqual([sim.b.played, ...sim.b.lost], [3, 4, 8], 'round one is still counted at the end');
+  const old = sim.toJSON(); delete old.lost; delete old.played; old.round = 2;
+  const back = new Sim(L, {}, old);
+  assert.deepEqual([back.b.played, ...back.b.lost], [1, 0, 0], 'a battle saved before this counts its finished rounds and starts the losses at none');
+});

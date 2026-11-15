@@ -199,4 +199,34 @@ export const tests = [
       t.equal(await t.page.evaluate(() => document.querySelectorAll('#screens .losscause, #screens .losshint').length), 0, 'a win shows no loss lines');
     },
   },
+  // ---- P-N02 ----
+  {
+    name: 'P-N02 the finale is judged over every round: squirrels lost in an early round cost the star, and the card says so',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.seed(35594);
+      await t.game('setState', { story: { team: 0, unlocked: 12 } });
+      await t.game('act', 'menu', 'play', { v: 'story-12' });
+      if ((await t.state()).screen === 'prep') await t.game('act', 'menu', 'prepGo');
+      await t.page.waitForFunction(() => window.__FS.scene === 'battle' && !window.__FS.screens.cur, null, { timeout: 8000 });
+      // round one goes to the rivals (all four of ours out), then two rounds won, with no turns taken
+      await t.page.evaluate(() => {
+        const sim = window.__FS.sim, me = sim.b.teams.findIndex((x) => x.human);
+        sim.forceRound(1 - me); sim.drain(); sim.continueBattle();
+        sim.forceRound(me); sim.drain(); sim.continueBattle();
+      });
+      await t.game('scene', 'results', {});
+      await t.waitFrames(2);
+      const r = await t.page.evaluate(() => ({ text: document.querySelector('#screens .starrule').textContent, stars: window.__FS.save.story.stars['story-12'], lost: window.__FS.sim.b.lost.slice(), played: window.__FS.sim.b.played, outsLastRound: window.__FS.sim.b.squirrels.filter((q) => q.team === 0 && q.out).length }));
+      t.equal(r.played, 3, 'three rounds were played');
+      t.equal(r.outsLastRound, 0, 'nobody was out in the last round, which is all the old rule looked at');
+      t.equal(r.lost[0], 4, 'four squirrels were lost in all');
+      t.equal(r.stars, 2, 'so the battle earns the win and the par, not the star for keeping the family');
+      t.expect(/lose at most one squirrel in each round, and win within 42 turns over its 3 rounds/.test(r.text), `the card states the rule: ${r.text}`);
+      await snap(t, 'P-N02-finale-stars');
+      await t.game('act', 'menu', 'records');
+      t.expect(/par 14 a round/.test(await t.page.textContent('#screens')), 'the Records screen says the par is a round');
+    },
+  },
 ];
