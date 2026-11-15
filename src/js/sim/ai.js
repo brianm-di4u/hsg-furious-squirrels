@@ -6,15 +6,19 @@ import { NUTS, SQ_UP, GRIP, clamp } from './const.js';
 import { segDist } from './trees.js';
 
 const SHARP_SA = 1.1;
+// Hard's first shot at a new target is this many times as noisy as its settled aim (S1-17: it was 1, and Hard hit with its first throw
+// throw 93 times in 100, an aimbot rather than a rival; at 1.8 it is 78, as often as Sharp). The bracket below shrinks it on each
+// repeat at the same target, so Hard zeroes in the way a person does and is steadier than before from the second shot on.
+const HARD_FIRST = 1.8;
 export const DIFF = {
-  easy: { sa: 3.8, sp: 0.045, wind: 0.6, special: 0.25, move: 0.08, bracket: 0.25, think: [0.9, 1.4], rand: true },
-  medium: { sa: 2.0, sp: 0.022, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1] },
+  easy: { sa: 3.8, sp: 0.045, wind: 0.6, special: 0.25, move: 0.08, bracket: 0.25, think: [0.9, 1.4], rand: true, first: 1 },
+  medium: { sa: 2.0, sp: 0.022, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1], first: 1 },
   // between Medium and Hard (S3-04): roughly the geometric middle of their aim noise, so each step is a similar jump
-  sharp: { sa: SHARP_SA, sp: 0.0124, wind: 1, special: 0.68, move: 0.45, bracket: 0.6, think: [0.6, 1.0] },
-  hard: { sa: 0.6, sp: 0.007, wind: 1, special: 0.8, move: 0.6, bracket: 0.7, think: [0.5, 0.9] },
+  sharp: { sa: SHARP_SA, sp: 0.0124, wind: 1, special: 0.68, move: 0.45, bracket: 0.6, think: [0.6, 1.0], first: 1 },
+  hard: { sa: 0.6, sp: 0.007, wind: 1, special: 0.8, move: 0.6, bracket: 0.7, think: [0.5, 0.9], first: HARD_FIRST },
   // not a tier a player can pick and not in TIERS: a stand-in for a person at the controls (S3-12), who cannot set an angle better
   // than a degree or two or a power better than a few percent. tools/balance.mjs plays it against the real tiers to see where it sits.
-  human: { sa: 2.5, sp: 0.03, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1] },
+  human: { sa: 2.5, sp: 0.03, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1], first: 1 },
 };
 // The skill scale the rival sits on: 0 Easy, 1 Medium, 2 Sharp, 3 Hard. A Story level nudges it up or down with its
 // `skill` field (levels/*.json), so the campaign ramps inside whichever tier the player picked. Between two tiers the
@@ -27,7 +31,7 @@ function params(d) {
   if (f < 1e-6) return A;
   const lin = (x, y) => x + (y - x) * f, geo = (x, y) => x * Math.pow(y / x, f);
   return { sa: geo(A.sa, B.sa), sp: geo(A.sp, B.sp), wind: lin(A.wind, B.wind), special: lin(A.special, B.special), move: lin(A.move, B.move),
-    bracket: lin(A.bracket, B.bracket), think: [lin(A.think[0], B.think[0]), lin(A.think[1], B.think[1])], rand: d < 0.5 };
+    bracket: lin(A.bracket, B.bracket), first: lin(A.first, B.first), think: [lin(A.think[0], B.think[0]), lin(A.think[1], B.think[1])], rand: d < 0.5 };
 }
 const TAPPED = { chinquapin: 1, pecan: 1, sweetgum: 1 };
 
@@ -198,7 +202,7 @@ export function* planTurnGen(sim, difficulty = 'medium', force = {}) {
   const tapAt = best.tapAt;
   // bracketing: repeated shots at the same target get steadier
   if (mem.target === target.id) mem.k = Math.max(0.3, mem.k * (1 - P.bracket));
-  else { mem.target = target.id; mem.k = 1; }
+  else { mem.target = target.id; mem.k = P.first; }
   const angle = clamp(best.a + rng.normal(0, P.sa * mem.k), -30, 90);
   const power = clamp(best.p + rng.normal(0, P.sp * mem.k), 0.05, 1);
   return { move, nut: kind, angle: Math.round(angle * 10) / 10, power: Math.round(power * 1000) / 1000, tapAt, target: target.id, sims: best.n, think: rng.range(P.think[0], P.think[1]) };

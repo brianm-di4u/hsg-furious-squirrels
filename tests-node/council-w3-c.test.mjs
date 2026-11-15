@@ -82,3 +82,40 @@ test('P-N02 the Sim counts the squirrels each family lost over every round, and 
   const back = new Sim(L, {}, old);
   assert.deepEqual([back.b.played, ...back.b.lost], [1, 0, 0], 'a battle saved before this counts its finished rounds and starts the losses at none');
 });
+
+// ---- S1-17 ----
+import { planTurn, DIFF, aiTier } from '../src/js/sim/ai.js';
+
+// the first throw of a turn-one Hard rival at zero wind and with a plain acorn, over 5 levels x 8 fixed seeds: the same 40 games every run
+function firstThrowHits(tier) {
+  let hit = 0, n = 0;
+  for (const num of [2, 4, 6, 8, 11]) {
+    const L = levels[`story-${String(num).padStart(2, '0')}`];
+    for (let s = 0; s < 8; s++) {
+      const sim = new Sim(L, { seed: 300 + s * 17 + num, teamSize: 3, human: [false, false], loadout: 'practice', wind: 'off', birds: 'off' });
+      const team = sim.b.turn.team;
+      sim.throwNut(planTurn(sim, tier, { nut: 'acorn', noMove: true })); sim.settleNow();
+      if (sim.drain().some((e) => (e.type === 'hit' || e.type === 'ko') && sim.b.squirrels.find((q) => q.id === e.sq).team !== team)) hit++;
+      n++;
+    }
+  }
+  return { hit, n };
+}
+
+test('S1-17 Hard no longer lands its first throw nearly every time, and still settles once it has a range', () => {
+  assert.ok(DIFF.hard.first > 1 && ['easy', 'medium', 'sharp', 'human'].every((k) => DIFF[k].first === 1), 'only Hard starts with a wider aim');
+  const mid = aiTier('hard', -0.5);
+  assert.ok(mid > 2 && mid < 3);
+  const L = levels['story-04'];
+  const sim = new Sim(L, { seed: 321, teamSize: 3, human: [false, false], loadout: 'practice', wind: 'off', birds: 'off' });
+  const tm = sim.b.teams[sim.b.turn.team];
+  planTurn(sim, 'hard', { nut: 'acorn', noMove: true });
+  assert.equal(tm.ai.k, DIFF.hard.first, 'a new target gets the first-shot noise');
+  const target = tm.ai.target;
+  planTurn(sim, 'hard', { nut: 'acorn', noMove: true });
+  if (tm.ai.target === target) assert.ok(tm.ai.k < DIFF.hard.first * 0.4, `and the next throw at it is steadier (${tm.ai.k})`);
+  const { hit, n } = firstThrowHits('hard');
+  assert.ok(hit <= 0.85 * n, `${hit} of ${n} first throws hit`);
+  const sharp = firstThrowHits('sharp');
+  assert.ok(hit >= sharp.hit - 6, `and Hard is not worse than Sharp by more than luck: ${hit} against ${sharp.hit}`);
+});
