@@ -85,6 +85,10 @@ function decoded(s) {
 let notice_ = '', raised = { bad: false, newer: false };
 const raise = (kind, text) => { if (!raised[kind]) { raised[kind] = true; notice_ = text; } };
 export function takeSaveNotice() { const n = notice_; notice_ = ''; return n; }
+// Whether this browser lets the page keep anything at all (a private window or blocked site data often does not).
+export function storageWorks() {
+  try { const k = KEY + '-probe'; window.localStorage.setItem(k, '1'); window.localStorage.removeItem(k); return true; } catch { return false; }
+}
 function read() {
   let raw;
   try { raw = window.localStorage.getItem(KEY); } catch { return { valid: false, save: null }; }

@@ -443,4 +443,47 @@ export const tests = [
       t.equal(await t.page.evaluate(() => window.__FS.turnElapsed), 0, 'and the clock does not run');
     },
   },
+  // ---- S6-15 ----
+  ...[
+    ['reading storage throws', () => { const thr = () => { throw new Error('blocked'); }; Object.defineProperty(window, 'localStorage', { get: thr }); }],
+    ['writing storage throws', () => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; }],
+  ].map(([what, init]) => ({
+    name: `S6-15 when ${what}, the title says progress cannot be saved`,
+    initScript: init,
+    async run(t) {
+      t.equal((await t.state()).scene, 'title', 'the game still boots');
+      const note = await t.page.textContent('#screens .notice');
+      t.expect(/Progress can't be saved in this browser/.test(note), `the title says so (${note})`);
+      t.expect(/Progress can't be saved/.test((await t.state()).lastSaid), 'and it is read out through the live region');
+      await snap(t, 'S6-15-cannot-save');
+      t.equal(await t.page.locator('#screens .notice').count(), 1, 'once');
+    },
+  })),
+  {
+    name: 'S6-15 a working save says nothing, leaves no probe behind, and a later failed write is announced once',
+    viewports: ['desktop'],
+    initScript: () => {
+      const real = Storage.prototype.setItem;
+      window.__block = false;
+      Storage.prototype.setItem = function (...a) { if (window.__block) throw new DOMException('full', 'QuotaExceededError'); return real.apply(this, a); };
+      window.__told = 0;
+      addEventListener('DOMContentLoaded', () => {
+        new MutationObserver(() => { if (/can't be saved/.test(document.getElementById('live').textContent)) window.__told++; }).observe(document.getElementById('live'), { childList: true, characterData: true, subtree: true });
+      });
+    },
+    async run(t) {
+      t.equal(await t.page.locator('#screens .notice').count(), 0, 'no notice when saving works');
+      t.equal(await t.page.evaluate(() => localStorage.getItem('hsg-furious-squirrels-v1-probe')), null, 'the storage probe is removed');
+      await t.game('act', 'menu', 'settings');
+      await t.page.evaluate(() => { window.__block = true; });
+      await t.game('act', 'menu', 'set', { k: 'music', v: 'false' });
+      await t.page.waitForFunction(() => window.__told >= 1, null, { timeout: 5000 });
+      await t.game('act', 'menu', 'set', { k: 'music', v: 'true' });
+      await t.game('act', 'menu', 'set', { k: 'ambience', v: 'false' });
+      await t.waitFrames(5);
+      t.equal(await t.page.evaluate(() => window.__told), 1, 'announced once for the session, not for every failed write');
+      await t.game('act', 'menu', 'back');
+      t.expect(/Progress can't be saved/.test(await t.page.textContent('#screens .notice')), 'and the title carries it');
+    },
+  },
 ];

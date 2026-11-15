@@ -10,7 +10,7 @@ import { Hud } from './ui/hud.js';
 import { Screens, factHtml } from './ui/screens.js';
 import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
-import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
+import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
 import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS } from './story.js';
 
@@ -58,11 +58,22 @@ function paintNotice() {
   const p = document.createElement('p'); p.className = 'tagline notice'; p.setAttribute('role', 'status'); p.textContent = titleNotice;
   tag.after(p); titleNotice = '';
 }
+// Once a session the player is told if nothing they do will be kept (S6-15): at boot when storage is blocked, or the
+// first time a save fails later (a full disk, say). The newer-version notice already says as much, so it counts.
+const UNSAVED = "Progress can't be saved in this browser";
+let unsavedTold = false;
 function checkSaveNotice() {
   const n = takeSaveNotice();
   if (!n) return;
+  if (/not be saved/.test(n)) unsavedTold = true;
   if (App.scene === 'battle') hud.call(n, 4500);
   showNotice(n);
+}
+function tellUnsaved() {
+  if (unsavedTold) return;
+  unsavedTold = true;
+  if (App.scene === 'battle') hud.call(UNSAVED, 4500);
+  showNotice(UNSAVED);
 }
 function saveConflict() {
   hud.call('Saved battle changed in another tab', 4500);
@@ -73,6 +84,7 @@ function persist(intent = 'merge', fields = [], expectedResume) {
   const ok = writeSave(App.save, { intent, fields: Array.isArray(fields) ? fields : [fields], expectedResume, notify: saveConflict });
   if (before !== JSON.stringify(App.save.settings)) { applySettings(); App.guideKey = ''; }
   checkSaveNotice();
+  if (!ok) tellUnsaved();
   return ok;
 }
 // a saved Quick Battle level that no longer exists falls back to the first Story level
@@ -1083,6 +1095,7 @@ try {
   loadSoil();
   initAudio(App.save.settings);
   showTitle();
+  if (!storageWorks()) tellUnsaved();
   App.ready = true;
   document.body.dataset.ready = '1';
 } catch (err) { showError(err); }
