@@ -6,6 +6,7 @@
 //   --study [--shop on|off] [--skill on|off] [--purse 60] [--seeds 4 --jobs 6 --rivals easy,medium,sharp,hard --levels 1,2,...]   the Story study (S3-01, S3-04): a Medium player proxy
 //   (team 0) against the rival at each tier on every Story level, with the satchel shop before the battle (both families
 //   pack the same purse) and the per-level skill field; `--shop off --skill off` is the game as it was before those two.
+//   The study also reports firstMover (S3-13): the share of decided Story battles won by the family that threw first, in the loadouts the Story really has.
 //   --stars   the star check (S3-05): a Hard-skill player proxy against a Medium rival on every Story level, and the share of battles that
 //   earn three stars against tools/balance-targets.json (threeStars). Exit code 1 when it is outside the target.
 import fs from 'node:fs';
@@ -33,6 +34,7 @@ export function storyBattle(L, seed, me, rival, { shop = true, skill = true, pur
   const sim = new Sim(L, { seed, mode: 'story', teamSize: L.teamSize, rounds: L.rounds, human: [false, false], loadout: 'story', unlocked: kinds, playerTeam: 0,
     acorns: [purse, purse], buys: shop ? [aiBuys(kinds, purse), aiBuys(kinds, purse)] : undefined });
   const tiers = [aiTier(me), aiTier(rival, skill ? L.skill || 0 : 0)];
+  const first = sim.b.turn.team;
   let turns = 0;
   while (sim.b.phase !== 'battleEnd' && turns < 220) {
     if (sim.b.phase === 'roundEnd') {
@@ -46,7 +48,8 @@ export function storyBattle(L, seed, me, rival, { shop = true, skill = true, pur
   const outs = sim.b.squirrels.filter((q) => q.team === 0 && q.out).length;
   const win = sim.b.result && sim.b.result.battleWinner === 0;
   const myTurns = Math.ceil(sim.b.turn.n / 2);
-  return { win: !!win, turns, outs, par: win && myTurns <= L.par, stars: starsFor({ win: !!win, outs, size: L.teamSize, turns: myTurns, par: L.par }) };
+  const winner = sim.b.result ? sim.b.result.battleWinner : -1;
+  return { win: !!win, firstWon: winner === first, decided: winner === 0 || winner === 1, turns, outs, par: win && myTurns <= L.par, stars: starsFor({ win: !!win, outs, size: L.teamSize, turns: myTurns, par: L.par }) };
 }
 
 export function battle(L, seed, d0, d1, size = 3) {
@@ -107,8 +110,8 @@ async function study() {
   });
   const out = { config: { ...cfg, seeds }, vs: {}, perLevel: {} };
   for (const rival of rivals) {
-    const rs = results.filter((r) => r.rival === rival), n = rs.reduce((a, r) => a + r.n, 0), w = rs.reduce((a, r) => a + r.w, 0), turns = rs.reduce((a, r) => a + r.turns, 0), s3 = rs.reduce((a, r) => a + r.s3, 0);
-    out.vs[rival] = { win: +(w / n).toFixed(3), threeStars: +(s3 / n).toFixed(3), turns: +(turns / n).toFixed(1), n };
+    const rs = results.filter((r) => r.rival === rival), fw = rs.reduce((a, r) => a + r.fw, 0), dec = rs.reduce((a, r) => a + r.dec, 0), n = rs.reduce((a, r) => a + r.n, 0), w = rs.reduce((a, r) => a + r.w, 0), turns = rs.reduce((a, r) => a + r.turns, 0), s3 = rs.reduce((a, r) => a + r.s3, 0);
+    out.vs[rival] = { firstMover: dec ? +(fw / dec).toFixed(3) : null, win: +(w / n).toFixed(3), threeStars: +(s3 / n).toFixed(3), turns: +(turns / n).toFixed(1), n };
     for (const r of rs) (out.perLevel[rival] ||= {})[r.level] = +(r.w / r.n).toFixed(2);
   }
   console.log(JSON.stringify(out));
@@ -121,9 +124,9 @@ async function study() {
 }
 if (!isMainThread && workerData && workerData.job) {
   const { job, cfg } = workerData, L = LEVELS.find((x) => x.n === job.n);
-  let w = 0, turns = 0, s3 = 0;
-  for (let i = 0; i < job.seeds; i++) { const r = storyBattle(L, 900 + i * 13 + L.n, cfg.me, job.rival, cfg); turns += r.turns; if (r.win) w++; if (r.stars === 3) s3++; }
-  parentPort.postMessage({ rival: job.rival, level: job.n, n: job.seeds, w, turns, s3 });
+  let w = 0, turns = 0, s3 = 0, fw = 0, dec = 0;
+  for (let i = 0; i < job.seeds; i++) { const r = storyBattle(L, 900 + i * 13 + L.n, cfg.me, job.rival, cfg); turns += r.turns; if (r.win) w++; if (r.stars === 3) s3++; if (r.decided) { dec++; if (r.firstWon) fw++; } }
+  parentPort.postMessage({ rival: job.rival, level: job.n, n: job.seeds, w, turns, s3, fw, dec });
   process.exit(0);
 }
 

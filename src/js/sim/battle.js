@@ -10,6 +10,8 @@ import { initTreeState, treeGeom, buildPerches, shortestPath, reachable, segDist
 import { makeNut, stepNut, applyTap, startRoll, treeBoxes, predict } from './flight.js';
 import { makeRng } from '../rng.js';
 
+// the special the second thrower gets one extra of each round: the first of these its family has unlocked (S3-13)
+export const BONUS_NUTS = ['walnut', 'hickory', 'sweetgum', 'pecan', 'chinquapin', 'hedgeapple'];
 export const TUMBLE_OUT = 110; // a fall this far onto the ground knocks a squirrel out of the tree (PRD §3)
 
 const NAMES = [
@@ -101,9 +103,10 @@ export class Sim {
     b.teams.forEach((tm) => { tm.next = 0; });
     b.turn = { team: first ? (b.seed & 1 ? 1 : 0) : (b.round + (b.seed & 1)) % 2, sq: null, n: b.turn ? b.turn.n : 0, stamina: STAMINA, moved: 0 };
     if (b.practice) b.turn.team = 0;
-    // the family that throws second gets a bonus Black Walnut each round (offsets the first-throw edge)
-    const second = b.teams[1 - b.turn.team];
-    if (!b.practice && 'walnut' in second.inventory) second.inventory.walnut = Math.min(NUT_CAP, second.inventory.walnut + 1);
+    // the family that throws second gets a bonus special each round (offsets the first-throw edge): a Black Walnut, or
+    // (S3-13) before the walnut is unlocked, the best special it does have
+    const second = b.teams[1 - b.turn.team], bonus = !b.practice && BONUS_NUTS.find((k) => k in second.inventory);
+    if (bonus) second.inventory[bonus] = Math.min(NUT_CAP, second.inventory[bonus] + 1);
     b.wind = clamp(this.rng('sim').normal(0, 0.5), -1, 1) * b.windLevel;
     rollBirds(L, b, this.rng('birds'));
     b.phase = 'aim';
