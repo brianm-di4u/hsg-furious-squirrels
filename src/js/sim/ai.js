@@ -6,7 +6,7 @@ import { NUTS, SQ_UP, GRIP, clamp } from './const.js';
 import { segDist } from './trees.js';
 
 const SHARP_SA = 1.1;
-// Hard's first shot at a new target is this many times as noisy as its settled aim (S1-17: it was 1, and Hard hit with its first throw
+// Hard's first shot at a new target is this many times as noisy as its settled aim (S1-17: it was 1, and Hard hit with its first
 // throw 93 times in 100, an aimbot rather than a rival; at 1.8 it is 78, as often as Sharp). The bracket below shrinks it on each
 // repeat at the same target, so Hard zeroes in the way a person does and is steadier than before from the second shot on.
 const HARD_FIRST = 1.8;
