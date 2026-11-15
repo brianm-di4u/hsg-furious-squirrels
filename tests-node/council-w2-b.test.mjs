@@ -85,7 +85,8 @@ test('S3-01 the satchel shop: both families start from the same purse and buy by
 test('S3-01 buying past the cap or the purse is refused, and no opts means the battle of old exactly', () => {
   const kinds = ['pecan'];
   const sim = new Sim(all['story-03'], { seed: 3, mode: 'story', human: [true, false], loadout: 'story', unlocked: kinds, acorns: [50, 50], buys: [{ pecan: 5 }, {}] });
-  assert.equal(sim.b.teams[0].inventory.pecan, 2, 'only one affordable at 30 acorns from 50');
+  // one bought, and the family that throws second also gets a bonus of its best special (S3-13: before the walnut, the pecan here)
+  assert.equal(sim.b.teams[0].inventory.pecan, 2 + (sim.b.turn.team === 0 ? 0 : 1), 'only one affordable at 30 acorns from 50');
   assert.equal(sim.b.teams[0].acorns, 20);
   const plain = new Sim(all['story-03'], { seed: 3, mode: 'story', human: [true, false], loadout: 'story', unlocked: kinds });
   const same = new Sim(all['story-03'], { seed: 3, mode: 'story', human: [true, false], loadout: 'story', unlocked: kinds, acorns: undefined, buys: undefined });
