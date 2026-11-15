@@ -179,4 +179,44 @@ export const tests = [
       t.equal(((await saved(t)).story.notes || []).length, 4, 'and kept after a reload');
     },
   },
+  // ---- S4-17 ----
+  {
+    name: 'S4-17 the Field Notes journal lists every note, found or not, and is reached from Records',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('act', 'menu', 'records');
+      await t.page.click('[data-act="journal"]');
+      let s = await t.state();
+      t.equal(s.screen, 'journal', 'the Records screen opens the journal');
+      t.expect(/0 of 35 notes found/.test(await screenText(t)), 'a new profile has found none of the 35');
+      t.equal(await t.page.locator('.note-list li.locked').count(), 35, 'every note is listed, locked');
+      t.equal(await t.page.locator('.postcard.locked').count(), 12, 'twelve postcard places, none earned');
+      t.expect(/Not found yet\. Try a battle on the north end of the Row\./.test(await screenText(t)), 'a locked landmark says where to look');
+      await snap(t, 'S4-17-journal-empty');
+      await t.page.keyboard.press('Escape');
+      t.equal((await t.state()).screen, 'records', 'Escape goes back to Records');
+    },
+  },
+  {
+    name: 'S4-17 found notes read in full and a three-star battle keeps a painted postcard',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('setState', { story: { team: 0, unlocked: 4, stars: { 'story-01': 3, 'story-03': 3, 'story-02': 2 }, notes: ['hs-0082', 'n-wind', 'hs-0094'] } });
+      await t.game('act', 'menu', 'journal', {});
+      t.expect(/3 of 35 notes found/.test(await screenText(t)), 'three notes found');
+      t.equal(await t.page.locator('.note-list li.found').count(), 3, 'three are shown in full');
+      t.expect(/Which Bathhouse Row bathhouse is crowned by a large tiled dome\?/.test(await t.page.textContent('.note-list li.found')), 'a note that begins with a pronoun leads with its question');
+      t.expect(/Source: /.test(await t.page.textContent('.note-list li.found')), 'and names its source');
+      t.expect(/Postcards: 2 of 12/.test(await screenText(t)), 'two postcards, for the two three-star battles');
+      await t.page.waitForFunction(() => document.querySelectorAll('canvas[data-card][data-done="1"]').length === 2, null, { timeout: 8000 });
+      const px = await t.page.$$eval('canvas[data-card]', (cs) => cs.map((c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, seen = new Set(); for (let i = 0; i < d.length; i += 400) seen.add((d[i] >> 5) * 64 + (d[i + 1] >> 5) * 8 + (d[i + 2] >> 5)); return { w: c.width, h: c.height, colors: seen.size }; }));
+      t.expect(px.every((p) => p.w === 300 && p.h === 200 && p.colors > 12), `both postcards are painted (${JSON.stringify(px)})`);
+      await snap(t, 'S4-17-journal-found');
+      await t.page.click('[data-act="journalBack"]');
+      t.equal((await t.state()).screen, 'records', 'Back returns to Records');
+      t.expect(await t.page.locator('[data-act="journal"]').count() === 1, 'and Records still offers the journal');
+    },
+  },
 ];

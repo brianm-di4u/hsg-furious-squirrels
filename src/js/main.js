@@ -7,7 +7,7 @@ import { Renderer, ART_BASE } from './gfx/renderer.js';
 import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
-import { Screens } from './ui/screens.js';
+import { Screens, factHtml } from './ui/screens.js';
 import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
@@ -308,6 +308,8 @@ App.onMenu = (act, d) => {
     case 'credits': return screens.show('credits', { from: screens.cur === 'results' ? 'results' : '' });
     case 'creditsBack': return d.from === 'results' ? App.onMenu('menu', {}) : App.onMenu('back', {});
     case 'records': freshSave(); return screens.show('records', { levels: STORY, from: d.from || '' });
+    case 'journal': freshSave(); screens.show('journal', { levels: STORY, from: d.from || '' }); return paintPostcards();
+    case 'journalBack': return App.onMenu('records', { from: d.from });
     case 'recordsBack': return d.from === 'story' ? screens.show('story', { levels: STORY }) : showTitle();
     case 'set': {
       const v = d.v === 'true' ? true : d.v === 'false' ? false : d.v === 'auto' && d.k === 'reducedMotion' ? null : isNaN(+d.v) || d.v === '' ? d.v : +d.v;
@@ -446,11 +448,7 @@ function pickFact(L) {
   const seen = App.save.story.notes, fresh = (x) => !seen.includes(x.id), start = (L.n * 7 + App.save.stats.battles * 3) % pool.length;
   const all = [...FACTS.landmarks.map((x) => ({ ...x, kind: 'land' })), ...FACTS.nature.map((x) => ({ ...x, kind: 'nature' }))], own = all.find((x) => x.id === LEVEL_FACTS[L.n - 1]);
   const f = (own && fresh(own) ? own : null) || pool.slice(start).concat(pool.slice(0, start)).find(fresh) || pool[start];
-  const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
-  // skip the short answer when the explanation already states it
-  const says = f.kind === 'land' && f.text.toLowerCase().includes(String(f.a).toLowerCase().split(' ')[0]);
-  const html = f.kind === 'land' ? `<p><b>${esc(f.q)}</b> ${says ? '' : esc(f.a) + '. '}${esc(f.text)}</p>` : `<p>${esc(f.text)}</p>`;
-  return { id: f.id, html, source: esc(f.source) };
+  return factHtml(f);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -684,6 +682,29 @@ function loadSprites() {
   const imgs = [0, 1].map((t) => { const im = new Image(); im.src = `assets/sq-t${t}.webp`; return im; });
   App.loading++;
   Promise.all(imgs.map((im) => im.decode())).then(() => { renderer.sprites = { imgs, meta: SPRITES }; decorateScreen(); }).catch(() => {}).finally(() => { App.loading--; kick(); });
+}
+
+// the journal's postcards: the battle's own painting, cropped to a card, for each battle won with three stars (S4-17)
+function paintPostcards() {
+  const man = typeof MANIFEST !== 'undefined' ? MANIFEST : null;
+  if (!man || /[?&]art=0/.test(location.search)) return;
+  document.querySelectorAll('#screens canvas[data-card]').forEach((cv) => {
+    const L = ALL[cv.dataset.card], ent = L && (man['bd-' + L.backdrop] || man[`bd-${L.stretch}-${L.season}-day`]);
+    if (!ent) return;
+    const img = new Image();
+    img.onload = () => {
+      cv.width = 300; cv.height = 200;
+      const g = cv.getContext('2d'), k = Math.max(300 / img.naturalWidth, 200 / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k;
+      // the paintings are open at the top (the game draws its own sky behind them): the card gets the battle's sky
+      const sky = SKY[L.time] || SKY.day, sg = g.createLinearGradient(0, 0, 0, 200);
+      sg.addColorStop(0, sky.top); sg.addColorStop(0.55, sky.mid); sg.addColorStop(1, sky.low);
+      g.fillStyle = sg; g.fillRect(0, 0, 300, 200);
+      g.drawImage(img, (300 - w) / 2, (200 - h) / 2, w, h);
+      if (sky.tint && !/night/.test(ent.file)) { g.fillStyle = sky.tint; g.fillRect(0, 0, 300, 200); }
+      cv.dataset.done = '1';
+    };
+    img.src = 'assets/' + ent.file;
+  });
 }
 
 // squirrels on menu screens: canvases marked data-sq="team:pose" get a sprite frame

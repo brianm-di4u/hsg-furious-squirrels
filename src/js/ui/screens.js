@@ -43,6 +43,15 @@ const seg = (k, cur, opts) => `<div class="seg" role="group">${opts.map(([v, l])
 const field = (label, inner) => `<div class="field"><label>${label}</label>${inner}</div>`;
 const starStr = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[0, 1, 2].map((i) => (i < n ? `<span class="on" style="animation-delay:${0.25 + i * 0.2}s">★</span>` : '<span class="off">★</span>')).join('')}</span>`;
 const TIER_NAME = ['', 'Easy', 'Medium', 'Sharp', 'Hard']; // difficulty tier numbers saved with each star
+const escHtml = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+// a Field Note as it reads on the results card and in the journal: a landmark note leads with its question and answer
+// (so a text that begins "Its dome..." still stands alone); a nature note is its text. The source follows.
+export function factHtml(f) {
+  const land = f.q != null;
+  // skip the short answer when the explanation already states it
+  const says = land && f.text.toLowerCase().includes(String(f.a).toLowerCase().split(' ')[0]);
+  return { id: f.id, html: land ? `<p><b>${escHtml(f.q)}</b> ${says ? '' : escHtml(f.a) + '. '}${escHtml(f.text)}</p>` : `<p>${escHtml(f.text)}</p>`, source: escHtml(f.source) };
+}
 const FICTION = 'A made-up squirrel rivalry set in real Hot Springs, Arkansas.';
 
 const totalStars = (st, levels) => levels.reduce((n, L) => n + Math.min(3, st.stars[L.id] || 0), 0);
@@ -251,7 +260,31 @@ const TEMPLATES = {
         ${levels.map((L) => { const n = st.stars[L.id] || 0, tiers = starTiers(st, L.id), top = n ? tiers[Math.min(3, n) - 1] : 0, best = st.bestTurns[L.id], open = L.n <= st.unlocked;
           return `<div class="rec-row" role="row"><span class="rn" role="cell">${L.n}. ${L.name}</span>${open ? `<span class="st" role="cell" aria-label="${n} of 3 stars${top && top !== 2 ? ' on ' + TIER_NAME[top] : ''}">${[0, 1, 2].map((i) => (i < n ? `<span class="t${tiers[i]}">★</span>` : '☆')).join('')}</span><span class="rb" role="cell">${best ? `best ${turns(best)}, par ${L.par}` : n ? 'won' : 'not won yet'}</span>` : '<span class="rb" role="cell">locked</span>'}</div>`; }).join('')}
       </div>
-      <nav class="menu row">${btn('recordsBack', 'Back', `autofocus data-back data-from="${from || ''}"`, 'btn primary')}</nav>
+      <nav class="menu row">${btn('recordsBack', 'Back', `autofocus data-back data-from="${from || ''}"`, 'btn primary')}${btn('journal', 'Field Notes', `data-from="${from || ''}"`)}</nav>
+    </div>`;
+  },
+
+  journal: (app, { levels, from }) => {
+    const st = app.save.story, seen = new Set(st.notes), F = typeof FACTS !== 'undefined' ? FACTS : { landmarks: [], nature: [] };
+    const cards = levels.filter((L) => (st.stars[L.id] || 0) >= 3).length;
+    const entry = (f, hint) => seen.has(f.id) ? (({ html, source }) => `<li class="found">${html}<span class="src">Source: ${source}</span></li>`)(factHtml(f)) : `<li class="locked">Not found yet. ${hint(f)}</li>`;
+    const place = (f) => f.stretch === 'any' ? 'It can turn up in any battle.' : `Try a battle on the ${{ north: 'north end', middle: 'middle', south: 'south end' }[f.stretch] || 'Row'} of the Row.`;
+    const when = (f) => f.season === 'any' ? 'It can turn up in any battle.' : `Try a battle in ${f.season}.`;
+    const count = (list) => list.filter((f) => seen.has(f.id)).length;
+    return `
+    <div class="panel" role="dialog" aria-label="Field Notes">
+      <h2>Field Notes</h2>
+      <p class="sub">${count(F.landmarks) + count(F.nature)} of ${F.landmarks.length + F.nature.length} notes found. A new note turns up on the results card after a battle.</p>
+      <h3>Postcards: ${cards} of ${levels.length}</h3>
+      <p class="starrule">Win a battle with all three stars to keep a postcard of its view.</p>
+      <div class="postcards">${levels.map((L) => (st.stars[L.id] || 0) >= 3
+        ? `<figure class="postcard"><canvas data-card="${L.id}" role="img" aria-label="Postcard: ${L.name}"></canvas><figcaption>${L.n}. ${L.name}</figcaption></figure>`
+        : `<figure class="postcard locked"><div class="blank">${L.n <= st.unlocked ? '★★★' : '🔒'}</div><figcaption>${L.n}. ${L.n <= st.unlocked ? 'Win with 3 stars' : 'Locked'}</figcaption></figure>`).join('')}</div>
+      <h3>Landmarks: ${count(F.landmarks)} of ${F.landmarks.length}</h3>
+      <ul class="note-list">${F.landmarks.map((f) => entry(f, place)).join('')}</ul>
+      <h3>Nature: ${count(F.nature)} of ${F.nature.length}</h3>
+      <ul class="note-list">${F.nature.map((f) => entry(f, when)).join('')}</ul>
+      <nav class="menu row">${btn('journalBack', 'Back', `autofocus data-back data-from="${from || ''}"`, 'btn primary')}</nav>
     </div>`;
   },
 
