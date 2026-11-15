@@ -182,6 +182,48 @@ export const tests = [
       t.equal((await t.state()).battle.teams[0].stats.throws, 1, 'a release outside it still throws');
     },
   },
+  // ---- P-N01 ----
+  {
+    name: 'P-N01 a press on the field spends a trick only when it is short, still and alone; keys still tap at once',
+    async run(t) {
+      await humanFirst(t);
+      await t.waitFrames(4);
+      const ptr = (type, id, x, y) => t.page.evaluate(([ty, pid, px, py]) => {
+        document.getElementById('view').dispatchEvent(new PointerEvent(ty, { pointerId: pid, pointerType: 'touch', clientX: px, clientY: py, button: 0, bubbles: true }));
+      }, [type, id, x, y]);
+      const tapped = () => t.page.evaluate(() => { const n = window.__FS.sim.b.nuts[0]; return n ? !!n.tapped : null; });
+      const x = Math.round(t.vp.width / 2), y = Math.round(t.vp.height / 2);
+      await t.game('setState', { inventory: { chinquapin: 3 } });
+      await t.game('act', 'aim', { nut: 'chinquapin', angle: 45, power: 0.7 });
+      await t.game('act', 'fire', {});
+      await t.game('pause'); // hold the flight still: the test decides when anything happens
+      t.equal(await t.page.evaluate(() => window.__FS.sim.b.phase), 'flight', 'a trick nut is in the air');
+      t.equal(await tapped(), false, 'and its trick is unspent');
+      // 1. a press that moves (a pinch that has not found its second finger, a pan) spends nothing
+      await ptr('pointerdown', 1, x, y); await ptr('pointermove', 1, x + 40, y + 10); await ptr('pointerup', 1, x + 40, y + 10);
+      t.equal(await tapped(), false, 'a press that moves does not spend the trick');
+      // 2. a second finger cancels it, whichever finger lifts first
+      await ptr('pointerdown', 1, x, y); await ptr('pointerdown', 2, x + 60, y); await ptr('pointerup', 2, x + 60, y); await ptr('pointerup', 1, x, y);
+      t.equal(await tapped(), false, 'a second finger cancels the tap');
+      // 3. a long press: holding past the limit (a slow machine only makes it longer)
+      await ptr('pointerdown', 1, x, y);
+      await t.page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+      await ptr('pointerup', 1, x, y);
+      t.equal(await tapped(), false, 'a long press does not spend it either');
+      // 4. a short, still press
+      await ptr('pointerdown', 1, x, y); await ptr('pointerup', 1, x, y);
+      t.equal(await tapped(), true, 'a short still press spends the trick');
+      // 5. the keyboard is as it was: Space taps at once, with no release to wait for
+      await t.game('resume');
+      await humanFirst(t);
+      await t.game('setState', { inventory: { chinquapin: 3 } });
+      await t.game('act', 'aim', { nut: 'chinquapin', angle: 45, power: 0.7 });
+      await t.game('act', 'fire', {});
+      await t.game('pause');
+      await t.page.keyboard.press('Space');
+      t.equal(await tapped(), true, 'Space still spends the trick at once');
+    },
+  },
   // ---- S6-09 ----
   {
     name: 'S6-09 the title is whole on a phone on its side, and never loses its top edge in a very short window',

@@ -253,6 +253,12 @@ function throwNow() {
   kick();
   return ok;
 }
+// the lead nut of the player's own shot still has a trick to give
+function canTap() {
+  const sim = App.sim, n = sim && sim.b.phase === 'flight' && sim.b.nuts[0];
+  if (!n || n.tapped || n.kind === 'acorn' || n.kind === 'hedgeapple') return false;
+  return sim.b.teams[sim.b.shot ? sim.b.shot.team : sim.b.turn.team].human;
+}
 function tapNow() {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'flight') return false;
@@ -538,6 +544,9 @@ function frameCamera(snap) {
 
 // ---------------------------------------------------------------------------------------------------------------
 // input
+// a press on the field spends a trick nut's trick only if it is a short press that does not move and has no second finger (P-N01)
+const TAP_MS = 250, TAP_PX = 10;
+let tapArm = null;
 const CANCEL_POWER = 0.08; // a drag shorter than this fraction of full power is a cancel, not a throw
 const ptrs = new Map();
 let drag = null, pinch = null;
@@ -547,9 +556,9 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture && (() => { try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* synthetic */ } })();
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   const sim = App.sim, b = sim.b;
-  if (ptrs.size === 2) { const [p1, p2] = [...ptrs.values()]; pinch = { d: Math.hypot(p1.x - p2.x, p1.y - p2.y), cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2 }; drag = null; return; }
+  if (ptrs.size === 2) { tapArm = null; const [p1, p2] = [...ptrs.values()]; pinch = { d: Math.hypot(p1.x - p2.x, p1.y - p2.y), cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2 }; drag = null; return; }
   if (e.button === 1 || e.button === 2) { drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
-  if (b.phase === 'flight') { if (tapNow() || hurry()) kick(); return; }
+  if (b.phase === 'flight') { if (canTap()) tapArm = { id: e.pointerId, t: performance.now(), x: e.clientX, y: e.clientY }; else if (hurry()) kick(); return; }
   if (b.phase !== 'aim' || !humanTurn()) { if (hurry()) kick(); drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
   if (App.showPerches) {
     const id = perchAt(e.clientX, e.clientY);
@@ -561,6 +570,7 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointermove', (e) => {
   if (!ptrs.has(e.pointerId)) { if (App.showPerches && App.scene === 'battle') { const h = perchAt(e.clientX, e.clientY); if (h !== App.hoverPerch) { App.hoverPerch = h; kick(); } } return; }
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (tapArm && Math.hypot(e.clientX - tapArm.x, e.clientY - tapArm.y) > TAP_PX) tapArm = null;
   const cam = renderer.cam;
   if (pinch && ptrs.size >= 2) {
     const [p1, p2] = [...ptrs.values()], d = Math.hypot(p1.x - p2.x, p1.y - p2.y), cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2;
@@ -585,6 +595,11 @@ canvas.addEventListener('pointermove', (e) => {
 const endPtr = (e) => {
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
+  if (tapArm && tapArm.id === e.pointerId) {
+    const ok = e.type === 'pointerup' && performance.now() - tapArm.t <= TAP_MS;
+    tapArm = null;
+    if (ok && tapNow()) kick();
+  }
   if (!drag) return;
   const d = drag; drag = null;
   if (App.dragRing) { App.dragRing = null; kick(); }
