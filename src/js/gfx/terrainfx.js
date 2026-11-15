@@ -169,6 +169,7 @@ export function apronY(t, side, u) {
   return Math.min(H - 60, y0 + dip * 230 - knob * 120 + Math.sin(u / 97 + side) * 9 * Math.min(1, u / 200));
 }
 
+const WOODS_HAZE = 0.34; // how far the distant woods are washed toward the sky colour (0 is as they were)
 function paintApron(level, t, side, rng, tex) {
   const s = 0.5, ov = 8, aw = APRON + ov, cv = document.createElement('canvas');
   cv.width = Math.ceil(aw * s); cv.height = Math.ceil(H * s);
@@ -195,20 +196,26 @@ function paintApron(level, t, side, rng, tex) {
   if (tex) { g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.7; g.fillStyle = grad; g.fillRect(0, 0, aw, H); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
   for (let i = 0; i < 70; i++) { const x = rng.range(0, aw), y = yAt(x) + rng.range(30, 300), r = rng.range(3, 9); g.fillStyle = 'rgba(110,100,90,0.45)'; g.beginPath(); g.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); g.fill(); }
   g.restore();
-  // distant woods: rounded crowns (or bare crowns in winter) standing on the ridge, darker the further out
+  // distant woods: rounded crowns (or bare crowns in winter) standing on the ridge, drawn on their own and then hazed toward
+  // the sky's own colour, so they read as far-off trees in the painted air and not as bright shapes on a stick (S4-03)
+  const wd = document.createElement('canvas'); wd.width = cv.width; wd.height = cv.height;
+  const wg = wd.getContext('2d'); wg.setTransform(s, 0, 0, s, 0, 0);
   const pal = CANOPY[level.season] || CANOPY.summer, kinds = ['oak', 'pine', 'hickory', 'sweetgum'];
   for (let x = 30; x < aw - 10; x += rng.range(34, 70)) {
     const u = Math.max(0, uOf(x)); if (u < 60) continue;
     const gy = yAt(x) + 4, sp = kinds[Math.floor(rng.range(0, 4))], c = pal[sp] || pal.pine || CANOPY.summer.pine, h = rng.range(130, 220);
-    g.strokeStyle = '#4E3A28'; g.lineWidth = 7; g.beginPath(); g.moveTo(x, gy); g.lineTo(x, gy - h * 0.7); g.stroke();
-    if (!pal[sp]) { g.lineWidth = 2.5; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(x, gy - h * (0.4 + k * 0.1)); g.lineTo(x + (k % 2 ? 1 : -1) * rng.range(18, 34), gy - h * (0.55 + k * 0.1)); g.stroke(); } continue; }
+    wg.strokeStyle = '#4E3A28'; wg.lineWidth = 7; wg.beginPath(); wg.moveTo(x, gy); wg.lineTo(x, gy - h * 0.7); wg.stroke();
+    if (!pal[sp]) { wg.lineWidth = 2.5; for (let k = 0; k < 4; k++) { wg.beginPath(); wg.moveTo(x, gy - h * (0.4 + k * 0.1)); wg.lineTo(x + (k % 2 ? 1 : -1) * rng.range(18, 34), gy - h * (0.55 + k * 0.1)); wg.stroke(); } continue; }
     for (let k = 0; k < 4; k++) {
       const bx = x + rng.range(-22, 22), by = gy - h * rng.range(0.62, 0.95), r = sp === 'pine' ? rng.range(18, 26) : rng.range(24, 36);
-      g.fillStyle = 'rgba(26,20,16,0.6)'; g.beginPath(); g.arc(bx, by + 3, r + 2, 0, Math.PI * 2); g.fill();
-      g.fillStyle = k % 2 ? c.base : c.dark; g.beginPath(); g.arc(bx, by, r, 0, Math.PI * 2); g.fill();
-      g.fillStyle = c.light; g.globalAlpha = 0.7; g.beginPath(); g.arc(bx - r * 0.3, by - r * 0.35, r * 0.45, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+      wg.fillStyle = 'rgba(26,20,16,0.6)'; wg.beginPath(); wg.arc(bx, by + 3, r + 2, 0, Math.PI * 2); wg.fill();
+      wg.fillStyle = k % 2 ? c.base : c.dark; wg.beginPath(); wg.arc(bx, by, r, 0, Math.PI * 2); wg.fill();
+      wg.fillStyle = c.light; wg.globalAlpha = 0.7; wg.beginPath(); wg.arc(bx - r * 0.3, by - r * 0.35, r * 0.45, 0, Math.PI * 2); wg.fill(); wg.globalAlpha = 1;
     }
   }
+  wg.setTransform(1, 0, 0, 1, 0, 0); wg.globalCompositeOperation = 'source-atop';
+  wg.fillStyle = `rgba(${hexRgb((SKY[level.time] || SKY.day).low)},${WOODS_HAZE})`; wg.fillRect(0, 0, wd.width, wd.height);
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(wd, 0, 0); g.restore();
   // the same grass / litter / snow band as the battlefield's top edge
   g.lineJoin = 'round'; g.beginPath();
   for (let x = 0; x <= aw; x += 8) { const y = yAt(x); x ? g.lineTo(x, y) : g.moveTo(x, y); }

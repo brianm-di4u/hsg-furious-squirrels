@@ -38,6 +38,7 @@ export function rowOrderFor() { return ROW.filter((b) => b.id !== 'arlington').m
 
 // A wide forested-mountain band (no buildings or street) drawn behind a painting, so the painted panel bleeds
 // into continuous forest instead of ending in sky. Same hill and canopy recipe as the vector backdrop.
+const BAND_FADE_TOP = 0.4, BAND_FADE_END = 0.08; // how much of the band's height, and of its width at each end, fades out
 export function paintForestBand(level, rng) {
   const BWW = BW * 3.4, cv = document.createElement('canvas');
   cv.width = Math.round(BWW / 2); cv.height = Math.round(BH / 2);
@@ -60,6 +61,14 @@ export function paintForestBand(level, rng) {
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
   }
   if (sky.tint) { g.globalCompositeOperation = 'source-atop'; g.fillStyle = sky.tint; g.fillRect(0, 0, BWW, BH); }
+  // feather the top and both ends into the sky, so the band never ends in a hard edge when the camera rises or pulls out (S4-03)
+  g.globalCompositeOperation = 'destination-in';
+  const up = g.createLinearGradient(0, 0, 0, BH * BAND_FADE_TOP); up.addColorStop(0, 'rgba(0,0,0,0)'); up.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = up; g.fillRect(0, 0, BWW, BH);
+  const across = g.createLinearGradient(0, 0, BWW, 0);
+  for (const [at, a] of [[0, 0], [BAND_FADE_END, 1], [1 - BAND_FADE_END, 1], [1, 0]]) across.addColorStop(at, `rgba(0,0,0,${a})`);
+  g.fillStyle = across; g.fillRect(0, 0, BWW, BH);
+  g.globalCompositeOperation = 'source-over';
   return { cv, w: BWW, h: BH };
 }
 

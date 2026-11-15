@@ -285,4 +285,38 @@ export const tests = [
       await snap(t, 'S4-02-story-stretch');
     },
   },
+  // ---- S4-03 ----
+  {
+    name: 'S4-03 pulled right out, the painted forest fades into the sky and shows no hard edge',
+    async run(t) {
+      // the largest jump between two rows of pixels, on the stretch of the screen where the forest band's top edge is,
+      // in the columns at either side (past the painting). A hard edge is a jump of 49 to 153 (three channels summed);
+      // a feathered one is 3 to 5.
+      const edge = () => t.page.evaluate(() => {
+        const R = window.__FS.renderer, cv = R.cv, g = cv.getContext('2d'), d = R.size.dpr, w = cv.width;
+        const r = R.backdropRect(), [, by] = R.cam.toScreen(0, r.y + 60), y0 = Math.max(0, Math.round((by - 6) * d));
+        let best = 0;
+        for (const fx of [0.03, 0.06, 0.94, 0.97]) {
+          const col = g.getImageData(Math.round(w * fx), y0, 1, Math.round(24 * d)).data;
+          for (let y = 1; y < col.length / 4; y++) { const a = y * 4, b = (y - 1) * 4; best = Math.max(best, Math.abs(col[a] - col[b]) + Math.abs(col[a + 1] - col[b + 1]) + Math.abs(col[a + 2] - col[b + 2])); }
+        }
+        return best;
+      });
+      for (const levelId of ['story-01', 'story-08', 'story-11']) {
+        await t.seed(7);
+        await t.game('newGame', { levelId, birds: 'off', wind: 'off' });
+        await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
+        await t.page.evaluate(() => window.__game.pause()); // nothing moves the camera while it is measured
+        await t.game('act', 'cam', { zoom: 0.01 });
+        await t.page.waitForFunction(() => { const c = window.__FS.renderer.cam; return Math.abs(c.zoom - c.minZoom()) < 0.002; }, null, { timeout: 10000 });
+        // the view is drawn on frames: wait a few for the pulled-out one
+        await t.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        // on a phone the view is narrower than the painting, so the columns at its sides are painted forest, not the band: the
+        // pixels are measured on the desktop view, and the phone's is looked at in the screenshot
+        const jump = t.viewport === 'desktop' ? await edge() : 0;
+        t.expect(jump < 20, `${levelId}: the biggest step across the forest's top edge is ${jump} (hard edges were 49 to 153)`);
+        if (levelId === 'story-08') await snap(t, 'S4-03-pulled-out-fall-dusk');
+      }
+    },
+  },
 ];
