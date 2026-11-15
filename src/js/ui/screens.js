@@ -266,6 +266,7 @@ const TEMPLATES = {
       ${field('Turn timer', seg('turnTimer', s.turnTimer, [[0, 'Off'], [30, '30 s'], [60, '60 s']]))}
       ${field('Text size', seg('textScale', s.textScale, [[1, '100%'], [1.25, '125%'], [1.5, '150%']]))}
       ${field('Tutorial hints', seg('tutorial', s.tutorial, [[true, 'On'], [false, 'Off']]))}
+      <p class="starrule">Each hint shows once, in the battle where it first matters. ${btn('tipsAgain', 'Show tips again', '', 'btn small')}</p>
       <nav class="menu row">${btn('back', 'Done', 'autofocus data-back', 'btn primary')}${btn('resetProgress', 'Reset progress')}</nav>
     </div>`;
   },

@@ -10,7 +10,7 @@ import { Hud } from './ui/hud.js';
 import { Screens, factHtml } from './ui/screens.js';
 import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
-import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE } from './save.js';
+import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE, TIP_IDS } from './save.js';
 import { installHooks } from './hooks.js';
 import { dayKey, dailyPlan, recordDaily, liveStreak } from './daily.js';
 import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS, koAllowed, starsFor, parFor } from './story.js';
@@ -209,13 +209,53 @@ let tipTimer = 0;
 function tutorial() {
   clearTimeout(tipTimer);
   const q = App.sim && App.sim.active();
+  // past Story battle 1's three tips, a battle teaches one thing at a time, the first time it matters (S2-01)
+  if (App.level && App.save.settings.tutorial && q && App.sim.b.teams[q.team].human && !(App.level.tutorial && App.tutorialStep < TIPS.length) && contextTip(q)) return;
   if (!App.level || !App.level.tutorial || !App.save.settings.tutorial || !q || !App.sim.b.teams[q.team].human || App.tutorialStep >= TIPS.length) { hud.hint(''); return; }
   // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
   if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return; }
   // with "Release: Only aims" the first tip names the Throw button instead of the release
   hud.hint(App.tutorialStep === 0 && App.save.settings.releaseThrows === false ? TIP_AIM_ONLY : TIPS[App.tutorialStep]);
+  if (App.tutorialStep === 1) markTip('wind'); // that tip is about the wind, so the wind tip need not come again
   tipTimer = setTimeout(dismissTip, TIP_MS);
 }
+// the words for what the player is using: a finger, the keyboard or a pad (the last input seen)
+App.inputKind = window.matchMedia && window.matchMedia('(pointer: coarse)').matches ? 'touch' : 'mouse';
+const aimWords = () => ({ key: 'Arrows aim, Space throws.', pad: 'Stick aims, A throws.', touch: 'Drag back to aim, let go to throw.', mouse: 'Drag back to aim, let go to throw.' })[App.inputKind];
+const tapWord = () => ({ key: 'press Space', pad: 'press A', touch: 'tap', mouse: 'click' })[App.inputKind];
+// each tip is twelve words or fewer, the goal or the one verb first
+const CONTEXT_TIPS = {
+  quick: () => `Knock every rival out of the trees. ${App.inputKind === 'key' ? 'Arrows aim.' : App.inputKind === 'pad' ? 'Stick aims.' : 'Drag back to aim.'}`,
+  practice: () => `Hit every target. ${aimWords()}`,
+  'nut-chinquapin': () => `Chinquapin Trio: ${tapWord()} in flight to split into three.`,
+  'nut-pecan': () => `Pecan Dart: ${tapWord()} in flight to dash straight through leaves.`,
+  'nut-walnut': () => `Black Walnut: ${tapWord()} in flight, or let it land, for a big pop.`,
+  'nut-hickory': () => `Hickory Hook: ${tapWord()} in flight to curl it back.`,
+  'nut-sweetgum': () => `Sweetgum Drop: ${tapWord()} in flight to drop a spiky gumball.`,
+  'nut-hedgeapple': () => 'Hedge Apple: heavy, it shrugs off wind and rolls downhill.',
+  steam: () => 'Steam over the Row lifts nuts that fly through it.',
+  wind: () => 'The wind flag at the top bends every throw. Aim into it.',
+};
+function contextTip(q) {
+  const seen = App.save.settings.seenTips, b = App.sim.b, tm = b.teams[q.team];
+  const ids = [b.practice ? 'practice' : App.setup.mode === 'quick' ? 'quick' : '', ...NUT_ORDER.filter((k) => k !== 'acorn' && (tm.inventory[k] || 0) > 0).map((k) => 'nut-' + k),
+    b.steamLevel > 0 && App.level.steam ? 'steam' : '', Math.round(Math.abs(b.wind) * 10) >= 1 ? 'wind' : ''];
+  const id = ids.find((x) => x && TIP_IDS.includes(x) && !seen.includes(x));
+  if (!id) return false;
+  // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
+  if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return true; }
+  const text = CONTEXT_TIPS[id]();
+  hud.hint(text); say(text);
+  tipTimer = setTimeout(dismissTip, TIP_MS);
+  markTip(id);
+  return true;
+}
+function markTip(id) {
+  const seen = App.save.settings.seenTips;
+  if (seen.includes(id)) return;
+  App.save.settings.seenTips = [...seen, id]; persist('settings', 'seenTips');
+}
+App.tips = tutorial;
 function dismissTip() {
   clearTimeout(tipTimer);
   if (!hud.hintText) return;
@@ -371,6 +411,7 @@ App.onMenu = (act, d) => {
       s.settings[d.k] = v; persist('settings', d.k); applySettings(); App.guideKey = '';
       return screens.refresh();
     }
+    case 'tipsAgain': s.settings.seenTips = []; s.settings.tutorial = true; persist('settings', ['seenTips', 'tutorial']); say('Tips will show again in your next battles.'); return screens.refresh();
     case 'resetProgress': return screens.show('confirmReset');
     case 'resetYes': { const keep = s.settings; App.save = DEFAULT_SAVE(); App.save.settings = keep; persist('reset'); applySettings(); return screens.show('settings'); }
     case 'back':
@@ -635,7 +676,7 @@ const endPtr = (e) => {
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 // the hint is click-through, so a tap on it (or anywhere in the battle, HUD buttons included) closes it
-window.addEventListener('pointerdown', () => { if (App.scene === 'battle' && !screens.cur) { dismissTip(); endKo(); } });
+window.addEventListener('pointerdown', (e) => { App.inputKind = e.pointerType === 'touch' || e.pointerType === 'pen' ? 'touch' : 'mouse'; if (App.scene === 'battle' && !screens.cur) { dismissTip(); endKo(); } });
 canvas.addEventListener('wheel', (e) => { if (App.scene !== 'battle') return; e.preventDefault(); renderer.cam.zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); kick(); }, { passive: false });
 
 function perchAt(sx, sy) {
@@ -658,6 +699,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (App.scene !== 'battle') return;
+  App.inputKind = 'key';
   dismissTip(); endKo();
   const big = e.shiftKey ? 5 : 1;
   let used = true;
@@ -712,7 +754,7 @@ function pollPad() {
       if (m.up || m.down || m.left || m.right || m.cancel) screens.nav(m);
       if (edge('a') && document.activeElement && document.activeElement.click) document.activeElement.click();
     } else if (App.scene === 'battle') {
-      if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) endKo();
+      if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) { endKo(); App.inputKind = 'pad'; }
       if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
       if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
       if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry(); }

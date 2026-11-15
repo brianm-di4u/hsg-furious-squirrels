@@ -5,6 +5,8 @@ import { emptyDaily } from './daily.js';
 const KEY = 'hsg-furious-squirrels-v1';
 const STORY_LEVELS = 12;
 const TIER_NAMES = ['easy', 'medium', 'sharp', 'hard'];
+// the in-battle tips (S2-01): each is shown once and then kept in settings.seenTips. A save from before the tips, with anything played in it, counts them all as seen.
+export const TIP_IDS = ['quick', 'practice', 'nut-chinquapin', 'nut-pecan', 'nut-walnut', 'nut-hickory', 'nut-sweetgum', 'nut-hedgeapple', 'steam', 'wind'];
 // counters the Records screen shows that only ever grow: two tabs each add what they earned (streaks are kept apart)
 const TALLIES = ['battles', 'wins', 'kos', 'throws', 'hits', 'winsEasy', 'winsMedium', 'winsSharp', 'winsHard'];
 const TIER_COUNT = 4; // difficulty tiers a star can be earned on: 1 Easy, 2 Medium, 3 Sharp, 4 Hard (0 = not earned)
@@ -12,7 +14,7 @@ let mem = null;
 
 export const DEFAULT_SAVE = () => ({
   v: 1,
-  settings: { sound: true, music: true, ambience: true, volume: 0.5, sfxVol: 1, musicVol: 1, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true, releaseThrows: true },
+  settings: { sound: true, music: true, ambience: true, volume: 0.5, sfxVol: 1, musicVol: 1, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true, releaseThrows: true, seenTips: [] },
   story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {}, notes: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'story', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
@@ -79,6 +81,9 @@ function decoded(s) {
   if (!TIER_NAMES.includes(out.quick.difficulty)) out.quick.difficulty = d.quick.difficulty;
   if (typeof out.settings.ambience !== 'boolean') out.settings.ambience = d.settings.ambience;
   if (typeof out.settings.releaseThrows !== 'boolean') out.settings.releaseThrows = d.settings.releaseThrows;
+  const rawTips = object(s.settings) ? s.settings.seenTips : undefined;
+  if (Array.isArray(rawTips)) out.settings.seenTips = [...new Set(rawTips.filter((id) => TIP_IDS.includes(id)))];
+  else out.settings.seenTips = out.stats.battles > 0 || out.story.unlocked > 1 || Object.keys(out.story.stars).length ? TIP_IDS.slice() : [];
   // the effects and music levels (S5-08): 1 is the level the game always had, so a save without them sounds as before
   for (const key of ['sfxVol', 'musicVol']) if (!(typeof out.settings[key] === 'number' && out.settings[key] >= 0 && out.settings[key] <= 1)) out.settings[key] = d.settings[key];
   out.settings.volume = typeof out.settings.volume === 'number' && Number.isFinite(out.settings.volume) ? Math.min(1, Math.max(0, out.settings.volume)) : d.settings.volume;

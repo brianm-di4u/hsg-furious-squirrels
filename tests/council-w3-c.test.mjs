@@ -19,6 +19,15 @@ async function humanFirst(t, opts = {}) {
   }
   throw new Error('no seed lets the player throw first');
 }
+// a new Quick Battle in which the player throws first, keeping the save as it is
+async function startHuman(t, opts = {}) {
+  for (const seed of [7, 8, 9, 10, 11, 12, 13, 14]) {
+    await t.seed(seed);
+    const s = await t.game('newGame', { levelId: 'gray', birds: 'off', wind: 'off', ...opts });
+    if (s.battle.turn.team === 0) return s;
+  }
+  throw new Error('no seed lets the player throw first');
+}
 // synthetic pointer events: the same handlers a mouse or a finger reaches, but the test controls every position
 const pointer = (t, type, x, y, id = 7) => t.page.evaluate(([ty, px, py, pid]) => {
   document.getElementById('view').dispatchEvent(new PointerEvent(ty, { pointerId: pid, pointerType: 'touch', clientX: px, clientY: py, button: 0, bubbles: true }));
@@ -227,6 +236,86 @@ export const tests = [
       await snap(t, 'P-N02-finale-stars');
       await t.game('act', 'menu', 'records');
       t.expect(/par 14 a round/.test(await t.page.textContent('#screens')), 'the Records screen says the par is a round');
+    },
+  },
+  // ---- S2-01 ----
+  {
+    name: 'S2-01 a battle teaches one thing at a time: goal, each nut, steam, wind; each once, in twelve words or fewer',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      const start = (opts = {}) => startHuman(t, opts);
+      const seq = [];
+      for (let i = 0; i < 9; i++) {
+        let s = await start();
+        if (i === 8) { await t.game('act', 'setWind', 0.6); await t.page.evaluate(() => window.__FS.tips()); s = await t.state(); }
+        seq.push({ hint: s.hint.replace(/Tap anywhere to close$/, '').trim(), seen: s.settings.seenTips.slice() });
+        if (i === 0) await snap(t, 'S2-01-tip-quick');
+        if (i === 1) await snap(t, 'S2-01-tip-nut');
+        await t.page.keyboard.press('ArrowLeft');
+      }
+      const ids = seq.map((x) => x.seen[x.seen.length - 1]);
+      t.equal(ids.join(), 'quick,nut-chinquapin,nut-pecan,nut-walnut,nut-hickory,nut-sweetgum,nut-hedgeapple,steam,wind', 'the goal first, then each nut as it is first in the satchel, then steam, then wind');
+      for (const x of seq) t.expect(x.hint.length > 0 && x.hint.split(/s+/).length <= 12, `"${x.hint}" is ${x.hint.split(/s+/).length} words`);
+      t.equal(new Set(seq.map((x) => x.hint)).size, 9, 'and no two say the same');
+      t.expect(/Knock every rival out of the trees/.test(seq[0].hint), 'the first one is the goal');
+      t.expect(/Pecan Dart: .* in flight to dash/.test(seq[2].hint), 'a nut tip says when to tap');
+      await t.reload();
+      t.equal((await t.state()).settings.seenTips.length, 9, 'what was shown is saved');
+      await start();
+      t.equal((await t.state()).hint, '', 'and nothing shows twice');
+    },
+  },
+  {
+    name: 'S2-01 Practice shows its goal once; the words follow the keyboard; Tutorial hints Off silences them; Show tips again brings them back',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('scene', 'practice');
+      await t.waitFrames(2);
+      let s = await t.state();
+      t.expect(/^Hit every target./.test(s.hint), `Practice: ${s.hint}`);
+      t.equal(s.settings.seenTips.join(), 'practice', 'it is marked seen');
+      await t.page.keyboard.press('ArrowLeft');
+      // keyboard words: with the last input a key, the goal tip names the arrows
+      await t.game('setState', { settings: { seenTips: [] } });
+      await startHuman(t);
+      await t.page.evaluate(() => { window.__FS.inputKind = 'key'; window.__FS.hud.hint(''); window.__FS.save.settings.seenTips = []; });
+      await t.game('act', 'setWind', 0);
+      await t.page.evaluate(() => window.__FS.tips());
+      s = await t.state();
+      t.expect(/Arrows aim./.test(s.hint), `keyboard words: ${s.hint}`);
+      // Tutorial hints Off: nothing shows
+      await t.game('setState', { settings: { seenTips: [], tutorial: false } });
+      await t.page.evaluate(() => { window.__FS.hud.hint(''); window.__FS.tips(); });
+      t.equal((await t.state()).hint, '', 'with Tutorial hints off no tip shows');
+      // Show tips again: on, and the list is empty
+      await t.game('setState', { settings: { seenTips: ['quick', 'steam'] } });
+      await t.game('scene', 'settings');
+      await t.page.click('#screens [data-act="tipsAgain"]');
+      s = await t.state();
+      t.equal(s.settings.seenTips.length, 0, 'Show tips again empties the list');
+      t.equal(s.settings.tutorial, true, 'and turns the hints back on');
+      await snap(t, 'S2-01-settings-tips');
+    },
+  },
+  {
+    name: 'S2-01 a player with an existing save is not shown first-run tips, a fresh one is, and a damaged list is dropped',
+    async run(t) {
+      const old = { v: 1, settings: { sound: true, music: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true }, story: { team: 0, unlocked: 3, stars: { 'story-01': 2 }, nuts: [] }, quick: { level: 'story-02', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' }, stats: { battles: 5, wins: 3, kos: 4, bestShot: 30 } };
+      await t.page.evaluate((o) => localStorage.setItem('hsg-furious-squirrels-v1', JSON.stringify(o)), old);
+      await t.reload();
+      t.equal((await t.state()).settings.seenTips.length, 10, 'an old save counts every tip as seen');
+      await t.game('newGame', { levelId: 'gray', birds: 'off', seed: 7 });
+      t.equal((await t.state()).hint, '', 'so none shows');
+      // a hand-edited list: unknown ids and non-strings go, the known ones stay
+      const bad = { ...old, settings: { ...old.settings, seenTips: ['wind', 'nonsense', 7, 'wind', null, 'steam'] } };
+      await t.page.evaluate((o) => localStorage.setItem('hsg-furious-squirrels-v1', JSON.stringify(o)), bad);
+      await t.reload();
+      t.equal((await t.state()).settings.seenTips.join(), 'wind,steam', 'a damaged list keeps only the real tips');
+      await t.game('act', 'clearSave');
+      await t.reload();
+      t.equal((await t.state()).settings.seenTips.length, 0, 'a fresh profile has seen none');
     },
   },
 ];
