@@ -57,11 +57,15 @@ export const tests = [
       s = await t.state();
       t.equal(s.scene, 'battle', 'Start battle starts the battle');
       const me = s.battle.teams[0], rival = s.battle.teams[1];
-      t.equal(me.inventory.pecan, 2); t.equal(me.inventory.chinquapin, 3);
+      // the family that throws second also gets a bonus pecan here (S3-13: its best special before the walnut)
+      const bonus = (team) => (s.battle.turn.team === team ? 0 : 1);
+      t.equal(me.inventory.pecan, 2 + bonus(0)); t.equal(me.inventory.chinquapin, 3);
       t.equal(me.acorns, 10, 'the player keeps what was not spent');
-      const costOf = (inv) => 30 * ((inv.pecan - 1) + (inv.chinquapin - 1));
-      t.equal(rival.acorns, 100 - costOf(rival.inventory), 'the rival started from the same purse and paid for what it packed');
-      t.expect(costOf(rival.inventory) > 0, 'the rival shopped too');
+      // what the rival paid is what it packed, plus the second thrower's bonus nut when there is room for it (three of a kind is the most)
+      const packed = (rival.inventory.pecan - 1) + (rival.inventory.chinquapin - 1), spent = 100 - rival.acorns;
+      const extra = packed - spent / 30;
+      t.expect(spent % 30 === 0 && (extra === 0 || extra === bonus(1)), `the rival started from the same purse and paid for what it packed: spent ${spent}, packed ${packed}`);
+      t.expect(spent > 0, 'the rival shopped too');
     },
   },
   {
@@ -115,7 +119,7 @@ export const tests = [
       await click(t, '[data-act="prepGo"]');
       await t.game('act', 'menu', 'restart');
       s = await t.state();
-      t.equal(s.scene, 'battle'); t.equal(s.battle.teams[0].inventory.pecan, 2, 'Restart keeps the satchel that was packed');
+      t.equal(s.scene, 'battle'); t.equal(s.battle.teams[0].inventory.pecan, 2 + (s.battle.turn.team === 0 ? 0 : 1), 'Restart keeps the satchel that was packed (and a bonus pecan for the second thrower, S3-13)');
       t.equal(s.battle.teams[0].acorns, 70);
       // after the battle, Play again goes back through the shop with the new purse (no free repeat of the old one)
       await t.game('scene', 'results');
@@ -130,9 +134,11 @@ export const tests = [
     async run(t) {
       await profile(t, { unlocked: 1 });
       await t.game('act', 'menu', 'quick');
+      // a new profile now starts on Story unlocks (S2-09), which has no specials yet: All seven is chosen here, as the test always meant
+      await t.game('act', 'menu', 'qset', { k: 'loadout', v: 'all' });
       await t.game('act', 'menu', 'quickGo');
       let s = await t.state();
-      t.equal(s.screen, 'prep', 'the default Quick Battle (all seven nuts) opens the shop');
+      t.equal(s.screen, 'prep', 'a Quick Battle on all seven nuts opens the shop');
       t.equal(await purseText(t), 'Your acorns: 60');
       t.equal((await rows(t)).length, 6, 'all six specials are for sale');
       await snap(t, 'S3-01-quick-satchel');
