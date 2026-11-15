@@ -319,4 +319,27 @@ export const tests = [
       }
     },
   },
+  // ---- S4-04 ----
+  {
+    name: 'S4-04 each season has its own air: leaves, snow, petals, pollen, fireflies, and none with reduced motion',
+    async run(t) {
+      const want = { gray: 'motes', 'story-08': 'leaves', 'story-11': 'snow', 'story-04': 'petals', 'story-06': 'fireflies' };
+      await t.game('setState', { settings: { reducedMotion: false } });
+      for (const [levelId, kind] of Object.entries(want)) {
+        await t.seed(7);
+        await t.game('newGame', { levelId, birds: 'off', wind: 'off' });
+        await t.page.waitForFunction((k) => window.__FS.renderer.weather.kind === k && window.__FS.renderer.weather.drawn > 5, kind, { timeout: 15000 });
+        const n = await t.page.evaluate(() => window.__FS.renderer.weather.drawn);
+        t.expect(n >= 15 && n <= 40, `${levelId}: ${kind}, ${n} in the air (sparse: 15 to 40)`);
+        if (levelId === 'story-08' || levelId === 'story-11' || levelId === 'story-06') await snap(t, 'S4-04-air-' + kind);
+      }
+      // reduced motion: nothing drifts, on the next frame
+      await t.game('setState', { settings: { reducedMotion: true } });
+      await t.page.waitForFunction(() => window.__FS.renderer.reduced === true && window.__FS.renderer.weather.drawn === 0, null, { timeout: 10000 });
+      t.expect(true, 'reduced motion: no particles in the air');
+      await t.game('setState', { settings: { reducedMotion: false } });
+      await t.page.waitForFunction(() => window.__FS.renderer.weather.drawn > 5, null, { timeout: 10000 });
+      t.expect(true, 'and they come back when it is off');
+    },
+  },
 ];

@@ -12,7 +12,7 @@ import { paintBackdrop, paintForestBand, BW, BH, BASE } from './backdrop.js';
 export const ART_BASE = { middle: 0.797, north: 0.834, south: 0.838 };
 import { drawSquirrel, emblem, star } from './squirrels.js';
 import { drawNut, NUT_COLORS } from './nuts.js';
-import { Fx, Steam } from './fx.js';
+import { Fx, Steam, Weather } from './fx.js';
 import { TEAM_COLORS, BARK } from './looks.js';
 import { makeRng } from '../rng.js';
 import { drawBirds } from './birds.js';
@@ -26,6 +26,7 @@ export class Renderer {
     this.trees = new TreeLayer();
     this.fx = new Fx(makeRng(0xf00d));
     this.steam = new Steam(makeRng(0x57ea));
+    this.weather = new Weather();
     this.backdrop = null;
     this.art = null; // {img, order} painted backdrop when loaded
     this.size = { w: 0, h: 0, dpr: 1 };
@@ -56,6 +57,7 @@ export class Renderer {
     this.trees.invalidate();
     this.fx.clear();
     this.steam.reset(level, sim.b.steamLevel);
+    this.weather.reset(level, level.seed ^ 0xa17);
   }
 
   carve(x, y, r) { this.terrain.carve(x, y, r); }
@@ -70,6 +72,7 @@ export class Renderer {
     this.drawSky(g, w, h, app.time);
     this.drawBackdrop(g);
     this.steam.draw(g, cam, this.reduced ? 0.7 : 1);
+    this.weather.draw(g, w, h, app.time, this.reduced);
     this.drawTower(g);
     this.terrain.draw(g, cam);
     // bedrock below the world: a deep-soil fade over the last stretch hides the canvas edges, then solid ground

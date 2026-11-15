@@ -2,6 +2,7 @@
 // stream only, so nothing here can change the battle.
 import { CANOPY } from './looks.js';
 import { star } from './squirrels.js';
+import { makeRng } from '../rng.js';
 
 const MAX = 600;
 const FEATHER = {
@@ -95,6 +96,7 @@ export class Fx {
 }
 
 // Steam curls over the valley: purely ambient, drawn in world space, strength follows the level's lift.
+const STEAM_ALPHA = 0.4; // how thick the Row's steam is at its densest (0.32, in white, before wave 3: S4-04)
 export class Steam {
   constructor(rng) { this.rng = rng; this.puffs = []; }
   reset(level, lift) {
@@ -116,11 +118,57 @@ export class Steam {
     if (!this.level || !this.lift) return;
     const z = cam.zoom, fl = this.level.floorY;
     for (const p of this.puffs) {
-      const h = fl - p.y, a = Math.max(0, 1 - h / 940) * 0.32 * alphaMul;
+      const h = fl - p.y, a = Math.max(0, 1 - h / 940) * STEAM_ALPHA * alphaMul;
       const [x, y] = cam.toScreen(p.x + Math.sin(p.ph) * 14, p.y);
       const gr = g.createRadialGradient(x, y, 0, x, y, p.r * z);
-      gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      gr.addColorStop(0, `rgba(255,250,238,${a})`); gr.addColorStop(1, 'rgba(255,250,238,0)');
       g.fillStyle = gr; g.beginPath(); g.arc(x, y, p.r * z, 0, Math.PI * 2); g.fill();
     }
+  }
+}
+
+// The season's air (S4-04): leaves drifting down in the fall, snow in winter, petals in spring, pollen on a summer day and
+// fireflies on a summer night. Sparse, small and behind the squirrels, trees and ground; drawn in screen space from a
+// seeded stream of its own, so it cannot touch the battle. Nothing at all with reduced motion.
+const AIR = { fall: 'leaves', winter: 'snow', spring: 'petals' };
+const AIR_COUNT = 30, AIR_COUNT_SMALL = 18; // particles on a wide screen and on a phone
+export class Weather {
+  constructor() { this.kind = null; this.p = []; this.t = null; this.drawn = 0; }
+  reset(level, seed) {
+    this.kind = level.time === 'night' && level.season !== 'winter' ? 'fireflies' : AIR[level.season] || 'motes';
+    this.season = level.season; this.p = []; this.t = null; this.drawn = 0; this.seed = seed >>> 0;
+  }
+  fill(w, h) {
+    const r = makeRng(this.seed), n = w < 700 ? AIR_COUNT_SMALL : AIR_COUNT, night = this.kind === 'fireflies';
+    this.p = [];
+    for (let i = 0; i < n; i++) this.p.push({ x: r.range(0, w), y: r.range(night ? h * 0.35 : 0, night ? h * 0.8 : h), v: r.range(14, 34), s: r.range(0.6, 1.4), ph: r.range(0, 6.28), sw: r.range(10, 28), c: Math.floor(r.range(0, 4)) });
+    this.w = w; this.h = h;
+  }
+  draw(g, w, h, time, reduced) {
+    this.drawn = 0;
+    if (reduced || !this.kind) return;
+    if (!this.p.length || this.w !== w || this.h !== h) this.fill(w, h);
+    const dt = this.t == null ? 0 : Math.max(0, Math.min(0.1, time - this.t)); this.t = time;
+    const k = this.kind, cols = k === 'leaves' ? ['#C27A40', '#D4A72C', '#A8352E', '#9A5A2E'] : k === 'petals' ? ['#E08AB8', '#F6F3EC', '#B5568F', '#F6F3EC'] : null;
+    for (const p of this.p) {
+      p.ph += dt * (k === 'fireflies' ? 1.4 : 1.1);
+      if (k === 'fireflies') { p.x += Math.sin(p.ph * 0.7) * 8 * dt; p.y += Math.cos(p.ph * 0.5) * 6 * dt; }
+      else if (k === 'motes') { p.x += (6 + Math.sin(p.ph) * 6) * dt; p.y += Math.cos(p.ph * 0.8) * 3 * dt - 1 * dt; }
+      else { p.y += p.v * (k === 'snow' ? 1.1 : 1) * dt; p.x += Math.sin(p.ph) * p.sw * dt + (k === 'snow' ? 0 : 6 * dt); }
+      if (p.y > h + 8) { p.y = -8; p.x = (p.x * 7.13 + 31) % w; }
+      if (p.x > w + 8) p.x = -8; if (p.x < -8) p.x = w + 8;
+      this.drawn++;
+      if (k === 'snow') { g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.arc(p.x, p.y, 1.4 + p.s * 1.1, 0, Math.PI * 2); g.fill(); }
+      else if (k === 'fireflies') {
+        const glow = Math.max(0, Math.sin(p.ph * 1.7 + p.c)) ** 2, a = 0.15 + 0.8 * glow, gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, 9 * p.s);
+        gr.addColorStop(0, `rgba(235,255,150,${a})`); gr.addColorStop(1, 'rgba(235,255,150,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, 9 * p.s, 0, Math.PI * 2); g.fill();
+      } else if (k === 'motes') { g.fillStyle = 'rgba(255,246,200,0.55)'; g.beginPath(); g.arc(p.x, p.y, 1 + p.s * 0.8, 0, Math.PI * 2); g.fill(); }
+      else {
+        g.save(); g.translate(p.x, p.y); g.rotate(p.ph * 1.3); g.fillStyle = cols[p.c]; g.globalAlpha = 0.85;
+        g.beginPath(); g.ellipse(0, 0, (k === 'leaves' ? 5.5 : 3.6) * p.s, (k === 'leaves' ? 3 : 2.2) * p.s, 0, 0, Math.PI * 2); g.fill(); g.restore();
+      }
+    }
+    g.globalAlpha = 1;
   }
 }
