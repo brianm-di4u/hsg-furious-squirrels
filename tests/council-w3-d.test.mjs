@@ -23,6 +23,15 @@ const gesture = async (t) => {
   await t.page.keyboard.press('Shift');
   await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
 };
+// counts every oscillator or noise source started, so a test can see whether anything is being scheduled
+const countStarts = () => {
+  window.__starts = 0;
+  const proto = (window.AudioScheduledSourceNode || {}).prototype;
+  if (!proto) return;
+  const start = proto.start;
+  proto.start = function patched(...a) { window.__starts++; return start.apply(this, a); };
+};
+const waitAudio = (t, fn, arg) => t.page.waitForFunction(fn, arg, { timeout: 15000 });
 const humanAims = (t) => t.page.waitForFunction(() => { const s = window.__game.getState(); return s.battle && s.battle.turn.team === 0 && s.battle.phase === 'aim' && !s.aiActive; }, null, { timeout: 90000 });
 
 export const tests = [
@@ -198,6 +207,41 @@ export const tests = [
       await t.page.waitForFunction(() => window.__game.getState().audio.busMusic > 0.95, null, { timeout: 15000 });
       t.expect(true, 'a walnut burst ducked the music and it came back');
       await t.page.evaluate(() => clearInterval(window.__sampler));
+    },
+  },
+  // ---- S5-09 ----
+  {
+    name: 'S5-09 switched-off music, ambience and sound stop their sources and the scheduler, and come back when switched on',
+    viewports: ['desktop'],
+    initScript: countStarts,
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await gesture(t);
+      const rate = async (ms) => { const a = await t.page.evaluate(() => window.__starts); await t.page.waitForTimeout(ms); return (await t.page.evaluate(() => window.__starts)) - a; };
+      const set = (settings) => t.game('setState', { settings });
+      const audioNow = () => t.page.evaluate(() => window.__game.getState().audio);
+      await waitAudio(t, () => { const a = window.__game.getState().audio; return a.scheduler && a.musicPlaying && a.ambiencePlaying; });
+      t.expect((await rate(3000)) > 3, 'music and ambience schedule while they are on');
+      await set({ music: false });
+      await waitAudio(t, () => !window.__game.getState().audio.musicPlaying);
+      let a = await audioNow();
+      t.expect(a.ambiencePlaying && a.scheduler, 'Music off stops the score and leaves the bed and the scheduler running');
+      await set({ ambience: false });
+      await waitAudio(t, () => !window.__game.getState().audio.scheduler);
+      a = await audioNow();
+      t.expect(!a.musicPlaying && !a.ambiencePlaying && !a.scheduler, 'Music and Ambience both off: no score, no bed, no scheduler');
+      t.equal(await rate(2500), 0, 'and no source is started');
+      await set({ music: true, ambience: true });
+      await waitAudio(t, () => { const x = window.__game.getState().audio; return x.scheduler && x.musicPlaying && x.ambiencePlaying; });
+      t.expect((await rate(3000)) > 3, 'turned back on they play again');
+      await set({ sound: false });
+      await waitAudio(t, () => { const x = window.__game.getState().audio; return !x.scheduler && !x.musicPlaying && !x.ambiencePlaying; });
+      t.equal(await rate(2500), 0, 'Sound off starts no source either');
+      await set({ sound: true });
+      await waitAudio(t, () => { const x = window.__game.getState().audio; return x.scheduler && x.musicPlaying && x.ambiencePlaying && x.busMusic > 0.9; });
+      t.expect((await rate(3000)) > 3, 'Sound on again brings the music and the bed back');
+      t.equal((await audioNow()).theme, 'title', 'and it is still the title theme');
     },
   },
 ];

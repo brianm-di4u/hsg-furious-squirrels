@@ -35,6 +35,22 @@ function runScheduler(on) {
   if (!kit) return;
   if (on && !state.timer) { kit.start(); state.timer = true; } else if (!on && state.timer) { kit.stop(); state.timer = false; }
 }
+// A switched-off piece is not just muted (S5-09): with Sound off, Music off or the Music level at Off its score is
+// stopped, with Ambience off or Sound off its bed is, and with neither wanted the scheduler stops too, so a phone is not
+// kept busy building notes nobody hears. Turning it back on starts the piece again. The scheduler runs on a moment
+// after a stop, because it is what silences and frees the retired nodes.
+const musicWanted = () => state.on && state.music && state.musicVol > 0;
+const ambWanted = () => state.on && state.ambience;
+let idleTimer = 0;
+function syncSources() {
+  if (!kit) return;
+  if (musicWanted()) { if (state.theme && !kit.music.score) kit.music.play(SCORES[state.theme] || SCORES.day, { fade: FADE_MUSIC }); } else if (kit.music.score) kit.music.stop(0.3);
+  if (ambWanted()) { if (state.scene && !kit.amb.scene) kit.amb.play(SCENES[state.scene], { fade: FADE_SCENE }); } else if (kit.amb.scene) kit.amb.stop(0.3);
+  clearTimeout(idleTimer);
+  if (state.hidden) return;
+  if (musicWanted() || ambWanted()) runScheduler(true);
+  else idleTimer = setTimeout(() => { if (!musicWanted() && !ambWanted()) runScheduler(false); }, 800);
+}
 
 // What every sound passes through on its way out: the master gain, then a limiter so music, ambience and the loudest cue
 // cannot clip together. The page and the offline render hook build it the same way.
@@ -68,11 +84,9 @@ function unlock() {
     state.started = true;
     for (const [k, v] of Object.entries(state.params)) kit.amb.set(k, v, 0.01);
     kit.music.intensity(state.tension ? 1 : 0);
-    if (state.scene) kit.amb.play(SCENES[state.scene], { fade: FADE_SCENE });
-    if (state.theme) playTheme(state.theme, true);
     state.hidden = !!document.hidden;
     syncHold();
-    runScheduler(!state.hidden);
+    syncSources();
   } catch (e) { ctx = null; kit = null; }
 }
 
@@ -81,6 +95,7 @@ export function setAudio(settings) {
   if (!ctx) return;
   master.gain.setTargetAtTime(state.on ? state.vol * MASTER_SCALE : 0, ctx.currentTime, 0.05);
   applyLevels();
+  syncSources();
 }
 // The pause card fades the music and ambience out, so a paused battle does not sound like it is still running.
 export function pauseAudio(flag) {
@@ -101,12 +116,12 @@ export function handleVisibility(hidden) {
   } else {
     ctx.resume().catch(() => {});
     syncHold();
-    runScheduler(true);
+    syncSources();
   }
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -167,13 +182,13 @@ export function sfx(name, arg) {
 export function playTheme(name, force) {
   if (state.theme === name && !force) return;
   state.theme = name;
-  if (kit) kit.music.play(SCORES[name] || SCORES.day, { fade: FADE_MUSIC });
+  if (kit && musicWanted()) kit.music.play(SCORES[name] || SCORES.day, { fade: FADE_MUSIC });
 }
 export function stopMusic() { state.theme = null; if (kit) kit.music.stop(FADE_MUSIC); }
 export function playAmbience(name) {
   if (state.scene === name) return;
   state.scene = name;
-  if (kit) kit.amb.play(SCENES[name], { fade: FADE_SCENE });
+  if (kit && ambWanted()) kit.amb.play(SCENES[name], { fade: FADE_SCENE });
 }
 // 'wind' (0..1), 'steam' (0..1, how near the steam is to the view) and 'birds' (0..1) move the ambience beds.
 export function ambienceParam(name, v) {
