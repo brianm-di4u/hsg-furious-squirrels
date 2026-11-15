@@ -100,4 +100,40 @@ export const tests = [
       t.equal((await t.state()).battle.teams[0].stats.throws, 1, 'and the nut goes');
     },
   },
+  // ---- S2-07 ----
+  {
+    name: 'S2-07 the Move button shows what stamina is left: a percentage on a desktop, a thin bar on a phone',
+    async run(t) {
+      await humanFirst(t);
+      await t.waitFrames(4);
+      const read = () => t.page.evaluate(() => {
+        const b = document.getElementById('b-move'), bar = b.querySelector('.stam'), fill = bar.querySelector('b');
+        return { label: b.querySelector('.lbl').textContent, aria: b.getAttribute('aria-label'), barShown: getComputedStyle(bar).display !== 'none', fill: fill.getBoundingClientRect().width, track: bar.getBoundingClientRect().width, stam: window.__FS.sim.b.turn.stamina };
+      });
+      let m = await read();
+      t.equal(m.aria, 'Move: 100% stamina left', 'a full turn has 100% stamina');
+      if (t.viewport === 'mobile') {
+        t.equal(m.label, 'Move', 'the phone label stays short');
+        t.expect(m.barShown && Math.abs(m.fill - m.track) < 1.5, `the bar is full (${m.fill.toFixed(1)} of ${m.track.toFixed(1)} px)`);
+      } else {
+        t.equal(m.label, 'Move (100%)', 'the desktop label carries the percentage');
+        t.expect(!m.barShown, 'and the bar is not needed there');
+      }
+      await snap(t, 'S2-07-move-full');
+      const perches = await t.game('act', 'perches');
+      const near = perches.filter((p) => p.cost > 0).sort((a, b) => a.cost - b.cost)[0];
+      t.expect(!!near, 'a perch is within reach');
+      await t.game('act', 'move', { toNode: near.id });
+      await t.page.waitForFunction(() => window.__FS.sim.b.turn.stamina < 300, null, { timeout: 5000 });
+      await t.page.waitForFunction(() => document.getElementById('b-move').getAttribute('aria-label') !== 'Move: 100% stamina left', null, { timeout: 5000 });
+      m = await read();
+      const pct = Math.round(m.stam / 3);
+      t.equal(m.aria, `Move: ${pct}% stamina left`, 'the label follows the stamina spent');
+      if (t.viewport === 'mobile') t.expect(Math.abs(m.fill / m.track - pct / 100) < 0.03, `the bar shrinks to ${pct}% (${((m.fill / m.track) * 100).toFixed(1)}%)`);
+      else t.equal(m.label, `Move (${pct}%)`, 'the desktop percentage drops too');
+      await t.game('act', 'moveMode');
+      await t.waitFrames(4);
+      await snap(t, 'S2-07-move-perches');
+    },
+  },
 ];

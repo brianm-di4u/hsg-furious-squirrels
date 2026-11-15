@@ -240,9 +240,12 @@ export class Renderer {
       if (!n || id === q.perch) continue;
       const [x, y] = cam.toScreen(n.x, n.y);
       const hot = app.hoverPerch === id;
-      g.fillStyle = hot ? 'rgba(255,246,200,0.95)' : 'rgba(255,246,200,0.55)';
-      g.strokeStyle = '#1A1410'; g.lineWidth = 1.5;
-      g.beginPath(); g.arc(x, y - 3 * z, Math.max(3, (hot ? 7 : 4.5) * z), 0, Math.PI * 2); g.fill(); g.stroke();
+      // never smaller than 5 px across the dot, with a dark ring, so a phone's zoomed-out view still shows where it can go
+      const rad = Math.max(5, (hot ? 8 : 5.5) * z);
+      g.fillStyle = '#1A1410';
+      g.beginPath(); g.arc(x, y - 3 * z, rad + 1.8, 0, Math.PI * 2); g.fill();
+      g.fillStyle = hot ? 'rgba(255,246,200,1)' : 'rgba(255,246,200,0.9)';
+      g.beginPath(); g.arc(x, y - 3 * z, rad, 0, Math.PI * 2); g.fill();
     }
   }
 

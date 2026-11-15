@@ -33,7 +33,7 @@ export class Hud {
         <div class="aimbox">
           <div class="readout" id="readout"></div>
           <div class="aimrow">
-            <button type="button" class="btn small" id="b-move" data-hud="move" aria-pressed="false">Move</button>
+            <button type="button" class="btn small" id="b-move" data-hud="move" aria-pressed="false"><span class="lbl">Move</span><i class="stam" aria-hidden="true"><b></b></i></button>
             <button type="button" class="btn small" id="b-cam" data-hud="cam" aria-label="Recenter the camera">View</button>
             <button type="button" class="btn small snd" id="b-sound" data-hud="sound" aria-pressed="false"></button>
             <button type="button" class="btn small pause" id="b-pause" data-hud="pause" aria-label="Pause">❚❚</button>
@@ -127,8 +127,11 @@ export class Hud {
     const mv = this.el('b-move');
     mv.disabled = !human || phase !== 'aim' || b.turn.stamina < 20;
     mv.setAttribute('aria-pressed', String(!!app.showPerches));
-    mv.textContent = app.showPerches ? 'Done' : compactView() ? 'Move' : `Move (${Math.round(b.turn.stamina / 3)}%)`;
-    mv.setAttribute('aria-label', `Move: ${Math.round(b.turn.stamina / 3)}% stamina left`);
+    const stam = Math.max(0, Math.min(100, Math.round(b.turn.stamina / 3)));
+    // a phone has no room for the percentage in the label: a thin bar under it shows what is left
+    mv.querySelector('.lbl').textContent = app.showPerches ? 'Done' : compactView() ? 'Move' : `Move (${stam}%)`;
+    mv.querySelector('.stam b').style.width = stam + '%';
+    mv.setAttribute('aria-label', `Move: ${stam}% stamina left`);
     const on = app.save.settings.sound !== false, sn = this.el('b-sound');
     if (sn._on !== on) { sn._on = on; sn.innerHTML = on ? SPEAKER.on : SPEAKER.off; sn.setAttribute('aria-pressed', String(!on)); sn.setAttribute('aria-label', on ? 'Mute sound' : 'Sound is muted. Turn sound on'); }
     // call fade
