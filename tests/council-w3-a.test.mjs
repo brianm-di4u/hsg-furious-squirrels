@@ -395,4 +395,52 @@ export const tests = [
       t.expect((await t.state()).audio.started, 'a pad press starts the audio');
     },
   },
+  // ---- S6-04 ----
+  {
+    name: 'S6-04 the turn timer stops on the pause card, behind a screen and in a hidden tab, and shows the seconds left',
+    async run(t) {
+      await storyBattle(t, 'story-01', { turnTimer: 30 });
+      const my = () => t.page.evaluate(() => { const b = window.__game.getState().battle; return { n: b.turn.n, team: b.turn.team, phase: b.phase }; });
+      // wait until the game's own clock has run this many seconds (the loop keeps ticking on the pause card), giving up after 20 s of wall time
+      const waitClock = (secs) => t.page.evaluate(async (s) => { const t0 = window.__FS.time, w0 = performance.now(); await new Promise((res) => { const id = setInterval(() => { if (window.__FS.time - t0 >= s || performance.now() - w0 > 20000) { clearInterval(id); res(); } }, 50); }); return window.__FS.time - t0; }, secs);
+      const first = await my();
+      t.equal(first.team, 0, 'it is the player\'s turn');
+      await t.page.waitForFunction(() => window.__FS.turnElapsed > 0.3, null, { timeout: 10000 });
+      t.expect(/\d+ s$/.test(await t.page.textContent('#turnlabel')), `the turn label shows the seconds left (${await t.page.textContent('#turnlabel')})`);
+      await snap(t, 'S6-04-turn-timer');
+      await t.page.evaluate(() => { window.__FS.turnElapsed = 25; });
+      await t.game('scene', 'pause');
+      await waitClock(3);
+      let e = await t.page.evaluate(() => window.__FS.turnElapsed);
+      t.expect(e >= 25 && e < 25.5, `three seconds on the pause card cost nothing (${e.toFixed(2)})`);
+      t.equal((await my()).n, first.n, 'the turn has not passed');
+      await t.game('act', 'menu', 'settings');
+      await waitClock(2);
+      e = await t.page.evaluate(() => window.__FS.turnElapsed);
+      t.expect(e < 25.5, `nor on the Settings screen opened from it (${e.toFixed(2)})`);
+      await t.game('act', 'menu', 'back');
+      await t.game('act', 'menu', 'resume');
+      // a hidden tab: its frames are throttled away, so each frame is asked for by hand (the old wall-clock compare would have counted all of it)
+      await t.page.evaluate(() => { window.__hid = true; Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.__hid }); });
+      const e0 = await t.page.evaluate(() => window.__FS.turnElapsed);
+      await t.page.evaluate(async () => { for (let i = 0; i < 100; i++) { window.__FS.kick(); await new Promise((r) => setTimeout(r, 20)); } });
+      e = await t.page.evaluate(() => window.__FS.turnElapsed);
+      t.expect(e - e0 < 0.3, `a hidden tab costs nothing (${(e - e0).toFixed(2)})`);
+      await t.page.evaluate(() => { window.__hid = false; document.dispatchEvent(new Event('visibilitychange')); });
+      // back in play the remaining five seconds run out and the turn passes
+      await t.page.waitForFunction((n) => window.__game.getState().battle.turn.n !== n, first.n, { timeout: 20000 });
+      t.expect(/Out of time/.test(await t.page.textContent('#call')), 'the player is told "Out of time!"');
+      await t.page.waitForFunction(() => window.__FS.turnElapsed < 2, null, { timeout: 10000 }); // the clock starts again for the next turn
+    },
+  },
+  {
+    name: 'S6-04 with the turn timer off there is no countdown and no forfeited turn',
+    viewports: ['desktop'],
+    async run(t) {
+      await storyBattle(t, 'story-01', { turnTimer: 0 });
+      await t.page.waitForFunction(() => window.__FS.time > 1.5, null, { timeout: 10000 });
+      t.expect(!/ s$/.test(await t.page.textContent('#turnlabel')), 'no seconds on the turn label');
+      t.equal(await t.page.evaluate(() => window.__FS.turnElapsed), 0, 'and the clock does not run');
+    },
+  },
 ];

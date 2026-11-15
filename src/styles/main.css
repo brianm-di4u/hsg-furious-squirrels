@@ -40,6 +40,7 @@ button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .banner .rounds { font-size: 12px; opacity: 0.95; }
 .banner.turn { outline: 3px solid var(--gold); outline-offset: 1px; }
 .mid { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.turnlabel.low { background: var(--rust-dark); }
 .turnlabel { padding: 6px 14px; border-radius: 12px; background: #2A2119; border: 2px solid var(--ink); font: 800 calc(15px * var(--text-scale)) var(--font-ui); color: #fff; white-space: nowrap; }
 .wind { display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 12px; background: #2A2119; border: 2px solid var(--ink); font: 800 calc(14px * var(--text-scale)) var(--font-ui); color: #fff; }
 .wind canvas { width: 52px; height: 22px; }

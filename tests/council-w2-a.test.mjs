@@ -166,7 +166,7 @@ export const tests = [
       t.expect(!(await audio(t)).tension, 'a new battle starts calm');
       await t.game('setState', { settings: { turnTimer: 30 } });
       await t.page.waitForFunction(() => { const b = window.__game.getState().battle; return b.phase === 'aim' && b.teams[b.turn.team].human; }, null, { timeout: 30000 });
-      await t.page.evaluate(() => { window.__FS.turnStart = performance.now() / 1000 - 25; });
+      await t.page.evaluate(() => { window.__FS.turnElapsed = 25; });
       await waitAudio(t, () => window.__game.getState().audio.tension === true);
       t.expect((await audio(t)).tension, 'ten seconds left on the turn timer raises the tension');
       await t.game('setState', { settings: { turnTimer: 0 } });

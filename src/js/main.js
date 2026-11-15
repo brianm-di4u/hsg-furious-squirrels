@@ -23,7 +23,7 @@ const App = {
   scene: 'boot', ready: false, loading: 0, paused: false, testPaused: false, time: 0, clock: null, steps: 0,
   save: loadSave(), sim: null, level: null, setup: null, vis: {}, showPerches: false, hoverPerch: null,
   aimGuide: null, guideKey: '', aiActive: null, aimAnim: null, pendingEnd: null, held: new Set(), craterN: 0,
-  turnStart: 0, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
+  turnElapsed: 0, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
 };
 window.__FS = App;
 
@@ -174,7 +174,7 @@ function enterBattleScene() {
 
 function onTurnStart(first) {
   const sim = App.sim, q = sim.active();
-  App.turnStart = wallNow();
+  App.turnElapsed = 0; // seconds of this turn the player has actually had: see the turn timer in frame()
   App.renderer.cam.user = false;
   App.showPerches = false;
   App.guideKey = '';
@@ -951,7 +951,7 @@ function tensionNow() {
   if (!b || App.scene !== 'battle' || b.practice || b.phase === 'roundEnd' || b.phase === 'battleEnd') return false;
   for (let i = 0; i < b.teams.length; i++) if (sim.alive(i) === 1 && b.squirrels.filter((q) => q.team === i && !q.dummy).length > 1) return true;
   const tt = App.save.settings.turnTimer;
-  return !!(tt && b.phase === 'aim' && humanTurn() && wallNow() - App.turnStart > tt - TENSION_SECONDS);
+  return !!(tt && b.phase === 'aim' && humanTurn() && App.turnElapsed > tt - TENSION_SECONDS);
 }
 function updateSoundscape() {
   const sim = App.sim;
@@ -1003,8 +1003,12 @@ function frame(now) {
         else { const me = sim.b.teams.findIndex((t) => t.human); screens.show('shop', { team: me, round: sim.b.result.round, winner: sim.b.result.winner }); }
       } else if (App.pendingEnd) busy = true;
       // turn timer
+      // (S6-04) only time the player could use counts: not on the pause card, behind a screen, or in a hidden tab
       const tt = App.save.settings.turnTimer;
-      if (tt && sim.b.phase === 'aim' && humanTurn() && wallNow() - App.turnStart > tt) { sim.nextTurn(); }
+      if (tt && sim.b.phase === 'aim' && humanTurn() && !document.hidden) {
+        App.turnElapsed += dtw;
+        if (App.turnElapsed > tt) { hud.call('Out of time!', 1400); say('Out of time. Your turn passes.'); sim.nextTurn(); }
+      }
     }
     if (sim && App.scene === 'title') sim.idle(dtt);
     if (App.slowT > 0) { App.slowT -= dtw; busy = true; }

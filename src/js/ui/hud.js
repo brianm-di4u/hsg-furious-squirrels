@@ -90,7 +90,11 @@ export class Hud {
     else label = '';
     if (app.koHold > 0) label = '';
     if (b.practice && phase === 'aim') label = `Targets ${(app.targetsHit || []).length}/${(app.level.targets || []).length}`;
+    // with the turn timer on, the seconds left on the player's own turn (the last five are marked)
+    const tt = app.save.settings.turnTimer, left = tt && human && phase === 'aim' && !b.practice && label ? Math.max(0, Math.ceil(tt - app.turnElapsed)) : null;
+    if (left != null) label += ` · ${left} s`;
     const tl = this.el('turnlabel');
+    tl.classList.toggle('low', left != null && left <= 5);
     if (tl.textContent !== label) tl.textContent = label;
     tl.style.visibility = label ? '' : 'hidden';
     // wind
