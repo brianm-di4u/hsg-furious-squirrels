@@ -267,4 +267,22 @@ export const tests = [
       t.expect(night.ground.join() !== day.ground.join(), 'winter ground is not summer ground (' + night.ground + ' against ' + day.ground + ')');
     },
   },
+  // ---- S4-02 ----
+  {
+    name: 'S4-02 the story map says which stretch of the Row each battle is on',
+    async run(t) {
+      await t.game('setState', { story: { unlocked: 5 } });
+      await t.game('scene', 'story');
+      await t.page.waitForSelector('.lvl[data-act="play"]');
+      const labels = await t.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.lvl[data-where]')].map((b) => [b.dataset.v, b.dataset.where])));
+      const all = JSON.parse(fs.readFileSync('levels/all.json', 'utf8'));
+      const levels = Object.entries(all).map(([id, L]) => [id, L.stretchLabel]);
+      for (const [id, label] of levels.filter(([id]) => /^story-0[1-5]$/.test(id))) t.equal(labels[id], label, `${id} carries its stretch: ${label}`);
+      // the line under the map follows the tile the player points at, and it starts on the battle to play next
+      t.equal(await t.page.evaluate(() => document.querySelector('#blurb .where').textContent), (levels.find(([id]) => id === 'story-05') || [])[1], 'the line starts on the next battle to play');
+      await t.page.focus('.lvl[data-v="story-03"]');
+      t.equal(await t.page.evaluate(() => document.querySelector('#blurb .where').textContent), labels['story-03'], 'and moves to the tile that has focus');
+      await snap(t, 'S4-02-story-stretch');
+    },
+  },
 ];

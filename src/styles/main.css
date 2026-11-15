@@ -288,6 +288,7 @@ body.reduced .help-more { animation: none; }
 .taunt { top: calc(17% + 62px); width: max-content; max-width: 92vw; padding: 6px 16px; border-radius: 14px; background: var(--rust-dark); border: 2px solid var(--ink); color: #fff; font: 800 calc(16px * var(--text-scale)) var(--font-ui); }
 body.reduced .titlecard, body.reduced .taunt { transition: none; }
 @media (max-width: 700px) { .taunt { top: calc(30% + 56px); }  }
+.blurb .where { display: block; margin-top: 3px; font-style: normal; font-size: 0.85em; color: var(--gold); }
 .blurb { margin: 6px 0 2px; padding: 6px 12px; border-radius: 12px; background: #3E3226; border: 2px solid var(--sign-edge); color: #F5E9D0; font-style: italic; min-height: 3.2em; }
 .feudline { margin: 6px 0; font-family: var(--font-serif); font-size: calc(17px * var(--text-scale)); font-style: italic; color: #FFF6C8; }
 .finale { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin: -10px 0 10px; padding: 14px 8px 6px; border-radius: 16px; background: linear-gradient(#5B3B6E 0%, #C2573A 55%, #F2A547 100%); border: 3px solid var(--sign-edge); overflow: hidden; }
