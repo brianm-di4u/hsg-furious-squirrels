@@ -38,6 +38,22 @@ const crossings = (a) => { let z = 0; for (let i = 1; i < a.length; i++) if (a[i
 // how much of a sound is high: the energy of its sample-to-sample change over its own energy (0 for a slow wave, up to 4)
 const bright = (a) => { let d = 0; for (let i = 1; i < a.length; i++) d += (a[i] - a[i - 1]) ** 2; return d / Math.max(1e-12, energy(a)); };
 const db = (x) => 20 * Math.log10(x);
+// an aim, found with the game's own preview, whose nut ends as `type` ('squirrel': a hit; 'out': flies out of the world)
+const aimEnding = (t, type, nut = 'acorn') => t.page.evaluate(([k, ty]) => {
+  const sim = window.__FS.sim;
+  for (let power = 0.4; power <= 1; power += 0.02) for (let angle = 10; angle <= 80; angle += 2) {
+    const pr = sim.preview({ nut: k, angle, power }, {});
+    if (pr && pr.impact && pr.impact.type === ty) return { nut: k, angle, power: Math.round(power * 100) / 100 };
+  }
+  return null;
+}, [nut, type]);
+// every announcement the live region receives, in order
+const watchLive = (t) => t.page.evaluate(() => {
+  window.__told = [];
+  const live = document.getElementById('live');
+  new MutationObserver(() => { if (live.textContent) window.__told.push(live.textContent); }).observe(live, { childList: true, characterData: true, subtree: true });
+});
+const humanAims = (t) => t.page.waitForFunction(() => { const s = window.__game.getState(); return s.battle && s.battle.turn.team === 0 && s.battle.phase === 'aim' && !s.aiActive; }, null, { timeout: 90000 });
 const sameSamples = (a, b) => a.every((v, i) => v === b[i]);
 
 export const tests = [
@@ -179,6 +195,43 @@ export const tests = [
       await t.page.waitForFunction(() => window.__FS.renderer.textScale === 1, null, { timeout: 5000 });
       const back = await read();
       t.expect(Math.abs(back.nm - one.nm) < 0.01, 'back at 100% the names are as they were');
+    },
+  },
+  // ---- S2-12 ----
+  {
+    name: 'S2-12 the arrow keys read out the new angle and power once they pause, and a hit and a miss are announced',
+    viewports: ['desktop'],
+    async run(t) {
+      await startHuman(t);
+      await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
+      await watchLive(t);
+      // four presses in one go, so how fast the machine is cannot split them
+      await t.page.evaluate(() => { for (let i = 0; i < 4; i++) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', bubbles: true })); });
+      await t.page.waitForFunction(() => window.__told.some((x) => /^Angle \d+, power \d+\.$/.test(x)), null, { timeout: 10000 });
+      const aim = await t.page.evaluate(() => { const b = window.__game.getState().battle; return b.teams[b.turn.team].aim; });
+      const told = (await t.page.evaluate(() => window.__told)).filter((x) => /^Angle/.test(x));
+      t.equal(told.length, 1, 'four quick presses are read out once, not four times');
+      t.equal(told[0], `Angle ${Math.round(aim.angle)}, power ${Math.round(aim.power * 100)}.`, 'and it is the aim they ended on: ' + told[0]);
+      // a hit
+      const hit = await aimEnding(t, 'squirrel');
+      t.expect(!!hit, 'the game finds an aim that hits a rival');
+      await t.page.evaluate(() => { window.__told = []; });
+      await t.game('act', 'aim', hit);
+      await t.game('act', 'fire');
+      await t.page.waitForFunction(() => window.__told.some((x) => /Hit \w+ for \d+, grip \d+ left\./.test(x)), null, { timeout: 30000 });
+      t.expect(true, 'a hit says who, how much and the grip left: ' + (await t.page.evaluate(() => window.__told.find((x) => /Hit /.test(x)))));
+      await t.game('act', 'skipFlight');
+      // a miss
+      await humanAims(t);
+      const out = await aimEnding(t, 'out');
+      t.expect(!!out, 'the game finds an aim that sends the nut out of the world');
+      if (out) {
+        await t.page.evaluate(() => { window.__told = []; });
+        await t.game('act', 'aim', out);
+        await t.game('act', 'fire');
+        await t.page.waitForFunction(() => window.__told.some((x) => /Missed\./.test(x)), null, { timeout: 30000 });
+        t.expect(true, 'a nut that leaves the world says Missed');
+      }
     },
   },
 ];

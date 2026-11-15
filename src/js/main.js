@@ -324,12 +324,16 @@ function hurry() {
   App.ff = FAST; App.slowT = 0;
   return true;
 }
+const AIM_SAY_MS = 400; // how long the arrow keys must rest before the aim is read out
 function nudgeAim(da, dp) {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'aim' || !humanTurn()) return;
   const a = sim.b.teams[sim.b.turn.team].aim;
   sim.setAim({ angle: a.angle + da, power: a.power + dp });
   App.guideKey = ''; kick();
+  // read the new aim out once the keys pause (S2-12), so a held arrow is not read a hundred times
+  clearTimeout(App.aimSayT);
+  App.aimSayT = setTimeout(() => { const n = sim.b.teams[sim.b.turn.team].aim; say(`Angle ${Math.round(n.angle)}, power ${Math.round(n.power * 100)}.`); }, AIM_SAY_MS);
 }
 function toggleMove(on) {
   const sim = App.sim;
@@ -978,7 +982,8 @@ function handleEvents() {
   for (const ev of sim.drain()) {
     const v = vis(ev.sq);
     switch (ev.type) {
-      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw', undefined, { pan: pan(sim.b.squirrels.find((q) => q.id === ev.sq).x) }); startShot(ev); if (b.teams[b.turn.team].human) buzz(10); break;
+      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw', undefined, { pan: pan(sim.b.squirrels.find((q) => q.id === ev.sq).x) }); startShot(ev);
+        if (b.teams[b.turn.team].human && ev.kind !== 'acorn' && ev.kind !== 'hedgeapple') say('Nut in the air. Tap or press Space for its trick.', true); if (b.teams[b.turn.team].human) buzz(10); break;
       case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap', undefined, { pan: pan(ev.x) }); break;
       case 'impact':
         if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst', undefined, { pan: pan(ev.x) }); buzz([20, 30, 40]); }
@@ -994,6 +999,7 @@ function handleEvents() {
         fx.text(ev.x + 36, ev.y - 150, '-' + Math.round(ev.dmg), '#FFE0DA', true); fx.stars(ev.x, ev.y - 20);
         fx.leaves(ev.x, ev.y, 18, L.season); fx.chips(ev.x, ev.y, 8); fx.ring(ev.x, ev.y, 52, '#F2C230');
         if (!App.reduced) { App.hitstop = 0.06; cam.shake = Math.max(cam.shake, 0.35); }
+        { const hq = b.squirrels.find((s) => s.id === ev.sq); if (hq) say(`Hit ${hq.name} for ${Math.round(ev.dmg)}, grip ${Math.round(ev.grip)} left.`, true); }
         sfx('boing', undefined, { dmg: ev.dmg, pan: pan(ev.x) }); buzz(18);
         break;
       case 'wood': fx.chips(ev.x || 0, ev.y || 0, 0); break;
@@ -1021,7 +1027,7 @@ function handleEvents() {
           const lost = b.teams[q.team].human, fam = lost ? 1 - q.team : q.team, pool = lost ? TAUNTS[fam] : GROANS[fam], line = pool[App.tauntN++ % pool.length];
           hud.taunt(`${TEAMS[fam].short}: "${line}"`, 2400); said += ` The ${TEAMS[fam].short} call out: ${line}`;
         }
-        say(said);
+        say(said, true);
         // the round's last knockout plays in slow motion (not with reduced motion)
         if (!App.reduced && sim.alive(q.team) === 0 && !sim.b.practice) App.slowT = 0.9;
         break;
@@ -1038,11 +1044,11 @@ function handleEvents() {
         hud.call(`${cap(article(d.name))} snatched the acorn!`, 1300); say(`${cap(article(d.name))} snatched the acorn out of the air.`);
         break;
       }
-      case 'miss': hud.call('Missed!', 600); if (App.lastShot && App.lastShot.rec) App.lastShot.end = { x: ev.x, y: ev.y }; break;
+      case 'miss': hud.call('Missed!', 600); say('Missed.', true); if (App.lastShot && App.lastShot.rec) App.lastShot.end = { x: ev.x, y: ev.y }; break;
       case 'turn': {
         App.ff = 1;
         const L = App.lastShot, call = L && L.rec ? shotCall() : '';
-        if (call) { hud.call(call, 1400); say(call + '.'); }
+        if (call) { hud.call(call, 1400); say(call + '.', true); }
         if (L) { L.said = call; L.rec = false; }
         onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
       }
