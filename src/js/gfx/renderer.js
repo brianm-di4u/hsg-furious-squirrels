@@ -85,6 +85,7 @@ export class Renderer {
     drawBirds(g, cam, sim, app.time, this.birdSprites);
     if (level.targets) this.drawTargets(g, app);
     if (app.showPerches) this.drawPerches(g, app);
+    if (app.shotTrail) this.drawTrail(g, app.shotTrail);
     if (app.aimGuide) { this.drawGuide(g, app.aimGuide); if (app.aimGuide.bird) this.drawBirdMark(g, app.aimGuide.bird); }
     this.drawSquirrels(g, app);
     this.drawAimWedge(g, app);
@@ -373,6 +374,20 @@ export class Renderer {
     g.setLineDash([]); g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#1A1410'; g.fillStyle = '#FFE0DA';
     const txt = name + ' in the way', half = g.measureText(txt).width / 2 + 6, tx = Math.max(half, Math.min(cam.vw - half, x)), ty = y - r - 6 < 16 ? y + r + 16 : y - r - 6; // kept inside the window, below the ring when there is no room above
     g.strokeText(txt, tx, ty); g.fillText(txt, tx, ty);
+    g.restore();
+  }
+
+  // the path of the last throw, kept as faint dots until the next throw (S2-02)
+  drawTrail(g, pts) {
+    const cam = this.cam;
+    let lx = -1e9, ly = -1e9;
+    g.save(); g.globalAlpha = 0.45; g.fillStyle = '#FFF6C8'; g.strokeStyle = '#1A1410'; g.lineWidth = 1.5;
+    for (const p of pts) {
+      const [x, y] = cam.toScreen(p[0], p[1]);
+      if (Math.hypot(x - lx, y - ly) < 14) continue;
+      lx = x; ly = y;
+      g.beginPath(); g.arc(x, y, Math.max(2.8, 4 * cam.zoom), 0, Math.PI * 2); g.fill(); g.stroke();
+    }
     g.restore();
   }
 

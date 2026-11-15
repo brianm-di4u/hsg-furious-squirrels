@@ -174,6 +174,7 @@ function enterBattleScene() {
   screens.hide();
   hud.show(true); hud.barKey = '';
   App.ff = 1; App.tutorialStep = 0; App.tauntN = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
+  App.lastShot = null; App.shotTrail = null;
   sim.drain();
   setTension(false); playTheme(themeFor(L)); playAmbience(sceneFor(L));
   // a new battle opens with its place and a line about it (not on a resumed battle or in Practice)
@@ -447,7 +448,7 @@ App.onMenu = (act, d) => {
     case 'prepGo': { const pd = screens.data; return startBattle({ ...pd.setup, buys: { ...pd.bought } }); }
     case 'prepBack': return App.onMenu(screens.data.setup.mode === 'story' ? 'story' : 'quick');
     case 'buy': { const r = App.sim.buy(App.sim.b.teams.findIndex((t) => t.human), d.kind); if (r.ok) sfx('buy'); return screens.refresh(); }
-    case 'nextRound': playTheme(themeFor(App.level)); App.sim.b.teams.forEach((tm, t) => { if (!tm.human) aiShop(App.sim, t); }); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
+    case 'nextRound': App.lastShot = null; App.shotTrail = null; playTheme(themeFor(App.level)); App.sim.b.teams.forEach((tm, t) => { if (!tm.human) aiShop(App.sim, t); }); App.sim.continueBattle(); App.sim.drain(); screens.hide(); renderer.setLevel(App.level, App.sim); App.vis = {}; App.craterN = 0; onTurnStart(false); frameCamera(true); kick(); return;
     case 'locked': return;
     default: return;
   }
@@ -909,8 +910,31 @@ function stepOnce() {
   if (!sim) return;
   sim.step();
   App.steps++;
+  recordShot();
   checkTargets();
   handleEvents();
+}
+
+// The last human throw leaves its path as faint dots until the next throw (S2-02), and a throw that hit nothing says why.
+const TRAIL_EVERY = 4, TRAIL_MAX = 600, SHOT_CLOSE = 70, SHOT_WIND = 0.25;
+function recordShot() {
+  const L = App.lastShot, n = L && L.rec && App.sim.b.phase === 'flight' && App.sim.b.nuts[0];
+  if (!n) return;
+  if (++L.n % TRAIL_EVERY === 0 && L.pts.length < TRAIL_MAX) L.pts.push([Math.round(n.x), Math.round(n.y)]);
+}
+function startShot(ev) {
+  const b = App.sim.b, q = b.squirrels.find((s) => s.id === ev.sq);
+  if (!q || !b.teams[q.team].human) { if (App.lastShot) App.lastShot.rec = false; return; }
+  App.lastShot = { pts: [], wind: b.wind, facing: q.facing, team: q.team, n: 0, rec: true, hit: false, end: null };
+}
+function shotCall() {
+  const L = App.lastShot, sim = App.sim;
+  if (!L || !L.end || L.hit) return '';
+  const foes = sim.b.squirrels.filter((q) => q.team !== L.team && !q.out);
+  if (!foes.length) return '';
+  const near = foes.reduce((m, q) => (Math.abs(q.x - L.end.x) < Math.abs(m.x - L.end.x) ? q : m)), d = (L.end.x - near.x) * L.facing, along = L.wind * L.facing;
+  if (Math.abs(d) < SHOT_CLOSE) return 'So close!';
+  return d < 0 ? (along < -SHOT_WIND ? 'The wind held it back' : 'Fell short') : along > SHOT_WIND ? 'The wind pushed it long' : 'Flew long';
 }
 
 // Practice targets are not solid: a nut that flies through one counts as a hit
@@ -935,16 +959,18 @@ function handleEvents() {
   for (const ev of sim.drain()) {
     const v = vis(ev.sq);
     switch (ev.type) {
-      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); break;
+      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); startShot(ev); break;
       case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap'); break;
       case 'impact':
         if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst'); }
         else { fx.dust(ev.x, ev.y, ev.on === 'terrain' ? 16 : 8, L.season === 'winter' && ev.on === 'terrain' ? '#E8ECEA' : '#8A6A44'); fx.ring(ev.x, ev.y, 34, '#FFF6C8'); sfx('thock', ev.kind); if (ev.kind === 'hedgeapple') cam.shake = Math.max(cam.shake, 0.6); }
         if (ev.on === 'wood') { fx.chips(ev.x, ev.y, 12); fx.leaves(ev.x, ev.y, 12, L.season); }
+        if (App.lastShot && App.lastShot.rec && ev.on === 'terrain') App.lastShot.end = { x: ev.x, y: ev.y };
         break;
       case 'thud': fx.dust(ev.x, ev.y, 10); sfx('thud'); break;
       case 'rustle': fx.leaves(ev.x, ev.y, 4, L.season); sfx('rustle'); break;
       case 'hit':
+        if (App.lastShot) App.lastShot.hit = true;
         if (v) { v.pose = 'hit'; v.poseT = 0.55; v.squash = 0.9; v.flash = 0.18; }
         fx.text(ev.x + 36, ev.y - 150, '-' + Math.round(ev.dmg), '#FFE0DA', true); fx.stars(ev.x, ev.y - 20);
         fx.leaves(ev.x, ev.y, 18, L.season); fx.chips(ev.x, ev.y, 8); fx.ring(ev.x, ev.y, 52, '#F2C230');
@@ -993,8 +1019,14 @@ function handleEvents() {
         hud.call(`${cap(article(d.name))} snatched the acorn!`, 1300); say(`${cap(article(d.name))} snatched the acorn out of the air.`);
         break;
       }
-      case 'miss': hud.call('Missed!', 600); break;
-      case 'turn': App.ff = 1; onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
+      case 'miss': hud.call('Missed!', 600); if (App.lastShot && App.lastShot.rec) App.lastShot.end = { x: ev.x, y: ev.y }; break;
+      case 'turn': {
+        App.ff = 1;
+        const L = App.lastShot, call = L && L.rec ? shotCall() : '';
+        if (call) { hud.call(call, 1400); say(call + '.'); }
+        if (L) { L.said = call; L.rec = false; }
+        onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
+      }
       case 'round': break;
       case 'roundEnd': case 'battleEnd': App.pendingEnd = { type: ev.type, t: wallNow() + 1.3 }; break;
       default: break;
@@ -1172,9 +1204,11 @@ function frame(now) {
 
 function updateGuide() {
   const sim = App.sim, b = sim.b;
-  if (App.scene !== 'battle' || b.phase !== 'aim' || !b.teams[b.turn.team].human || App.aiActive) { App.aimGuide = null; return; }
+  if (App.scene !== 'battle' || b.phase !== 'aim' || !b.teams[b.turn.team].human || App.aiActive) { App.aimGuide = null; App.shotTrail = null; return; }
   const set = App.save.settings.aimGuide;
   let frac = App.setup.mode === 'practice' ? 1 : set === 'always' ? 0.6 : set === 'off' ? 0 : GUIDE[App.setup.difficulty || 'medium'] ?? 0.22;
+  // where the last throw went stays on screen for the next aim, unless the Aim guide is off
+  App.shotTrail = set !== 'off' && App.lastShot && App.lastShot.pts.length > 1 ? App.lastShot.pts : null;
   if (!frac) { App.aimGuide = null; return; }
   const aim = b.teams[b.turn.team].aim, q = sim.active();
   // the birds fly while the player aims, so with any aloft the guide is worked out again as they move (P-N05): it is what a throw made now would do
