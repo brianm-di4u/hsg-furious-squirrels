@@ -147,4 +147,19 @@ export const tests = [
       t.equal(await t.page.evaluate(() => window.__FS.save.quick.loadout), 'all', 'a player whose save says All seven keeps it');
     },
   },
+  // ---- S3-06 ----
+  {
+    name: 'S3-06 each special on the satchel row says what it is best for',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('setState', { story: { team: 0, unlocked: 9 } });
+      await t.game('act', 'menu', 'play', { v: 'story-09' });
+      t.equal((await t.state()).screen, 'prep', 'the satchel opens');
+      const rows = await t.page.evaluate(() => [...document.querySelectorAll('#screens .nutrow.pack')].map((r) => ({ name: r.querySelector('b').textContent, best: (r.querySelector('.best') || {}).textContent || '', h: r.getBoundingClientRect().height })));
+      t.equal(rows.length, 6, 'six specials are packed');
+      for (const r of rows) t.expect(/^Best for: [^.]{12,60}\.$/.test(r.best), `${r.name}: "${r.best}"`);
+      await snap(t, 'S3-06-satchel-best-for');
+    },
+  },
 ];

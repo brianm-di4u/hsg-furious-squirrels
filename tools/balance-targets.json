@@ -10,5 +10,6 @@
   "humanBeatsMedium": [0.3, 0.55],
   "hardBeatsHuman": 0.7,
   "specialSpread": 1.4,
+  "specialFloor": 0.85,
   "firstMoverMax": 0.62
 }

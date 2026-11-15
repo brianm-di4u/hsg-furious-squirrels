@@ -26,13 +26,15 @@ export const TEAMS = [
 // (walnut damages every branch within its blast radius); crater: radius carved in dirt.
 export const NUTS = {
   acorn: { short: 'Acorn', name: 'Acorn', trick: 'Plain and dependable', r: 7, mass: 1, gMul: 1, windMul: 1, direct: 44, splash: 32, splashR: 56, wood: 30, crater: 18, price: 0, key: '1' },
-  chinquapin: { short: 'Trio', name: 'Chinquapin Trio', trick: 'Tap: splits into three', r: 6, mass: 0.8, gMul: 1, windMul: 1, direct: 18, splash: 14, splashR: 34, wood: 20, crater: 12, price: 30, key: '2', split: { n: 3, spread: 9 } },
-  pecan: { short: 'Pecan', name: 'Pecan Dart', trick: 'Tap: dashes straight, zips through leaves', r: 6, mass: 0.9, gMul: 1, windMul: 1, direct: 48, splash: 28, splashR: 46, wood: 60, crater: 14, price: 30, key: '3', dash: { mul: 1.9, time: 0.6 } },
+  chinquapin: { short: 'Trio', name: 'Chinquapin Trio', trick: 'Tap: splits into three', r: 6, mass: 0.8, gMul: 1, windMul: 1, direct: 22 /* S3-06: was 18 */, splash: 14, splashR: 34, wood: 20, crater: 12, price: 30, key: '2', split: { n: 3, spread: 9 } },
+  pecan: { short: 'Pecan', name: 'Pecan Dart', trick: 'Tap: dashes straight, zips through leaves', r: 6, mass: 0.9, gMul: 1, windMul: 1, direct: 56 /* S3-06: was 48 */, splash: 28, splashR: 46, wood: 60, crater: 14, price: 30, key: '3', dash: { mul: 1.9, time: 0.6 } },
   walnut: { short: 'Walnut', name: 'Black Walnut Burst', trick: 'Tap or land: big pop that rattles branches', r: 9, mass: 1.3, gMul: 1, windMul: 0.9, direct: 38, splash: 44, splashR: 100, wood: 55, woodR: 100, crater: 46, price: 45, key: '4', burst: true },
   hickory: { short: 'Hickory', name: 'Hickory Hook', trick: 'Hard shell. Tap: curls back like a boomerang', r: 7, mass: 1.1, gMul: 1, windMul: 0.9, direct: 46, splash: 30, splashR: 52, wood: 45, crater: 16, price: 35, key: '5', hook: { time: 1.4, turn: 150 } },
-  sweetgum: { short: 'Gumball', name: 'Sweetgum Drop', trick: 'Tap: drops a spiky gumball straight down', r: 8, mass: 0.8, gMul: 1, windMul: 1, direct: 46, splash: 30, splashR: 56, wood: 40, crater: 20, price: 40, key: '6', drop: { gMul: 1.4 } },
-  hedgeapple: { short: 'Hedge', name: 'Hedge Apple', trick: 'Heavy, shrugs off wind, rolls downhill', r: 13, mass: 2.4, gMul: 1.15, windMul: 0.3, direct: 42, splash: 22, splashR: 42, wood: 60, crater: 22, price: 60, key: '7', roll: { time: 1.2 } },
+  sweetgum: { short: 'Gumball', name: 'Sweetgum Drop', trick: 'Tap: drops a spiky gumball straight down', r: 8, mass: 0.8, gMul: 1, windMul: 1, direct: 50 /* S3-06: was 46 */, splash: 30, splashR: 56, wood: 40, crater: 20, price: 40, key: '6', drop: { gMul: 1.4 } },
+  hedgeapple: { short: 'Hedge', name: 'Hedge Apple', trick: 'Heavy, shrugs off wind, rolls downhill', r: 13, mass: 2.4, gMul: 1.15, windMul: 0.3, direct: 50 /* S3-06: was 42 */, splash: 22, splashR: 42, wood: 60, crater: 22, price: 60, key: '7', roll: { time: 1.2 } },
 };
+// one line on when each special earns its price (S3-06), shown on the satchel and shop rows
+export const NUT_BEST = { chinquapin: 'Best for: a rival your aim keeps just missing.', pecan: 'Best for: rivals hiding behind leaves.', walnut: 'Best for: rattling the branches under a group.', hickory: 'Best for: a second pass at a rival it just missed.', sweetgum: 'Best for: a rival tucked below your arc.', hedgeapple: 'Best for: strong wind, and rivals downhill.' };
 export const NUT_ORDER = ['acorn', 'chinquapin', 'pecan', 'walnut', 'hickory', 'sweetgum', 'hedgeapple'];
 export const NUT_CAP = 3;
 

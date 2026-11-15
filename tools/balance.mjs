@@ -155,10 +155,10 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
   const sharpMed = (res['sharp-medium'].win0 + res['medium-sharp'].win1) / 2, hardSharp = (res['hard-sharp'].win0 + res['sharp-hard'].win1) / 2;
   const humanMed = (res['human-medium'].win0 + res['medium-human'].win1) / 2, hardHuman = (res['hard-human'].win0 + res['human-hard'].win1) / 2;
   const hit = Object.fromEntries(Object.entries(hitT).map(([k, v]) => [k, +(v[0] / Math.max(1, v[1])).toFixed(2)]));
-  const nuts = nutStudy(Math.max(12, N));
+  const nuts = nutStudy(Math.max(96, N * 4)); // 96 throws a nut: 12 to 24 cannot tell a nut that is 15 percent short of the acorn from luck (S3-06)
   const specials = NUT_ORDER.filter((k) => k !== 'acorn').map((k) => nuts[k]);
   const meanS = specials.reduce((a, b) => a + b, 0) / specials.length;
-  const spread = Math.max(...specials) / meanS;
+  const spread = Math.max(...specials) / meanS, floor = Math.min(...specials) / nuts.acorn;
   const checks = [
     ['turns per round', turnsMean, turnsMean >= T.turnsPerRound.min && turnsMean <= T.turnsPerRound.max, `${T.turnsPerRound.min}-${T.turnsPerRound.max}`],
     ['hard beats easy', hardEasy, hardEasy >= T.hardBeatsEasy, '>= ' + T.hardBeatsEasy],
@@ -170,6 +170,7 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
     ['first mover wins', firstWins / Math.max(1, decided), firstWins / Math.max(1, decided) <= T.firstMoverMax, '<= ' + T.firstMoverMax],
     ...Object.entries(T.hitRate).map(([d, [lo, hi]]) => ['hit rate ' + d, hit[d], hit[d] >= lo && hit[d] <= hi, `${lo}-${hi}`]),
     ['special nut spread (max/mean)', spread, spread <= T.specialSpread, '<= ' + T.specialSpread],
+    ['weakest special / acorn', floor, floor >= T.specialFloor, '>= ' + T.specialFloor],
   ];
   console.log('head-to-head', JSON.stringify(res));
   console.log('grip removed per throw by nut', JSON.stringify(nuts));
@@ -177,6 +178,6 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
   for (const [name, v, ok, want] of checks) { console.log(`${ok ? 'OK  ' : 'MISS'} ${name.padEnd(30)} ${(+v).toFixed(2).padStart(6)}  target ${want}`); if (!ok) bad++; }
   console.log(`${N * pairs.length} battles in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   fs.mkdirSync(path.join(ROOT, 'tools/out'), { recursive: true });
-  fs.writeFileSync(path.join(ROOT, 'tools/out/balance.json'), JSON.stringify({ res, nuts, hit, turnsMean, hardEasy, medEasy, sharpMed, hardSharp, humanMed, hardHuman, firstMover: firstWins / Math.max(1, decided), spread }, null, 1));
+  fs.writeFileSync(path.join(ROOT, 'tools/out/balance.json'), JSON.stringify({ res, nuts, hit, turnsMean, hardEasy, medEasy, sharpMed, hardSharp, humanMed, hardHuman, firstMover: firstWins / Math.max(1, decided), spread, floor }, null, 1));
   process.exit(bad ? 1 : 0);
 }

@@ -1,6 +1,6 @@
 // Menu screens (DOM). Every action is a real <button>; arrow keys / d-pad move focus, Enter / A confirms,
 // Esc / B goes back. Structure after games/Cart Racing/src/js/ui/screens.js (Hot Springs Games, MIT).
-import { NUTS, NUT_ORDER, NUT_CAP, TEAMS } from '../sim/const.js';
+import { NUTS, NUT_ORDER, NUT_CAP, NUT_BEST, TEAMS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
 import { starTiers } from '../save.js';
 import { dayKey, fromKey, prevDay, liveStreak } from '../daily.js';
@@ -166,7 +166,7 @@ const TEMPLATES = {
       ${blurb ? `<p class="blurb">${blurb}</p>` : ''}
       <p class="sub">${name}. Spend acorns on special nuts for this battle (up to ${NUT_CAP} of each). ${setup.mode === 'story' ? 'What you leave unspent stays in your purse. ' : ''}<span class="label-fiction">game rules</span></p>
       <p><b>Your acorns: ${left}</b> <small>(prices in acorns)</small></p>
-      ${kinds.map((k) => { const have = 1 + (bought[k] || 0); return `<div class="nutrow pack"><canvas data-nut="${k}"></canvas><div class="what"><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div>
+      ${kinds.map((k) => { const have = 1 + (bought[k] || 0); return `<div class="nutrow pack"><canvas data-nut="${k}"></canvas><div class="what"><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small><br><small class="best">${NUT_BEST[k]}</small></div>
         <span class="price">${have}/${NUT_CAP}</span><span class="steps">${btn('prepUndo', 'Undo', `data-kind="${k}" aria-label="Take back one ${NUTS[k].name}" ${bought[k] ? '' : 'disabled'}`, 'btn small')}${btn('prepBuy', `Buy · ${NUTS[k].price}`, `data-kind="${k}" aria-label="Buy a ${NUTS[k].name} for ${NUTS[k].price} acorns" ${have >= NUT_CAP || left < NUTS[k].price ? 'disabled' : ''}`, 'btn small')}</span></div>`; }).join('')}
       <nav class="menu row">${btn('prepGo', 'Start battle', 'autofocus', 'btn primary')}${btn('prepBack', 'Back', 'data-back')}</nav>
     </div>`;
@@ -179,7 +179,7 @@ const TEMPLATES = {
       <h2>${winner === team ? 'Round won!' : winner < 0 ? 'A draw!' : 'Round to the rivals'}</h2>
       <p class="sub">Round ${round} done. Spend acorns on special nuts for the next round (up to ${NUT_CAP} of each). <span class="label-fiction">game rules</span></p>
       <p><b>Your acorns: ${tm.acorns}</b> <small>(prices in acorns)</small></p>
-      ${NUT_ORDER.filter((k) => k !== 'acorn' && k in tm.inventory).map((k) => `<div class="nutrow"><canvas data-nut="${k}"></canvas><div><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div>
+      ${NUT_ORDER.filter((k) => k !== 'acorn' && k in tm.inventory).map((k) => `<div class="nutrow"><canvas data-nut="${k}"></canvas><div><b>${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small><br><small class="best">${NUT_BEST[k]}</small></div>
         <span class="price">${tm.inventory[k]}/${NUT_CAP}</span>${btn('buy', `Buy · ${NUTS[k].price}`, `data-kind="${k}" ${tm.inventory[k] >= NUT_CAP || tm.acorns < NUTS[k].price ? 'disabled' : ''}`, 'btn small')}</div>`).join('') || '<p>No special nuts unlocked yet.</p>'}
       <nav class="menu row">${btn('nextRound', 'Next round', 'autofocus', 'btn primary')}</nav>
     </div>`;
