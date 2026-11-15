@@ -2,7 +2,7 @@
 // with arrow + number, the nut bar, aim readout and action buttons, a phone mini-map, hints and big calls.
 import { NUTS, NUT_ORDER, TEAMS, W, BIRDS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
-import { TEAM_COLORS } from '../gfx/looks.js';
+import { TEAM_COLORS, SKY, GROUND } from '../gfx/looks.js';
 
 const EM = ['<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="10" fill="#E0B23A" stroke="#1A1410" stroke-width="2.5"/></svg>',
   '<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L24 22 L2 22 Z" fill="#2A9D8F" stroke="#1A1410" stroke-width="2.5"/></svg>'];
@@ -174,11 +174,16 @@ export class Hud {
     const app = this.app, sim = app.sim, L = app.level, g = cv.getContext('2d'), w = cv.width, h = cv.height;
     const sx = w / W, y0 = 380, sy = h / (1120 - y0);
     g.clearRect(0, 0, w, h);
-    g.fillStyle = '#9FC6DE'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#5E7A34';
+    // the sky of the battle's time of day and the ground of its season, as the painting has them (S4-08)
+    const sky = SKY[L.time] || SKY.day, gr = GROUND[L.season] || GROUND.summer, grad = g.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, sky.top); grad.addColorStop(0.6, sky.mid); grad.addColorStop(1, sky.low);
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    if (sky.tint) { g.fillStyle = sky.tint; g.fillRect(0, 0, w, h); }
+    g.fillStyle = gr.top;
     g.beginPath(); g.moveTo(0, h);
     for (let x = 0; x <= W; x += 24) g.lineTo(x * sx, (sim.terrain.surfaceY(x) - y0) * sy);
     g.lineTo(w, h); g.closePath(); g.fill();
+    g.strokeStyle = gr.soil; g.lineWidth = 3; g.stroke();
     // camera box
     const cam = app.renderer.cam, [wx0, wy0] = cam.toWorld(0, 0), [wx1, wy1] = cam.toWorld(cam.vw, cam.vh);
     g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2;
@@ -194,7 +199,6 @@ export class Hud {
       g.fill(); g.stroke();
     }
     for (const n of sim.b.nuts) { g.fillStyle = '#FFF6C8'; g.beginPath(); g.arc(n.x * sx, (n.y - y0) * sy, 4, 0, Math.PI * 2); g.fill(); }
-    void L;
   }
 }
 

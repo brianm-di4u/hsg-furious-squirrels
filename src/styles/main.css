@@ -94,7 +94,7 @@ body.reduced .call, body.reduced .hint { transition: none; }
   .wind .aloft { display: none; }
   .call { top: 30%; }
   .hint { top: auto; }
-  .minimap { display: block; position: absolute; left: 10px; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 64px); height: 30px; border-radius: 10px; border: 2px solid var(--ink); background: rgba(26,20,16,0.55); width: calc(100% - 20px); }
+  .minimap { display: block; position: absolute; left: 10px; right: 10px; top: calc(max(8px, env(safe-area-inset-top)) + 64px); height: 30px; border-radius: 10px; border: 3px solid var(--sign-edge); background: rgba(26,20,16,0.55); box-shadow: 0 3px 0 var(--sign-edge); width: calc(100% - 20px); }
   .hud .bottom { flex-direction: column; align-items: stretch; gap: 6px; }
   .aimbox { flex-direction: column; align-items: stretch; gap: 6px; }
   /* the angle and power on one line; the trick line shows only for a special nut (the plain acorn needs none) */

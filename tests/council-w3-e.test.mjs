@@ -234,4 +234,37 @@ export const tests = [
       }
     },
   },
+  // ---- S4-08 ----
+  {
+    name: 'S4-08 the phone mini-map takes the sky and ground of the battle it shows',
+    viewports: ['mobile'],
+    async run(t) {
+      // the colour of the sky at the top of the map and of the ground, drawn at the far left where the map has its lowest ground
+      const colours = async (levelId) => {
+        await t.seed(7);
+        await t.game('newGame', { levelId, birds: 'off', wind: 'off' });
+        await t.page.waitForFunction(() => { const c = document.getElementById('minimap'); return c && c.offsetParent !== null && window.__game.getState().battle.phase === 'aim'; }, null, { timeout: 30000 });
+        // the map is redrawn on frames: let the new battle's frames draw it, and wait until it has paint at all
+        await t.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        await t.page.waitForFunction(() => { const c = document.getElementById('minimap'); return c.getContext('2d').getImageData(c.width - 8, 3, 1, 1).data[3] > 0; }, null, { timeout: 10000 });
+        return t.page.evaluate(() => {
+          const c = document.getElementById('minimap'), g = c.getContext('2d');
+          const px = (x, y) => Array.from(g.getImageData(x, y, 1, 1).data.slice(0, 3));
+          return { sky: px(c.width - 8, 3), ground: px(c.width - 8, c.height - 3) };
+        });
+      };
+      const day = await colours('gray');
+      await snap(t, 'S4-08-minimap-day');
+      const night = await colours('story-11');
+      await snap(t, 'S4-08-minimap-winter-night');
+      const fall = await colours('story-08');
+      await snap(t, 'S4-08-minimap-fall-dusk');
+      const lum = (c) => 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+      t.expect(lum(night.sky) < lum(day.sky) - 60, `a night sky is far darker than a day sky (${night.sky} against ${day.sky})`);
+      t.expect(Math.abs(day.sky[0] - 0x7F) < 30 && Math.abs(day.sky[2] - 0xDA) < 30, 'and a day sky is the day blue (' + day.sky + ')');
+      const far = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      t.expect(far(fall.sky, day.sky) > 40 && far(fall.sky, night.sky) > 40, 'a dusk sky is neither the day nor the night one (' + fall.sky + ')');
+      t.expect(night.ground.join() !== day.ground.join(), 'winter ground is not summer ground (' + night.ground + ' against ' + day.ground + ')');
+    },
+  },
 ];
