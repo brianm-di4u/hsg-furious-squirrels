@@ -182,4 +182,30 @@ export const tests = [
       t.equal((await t.state()).battle.teams[0].stats.throws, 1, 'a release outside it still throws');
     },
   },
+  // ---- S6-09 ----
+  {
+    name: 'S6-09 the title is whole on a phone on its side, and never loses its top edge in a very short window',
+    viewports: ['mobile'],
+    async run(t) {
+      for (const [w, h, fits] of [[844, 390, true], [667, 375, true], [932, 430, true], [568, 320, false], [390, 844, true]]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('scene', 'title');
+        await t.waitFrames(4);
+        const m = await t.page.evaluate(() => {
+          const logo = document.querySelector('.title-wrap .logo').getBoundingClientRect();
+          const credits = [...document.querySelectorAll('.title-wrap .menu .btn')].find((b) => /Credits/.test(b.textContent));
+          const before = credits.getBoundingClientRect();
+          credits.scrollIntoView({ block: 'end' });
+          const after = credits.getBoundingClientRect();
+          return { logoTop: logo.top, creditsBefore: Math.round(before.bottom), creditsAfter: Math.round(after.bottom), hScroll: document.documentElement.scrollWidth - innerWidth };
+        });
+        t.expect(m.logoTop >= 0, `${w}x${h}: the logo starts inside the window (${m.logoTop.toFixed(1)})`);
+        t.expect(m.hScroll <= 0, `${w}x${h}: the page does not scroll sideways`);
+        t.expect(m.creditsAfter <= h, `${w}x${h}: Credits can be reached (${m.creditsAfter} <= ${h})`);
+        if (fits) t.expect(m.creditsBefore <= h, `${w}x${h}: the whole menu is on screen without scrolling (Credits ends at ${m.creditsBefore})`);
+        await snap(t, `S6-09-title-${w}x${h}`.replace('x', 'by'));
+      }
+      await t.page.setViewportSize({ width: 390, height: 844 });
+    },
+  },
 ];
