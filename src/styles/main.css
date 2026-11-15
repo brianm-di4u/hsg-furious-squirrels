@@ -286,3 +286,5 @@ body.reduced .postcard, body.reduced .postcard:nth-child(even) { transform: none
 .note-list li.found p { margin: 0; font-size: inherit; }
 .note-list .src { display: block; margin-top: 4px; font: 600 calc(12.5px * var(--text-scale)) var(--font-ui); color: #4A4038; }
 .note-list li.locked { background: #2E251C; color: #D8CCB0; border: 2px dashed var(--sign-edge); font-family: var(--font-ui); }
+.rec-row.day { grid-template-columns: 1fr auto; }
+.rec-row.day .rn { grid-column: auto; font-weight: 400; }

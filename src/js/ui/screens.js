@@ -3,6 +3,7 @@
 import { NUTS, NUT_ORDER, NUT_CAP, TEAMS } from '../sim/const.js';
 import { nutIcon } from '../gfx/nuts.js';
 import { starTiers } from '../save.js';
+import { dayKey, fromKey, prevDay, liveStreak } from '../daily.js';
 import { blurbFor, FINALE } from '../story.js';
 
 export class Screens {
@@ -62,10 +63,25 @@ const recordLines = (r) => !r ? '' : [
   r.streak ? `<p class="starrule">Win streak: ${r.streak} in a row.</p>` : '',
 ].join('');
 const turns = (n) => n + (n === 1 ? ' turn' : ' turns');
+const dayName = (k) => fromKey(k).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const lostText = (n) => n === 0 ? 'nobody knocked out' : `${n} ${n === 1 ? 'squirrel' : 'squirrels'} knocked out`;
+// the Daily Duel lines on the results card
+const dailyLines = (d) => d.won
+  ? `<p class="newbest"><b>Daily Duel won!</b> ${turns(d.turns)}, ${lostText(d.outs)}.${d.best ? ' Your best for today.' : ` Your best for today: ${turns(d.today[0])}, ${lostText(d.today[1])}.`}</p><p class="starrule">${d.streak >= 2 ? `${d.streak} days in a row.` : 'A streak starts today.'} Best streak: ${d.bestStreak}. Come back tomorrow for a new battle.</p>`
+  : `<p class="starrule"><b>Daily Duel:</b> not won yet today. Retry the exact same battle: the map, wind and birds stay put.${d.today ? ` Your best today: ${turns(d.today[0])}.` : ''}</p>`;
 // the finale picture, drawn in code from the game's own squirrels and nut icons: both families cheering at one nut pile
 const finaleScene = () => `<div class="finale" aria-hidden="true"><canvas data-sq="0:cheer"></canvas>
   <div class="pile"><div><canvas data-nut="acorn"></canvas></div><div><canvas data-nut="chinquapin"></canvas><canvas data-nut="hickory"></canvas></div><div><canvas data-nut="walnut"></canvas><canvas data-nut="hedgeapple"></canvas><canvas data-nut="pecan"></canvas></div></div>
   <canvas data-sq="1:cheer:flip"></canvas></div>`;
+// the last seven days of the Daily Duel: the best win of each, or "no win"
+const dailyHistory = (daily) => {
+  const rows = [];
+  for (let k = dayKey(), i = 0; i < 7; i++, k = prevDay(k)) {
+    const h = daily.hist[k];
+    rows.push(`<div class="rec-row day" role="row"><span class="rn" role="cell">${dayName(k)}</span><span class="rb" role="cell">${h ? `${turns(h[0])}, ${lostText(h[1])}` : 'no win'}</span></div>`);
+  }
+  return `<div class="rec-table" role="table" aria-label="Daily Duel, last seven days">${rows.join('')}</div>`;
+};
 const pct = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : 'none yet';
 
 const TEMPLATES = {
@@ -77,6 +93,7 @@ const TEMPLATES = {
       <nav class="menu" aria-label="Main menu">
         ${btn('story', app.save.story.unlocked > 1 ? 'Story: The Valley Nut Feud (continue)' : 'Story: The Valley Nut Feud', 'autofocus', 'btn primary')}
         ${btn('quick', 'Quick Battle')}
+        ${btn('daily', app.save.daily.last === dayKey() ? 'Daily Duel (won today)' : 'Daily Duel')}
         ${btn('practice', 'Practice Range')}
         ${btn('help', 'How to Play')}
         ${btn('records', 'Records')}
@@ -171,6 +188,7 @@ const TEMPLATES = {
       ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
       ${recordLines(d.records)}
+      ${d.daily ? dailyLines(d.daily) : ''}
       ${d.offerEasy ? `<p class="starrule"><b>${d.losses} losses in a row on this battle.</b> Easy gives a longer aim guide and a gentler rival. You can change it back on the story map.</p>` : ''}
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
@@ -180,7 +198,7 @@ const TEMPLATES = {
       </div>` : ''}
       ${d.banked != null ? `<p class="banked">Acorns banked: <b>${d.banked}</b> <small>(kept for your next battle)</small></p>` : ''}
       ${d.fact ? `<div class="notes" role="note"><h3>Field Notes</h3>${d.fact.html}<span class="src">Source: ${d.fact.source}</span></div>` : ''}
-      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${d.finale ? btn('credits', FINALE.button, 'autofocus', 'btn primary') : ''}${d.offerEasy ? btn('tryEasy', 'Try Easy', 'autofocus', 'btn primary') : ''}${btn('again', 'Play again', d.next || d.finale || d.offerEasy ? '' : 'autofocus')}${d.retry ? btn('again', 'Retry same wind', 'data-same="1"') : ''}${btn('menu', 'Menu', 'data-back')}</nav>
+      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${d.finale ? btn('credits', FINALE.button, 'autofocus', 'btn primary') : ''}${d.offerEasy ? btn('tryEasy', 'Try Easy', 'autofocus', 'btn primary') : ''}${btn('again', d.daily ? 'Retry this exact battle' : 'Play again', d.next || d.finale || d.offerEasy ? '' : 'autofocus')}${d.retry ? btn('again', 'Retry same wind', 'data-same="1"') : ''}${btn('menu', 'Menu', 'data-back')}</nav>
     </div>`,
 
   pause: () => `
@@ -256,6 +274,9 @@ const TEMPLATES = {
       <h3>Wins by rival skill</h3>
       <div class="statgrid">${tile('Easy', k.winsEasy)}${tile('Medium', k.winsMedium)}${tile('Sharp', k.winsSharp)}${tile('Hard', k.winsHard)}</div>
       <p class="starrule">Wins and throws from before this list was kept are in the totals above, not in the skill split.</p>
+      <h3>Daily Duel</h3>
+      <div class="statgrid">${tile('Days won', app.save.daily.wins)}${tile('Streak', liveStreak(app.save.daily, dayKey()))}${tile('Best streak', app.save.daily.bestStreak)}</div>
+      ${dailyHistory(app.save.daily)}
       <h3>The Valley Nut Feud</h3>
       <p class="starcount"><b>Stars: ${totalStars(st, levels)} / ${levels.length * 3}</b> · Battles won: ${won} of ${levels.length}</p>
       <div class="rec-table" role="table" aria-label="Best result in each Story battle">

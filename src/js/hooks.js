@@ -8,7 +8,7 @@ export function installHooks(App, api) {
     const sim = App.sim, b = sim && sim.b, cam = App.renderer.cam;
     const out = {
       scene: App.scene, screen: App.screens.cur, paused: App.paused || App.testPaused, ready: App.ready, loading: App.loading,
-      settings: App.save.settings, save: { story: App.save.story, stats: App.save.stats, resume: !!App.save.resume },
+      settings: App.save.settings, save: { story: App.save.story, stats: App.save.stats, daily: App.save.daily, resume: !!App.save.resume },
       camera: { x: +cam.x.toFixed(1), y: +cam.y.toFixed(1), zoom: +cam.zoom.toFixed(3), user: cam.user },
       render: { w: App.renderer.size.w, h: App.renderer.size.h, dpr: App.renderer.size.dpr, artLoaded: !!(App.renderer.art && App.renderer.art.img), backdrop: App.level ? { id: App.level.backdrop, stretch: App.level.stretch, order: App.renderer.art && App.renderer.art.img ? rowOrderFor() : App.renderer.backdrop ? App.renderer.backdrop.order : rowOrderFor() } : null },
       level: App.level ? { id: App.level.id, name: App.level.name, n: App.level.n, stretch: App.level.stretch, season: App.level.season, time: App.level.time } : null,
@@ -54,6 +54,7 @@ export function installHooks(App, api) {
       if (name === 'title') api.showTitle();
       else if (name === 'game' || name === 'battle') api.startBattle({ mode: 'quick', levelId: opts.levelId || 'gray', team: 0, seed: App.nextSeed ?? 7, difficulty: 'medium', ...opts });
       else if (name === 'practice') App.onMenu('practice', {});
+      else if (name === 'daily') App.onMenu('daily', {});
       else if (name === 'story') { if (App.save.story.team == null) App.save.story.team = 0; App.onMenu('story', {}); }
       else if (name === 'quick') App.onMenu('quick', {});
       else if (['help', 'settings', 'credits'].includes(name)) App.onMenu(name, {});

@@ -486,4 +486,154 @@ export const tests = [
       t.expect(/Progress can't be saved/.test(await t.page.textContent('#screens .notice')), 'and the title carries it');
     },
   },
+  // ---- S3-03 ----
+  {
+    name: 'S3-03 the day key, the daily plan and the streak rules behave across months, years and leap days',
+    node: true,
+    async run(t) {
+      const D = await import(pathToFileURL(`${process.cwd()}/src/js/daily.js`).href);
+      t.equal(D.dayKey(new Date(2026, 10, 14, 23, 59)), 20261114, 'a day key is the local date');
+      t.equal(D.prevDay(20260301), 20260228, 'the day before 1 March');
+      t.equal(D.prevDay(20240301), 20240229, 'a leap day');
+      t.equal(D.prevDay(20270101), 20261231, 'the new year');
+      const ids = Array.from({ length: 12 }, (_, i) => `story-${String(i + 1).padStart(2, '0')}`);
+      const a = D.dailyPlan(20261114, ids), b = D.dailyPlan(20261114, ids);
+      t.expect(JSON.stringify(a) === JSON.stringify(b), 'the same day always gives the same battle');
+      const days = []; for (let k = 20261101, i = 0; i < 60; i++, k = D.prevDay(k)) days.push(k);
+      const plans = days.map((k) => D.dailyPlan(k, ids));
+      t.expect(new Set(plans.map((p) => p.levelId)).size >= 9, `sixty days visit most maps (${new Set(plans.map((p) => p.levelId)).size} of 12)`);
+      t.expect(new Set(plans.map((p) => p.wind)).size === 3, 'and all three winds');
+      t.expect(plans.every((p) => Number.isInteger(p.seed) && p.seed >= 0 && p.seed <= 0xffff), 'seeds are 16-bit integers');
+      t.expect(plans.slice(1).filter((p, i) => p.levelId === plans[i].levelId).length < 15, 'neighbouring days seldom share a map');
+      // records
+      let d = D.emptyDaily(), r = D.recordDaily(d, 20261110, 7, 1);
+      t.expect(r.best && r.streak === 1 && r.daily.wins === 1 && r.daily.last === 20261110, 'a first win starts a streak of one');
+      d = r.daily; r = D.recordDaily(d, 20261110, 7, 0);
+      t.expect(r.best && r.daily.hist[20261110].join() === '7,0' && r.streak === 1 && r.daily.wins === 1, 'the same turns with fewer lost is a better best, and the day still counts once');
+      d = r.daily; r = D.recordDaily(d, 20261110, 9, 0);
+      t.expect(!r.best && r.daily.hist[20261110].join() === '7,0', 'a worse win the same day keeps the old best');
+      d = r.daily; r = D.recordDaily(d, 20261111, 8, 0);
+      t.expect(r.streak === 2 && r.daily.bestStreak === 2 && r.daily.wins === 2, 'the next day makes two in a row');
+      d = r.daily; r = D.recordDaily(d, 20261114, 5, 0);
+      t.expect(r.streak === 1 && r.daily.bestStreak === 2, 'a missed day breaks the streak and keeps the best');
+      t.equal(D.liveStreak(r.daily, 20261114), 1, 'a streak is live on the day it was won');
+      t.equal(D.liveStreak(r.daily, 20261115), 1, 'and still the next day, when today is yet to play');
+      t.equal(D.liveStreak(r.daily, 20261116), 0, 'and over after a missed day');
+      d = r.daily; r = D.recordDaily(d, 20261113, 3, 0);
+      t.expect(r.daily.streak === 1 && r.daily.last === 20261114, 'replaying an older day leaves the streak alone');
+      let big = D.emptyDaily();
+      for (let i = 0; i < 40; i++) big = D.recordDaily(big, D.dayKey(new Date(2026, 0, 1 + i)), 5, 0).daily;
+      t.expect(Object.keys(big.hist).length <= 14, `old days are pruned (${Object.keys(big.hist).length} kept)`);
+    },
+  },
+  ...['desktop', 'mobile'].map((vp) => ({
+    name: 'S3-03 the Daily Duel is the same battle all day, a new one tomorrow, and keeps a streak',
+    viewports: [vp],
+    initScript: () => {
+      const Real = Date;
+      window.__now = new Real(2026, 10, 14, 12).getTime();
+      window.Date = class extends Real { constructor(...a) { if (a.length) super(...a); else super(window.__now); } static now() { return window.__now; } };
+    },
+    async run(t) {
+      const D = await import(pathToFileURL(`${process.cwd()}/src/js/daily.js`).href);
+      const ids = Array.from({ length: 12 }, (_, i) => `story-${String(i + 1).padStart(2, '0')}`);
+      const plan = (k) => D.dailyPlan(k, ids);
+      await t.game('act', 'clearSave');
+      await t.reload();
+      t.equal(await t.page.locator('button[data-act="daily"]').textContent(), 'Daily Duel', 'the title offers the Daily Duel');
+      await snap(t, 'S3-03-title');
+      await t.page.click('button[data-act="daily"]');
+      let s = await t.state();
+      t.equal(s.scene, 'battle', 'it starts a battle');
+      t.equal(s.setup.mode, 'daily', 'a daily one');
+      t.equal(s.setup.levelId, plan(20261114).levelId, 'on the map the date picks');
+      t.equal(s.setup.seed, plan(20261114).seed, 'with the seed the date picks');
+      t.equal(s.setup.loadout, 'acorn', 'acorns only, so nobody has a bigger satchel');
+      t.equal(s.battle.teams.map((x) => x.alive).join(), '3,3', 'three a side');
+      const first = { hash: s.battle.hash, wind: s.battle.wind, team: s.battle.turn.team };
+      await t.game('newGame', { levelId: 'gray' });
+      await t.game('act', 'menu', 'daily');
+      s = await t.state();
+      t.expect(s.battle.hash === first.hash && s.battle.wind === first.wind && s.battle.turn.team === first.team, 'starting it again gives the identical battle');
+      await snap(t, 'S3-03-battle');
+      // a win: recorded, shown, and the title says so
+      await t.game('scene', 'results');
+      let sv = await saved(t);
+      t.equal(sv.daily.last, 20261114, 'the win is saved against today');
+      t.equal(sv.daily.streak, 1, 'a streak of one');
+      t.expect(sv.daily.hist['20261114'] && sv.daily.hist['20261114'][0] >= 1, 'with the day\'s best');
+      t.expect(/Daily Duel won!/.test(await screenText(t)) && /Your best for today\./.test(await screenText(t)), 'the results card says so');
+      t.equal(await t.page.locator('[data-act="again"]').textContent(), 'Retry this exact battle', 'and offers the exact same battle again');
+      t.equal(await t.page.locator('[data-same="1"]').count(), 0, 'without a second, redundant retry button');
+      await snap(t, 'S3-03-results-won');
+      await t.page.click('[data-act="again"]');
+      s = await t.state();
+      t.expect(s.setup.seed === plan(20261114).seed && s.battle.hash === first.hash, 'Retry this exact battle is the same battle');
+      await t.game('scene', 'title');
+      t.equal(await t.page.locator('button[data-act="daily"]').textContent(), 'Daily Duel (won today)', 'the title shows it is done for today');
+      // tomorrow: a new battle, and a second win makes two days
+      await t.page.evaluate(() => { window.__now += 86400000; });
+      await t.game('act', 'menu', 'daily');
+      s = await t.state();
+      t.equal(s.setup.levelId, plan(20261115).levelId, 'tomorrow is the next map in the plan');
+      t.equal(s.setup.seed, plan(20261115).seed, 'and the next seed');
+      await t.game('scene', 'results');
+      sv = await saved(t);
+      t.equal(sv.daily.streak, 2, 'two days in a row');
+      t.equal(sv.daily.wins, 2, 'two wins');
+      t.expect(/2 days in a row/.test(await screenText(t)), 'and the card says so');
+      await t.reload();
+      sv = await saved(t);
+      t.expect(sv.daily.streak === 2 && Object.keys(sv.daily.hist).length === 2, 'the record survives a reload');
+      // a missed day breaks the streak but not the best
+      await t.page.evaluate(() => { window.__now += 3 * 86400000; }); // the reload put the clock back to the 14th: this is the 17th, and the last win was the 15th
+      await t.game('act', 'menu', 'records');
+      const txt = await screenText(t);
+      t.expect(/Daily Duel/.test(txt) && /Best streak/.test(txt), 'Records has a Daily Duel section');
+      t.equal(await t.page.locator('[aria-label="Daily Duel, last seven days"] .rec-row').count(), 7, 'with the last seven days');
+      t.equal(await t.page.locator('[aria-label="Daily Duel, last seven days"] .rec-row .rb', { hasText: 'no win' }).count(), 5, 'two of them won, five not');
+      t.expect(/Streak\s*0/.test(txt.replace(/\s+/g, ' ')) || /Streak0/.test(txt.replace(/\s+/g, '')), 'the live streak is back to 0 after missing a day');
+      await snap(t, 'S3-03-records');
+    },
+  })),
+  {
+    name: 'S3-03 a save from before the Daily Duel loads with an empty record, and a damaged record falls back',
+    viewports: ['desktop'],
+    async run(t) {
+      const old = { v: 1, settings: { sound: true, music: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true }, story: { team: 0, unlocked: 6, stars: { 'story-01': 3 }, nuts: [] }, quick: {}, stats: { battles: 4, wins: 3 }, resume: null };
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, old]);
+      await t.reload();
+      let s = (await t.state()).save;
+      t.expect(s.daily.wins === 0 && s.daily.streak === 0 && JSON.stringify(s.daily.hist) === '{}', 'an old save has an empty Daily Duel record');
+      t.expect(s.story.unlocked === 6 && s.stats.wins === 3, 'and nothing else in it moved');
+      old.daily = { last: 'yesterday', streak: -3, bestStreak: 1.5, wins: 'many', hist: { '20261114': [5, 0], '20261113': 'x', abc: [1, 1], '20261112': [0, 0] } };
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, old]);
+      await t.reload();
+      s = (await t.state()).save;
+      t.expect(s.daily.last === 0 && s.daily.streak === 0 && s.daily.bestStreak === 0 && s.daily.wins === 0, 'damaged numbers fall back to zero');
+      t.expect(JSON.stringify(s.daily.hist) === JSON.stringify({ 20261114: [5, 0] }), 'and only the one good history entry is kept');
+      t.equal((await t.state()).scene, 'title', 'the game starts normally');
+    },
+  },
+  {
+    name: 'S3-03 Restart on the pause card keeps the daily seed, and Reset progress clears the record',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('act', 'menu', 'daily');
+      const a = await t.state();
+      await throwOnce(t);
+      await t.game('scene', 'pause');
+      await t.game('act', 'menu', 'restart');
+      await t.page.click('[data-act="leaveYes"]');
+      const b = await t.state();
+      t.expect(b.setup.seed === a.setup.seed && b.battle.hash === a.battle.hash, 'Restart replays the same daily battle');
+      await t.game('scene', 'results');
+      t.equal((await saved(t)).daily.wins, 1, 'a win is on record');
+      await t.game('act', 'menu', 'resetProgress');
+      await t.game('act', 'menu', 'resetYes');
+      t.equal((await saved(t)).daily.wins, 0, 'Reset progress clears it with the other records');
+    },
+  },
 ];

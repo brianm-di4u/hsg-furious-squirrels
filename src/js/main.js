@@ -12,6 +12,7 @@ import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceP
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
+import { dayKey, dailyPlan, recordDaily, liveStreak } from './daily.js';
 import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS } from './story.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
@@ -176,7 +177,7 @@ function enterBattleScene() {
   setTension(false); playTheme(themeFor(L)); playAmbience(sceneFor(L));
   // a new battle opens with its place and a line about it (not on a resumed battle or in Practice)
   if (!App.setup.battle && App.setup.mode !== 'practice' && L.n) {
-    const head = App.setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name;
+    const head = App.setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : App.setup.mode === 'daily' ? `Daily Duel: ${L.name}` : L.name;
     hud.titleCard(head, blurbFor(L.n), L.stretchLabel || '', 3200); say(`${head}. ${blurbFor(L.n)}`);
   }
   onTurnStart(true);
@@ -322,6 +323,12 @@ App.onMenu = (act, d) => {
     case 'qset': s.quick[d.k] = /^(team|size|rounds)$/.test(d.k) ? +d.v : d.v; persist('quick', d.k); return screens.refresh();
     case 'quickGo': { freshSave(); fixQuickLevel(); const q = s.quick; return openPrep({ mode: 'quick', levelId: q.level, team: q.team, size: q.size, rounds: q.rounds, wind: q.wind, steam: q.steam, birds: q.birds, loadout: q.loadout, difficulty: q.difficulty, unlocked: storyInventory(s.story.unlocked) }); }
     case 'practice': return startBattle({ mode: 'practice', levelId: 'practice', team: 0 });
+    case 'daily': {
+      // the day's battle (S3-03): map, wind and seed from the date, acorns only, a medium rival, three a side
+      freshSave();
+      const day = dayKey(), plan = dailyPlan(day, STORY.map((L) => L.id));
+      return startBattle({ mode: 'daily', levelId: plan.levelId, seed: plan.seed, day, team: s.quick.team, size: 3, rounds: 1, wind: plan.wind, steam: 'on', birds: 'some', loadout: 'acorn', difficulty: 'medium' });
+    }
     case 'help': return screens.show('help', { from: screens.cur });
     case 'settings': return screens.show('settings', { from: screens.cur === 'pause' || App.scene === 'battle' ? 'pause' : 'title' });
     case 'credits': return screens.show('credits', { from: screens.cur === 'results' ? 'results' : '' });
@@ -341,10 +348,10 @@ App.onMenu = (act, d) => {
       if (App.scene === 'battle') return screens.show('pause');
       return showTitle();
     case 'resume': App.paused = false; screens.hide(); kick(); return;
-    case 'restart': if (askLeave('restart')) return; return startBattle({ ...App.setup, battle: null, seed: undefined });
+    case 'restart': if (askLeave('restart')) return; return startBattle({ ...App.setup, battle: null, seed: App.setup.mode === 'daily' ? App.setup.seed : undefined });
     case 'again': {
       // "Retry same wind" replays the battle's own seed: the same wind, birds and first thrower
-      const seed = d.same ? App.setup.seed : undefined;
+      const seed = d.same || App.setup.mode === 'daily' ? App.setup.seed : undefined;
       if (App.setup.mode === 'story') return App.onMenu('play', { v: App.setup.levelId, seed });
       return startBattle({ ...App.setup, battle: null, seed, buys: App.setup.buys });
     }
@@ -439,6 +446,13 @@ function battleOver() {
     shot: !practice && myStats.best > before.shot && before.shot > 0 ? myStats.best : 0,
     streak: !practice && win && s.stats.streak >= 2 ? s.stats.streak : 0,
   };
+  // the Daily Duel keeps the best win of the day and the days-in-a-row streak
+  let daily = null;
+  if (App.setup.mode === 'daily') {
+    const day = App.setup.day ?? dayKey(), outs = b.squirrels.filter((q) => q.team === me && q.out).length;
+    if (win) { const r = recordDaily(s.daily, day, Math.max(1, myTurns), outs); s.daily = r.daily; daily = { won: true, day, turns: Math.max(1, myTurns), outs, best: r.best, streak: r.streak, bestStreak: s.daily.bestStreak, today: s.daily.hist[day] }; }
+    else daily = { won: false, day, streak: liveStreak(s.daily, day), today: s.daily.hist[day] || null };
+  }
   const fact = pickFact(L);
   if (fact && !s.story.notes.includes(fact.id)) s.story.notes.push(fact.id);
   persist('result');
@@ -450,11 +464,11 @@ function battleOver() {
     banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     losses: App.setup.mode === 'story' && !win ? s.story.losses[L.id] || 0 : 0, offerEasy: App.setup.mode === 'story' && !win && (s.story.losses[L.id] || 0) >= LOSS_OFFER && s.settings.difficulty !== 'easy',
-    retry: !win && !practice,
+    retry: !win && !practice && !daily, daily,
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
   });
   decorateScreen();
-  say((win ? 'Victory!' : 'Battle over.') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));
+  say((win ? 'Victory!' : 'Battle over.') + (daily && daily.won ? ` Daily Duel won in ${daily.turns} ${daily.turns === 1 ? 'turn' : 'turns'}.` : '') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));
 }
 
 function pickFact(L) {

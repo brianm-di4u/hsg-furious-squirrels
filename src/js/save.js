@@ -1,6 +1,7 @@
 // Saves: one versioned JSON object in localStorage, wrapped in try/catch with an in-memory fallback so the game
 // works when storage is blocked. Pattern from games/Cart Racing/src/js/save.js (Hot Springs Games, MIT).
 import { ACORNS, PURSE_CAP } from './sim/const.js';
+import { emptyDaily } from './daily.js';
 const KEY = 'hsg-furious-squirrels-v1';
 const STORY_LEVELS = 12;
 const TIER_NAMES = ['easy', 'medium', 'sharp', 'hard'];
@@ -15,6 +16,7 @@ export const DEFAULT_SAVE = () => ({
   story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {}, notes: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
+  daily: emptyDaily(),
   resume: null,
 });
 
@@ -33,7 +35,7 @@ export function starTiers(story, id) {
   const n = Math.min(3, story.stars[id] || 0), rec = Array.isArray(story.starTier?.[id]) ? story.starTier[id] : [];
   return [0, 1, 2].map((i) => rec[i] || (i < n ? 2 : 0));
 }
-const progress = s => ({ epoch: epoch(s), story: s.story, quick: s.quick, stats: s.stats, slot: slot(s) });
+const progress = s => ({ epoch: epoch(s), story: s.story, quick: s.quick, stats: s.stats, daily: s.daily, slot: slot(s) });
 // observed tracks already captured local mutations, not successful persistence.
 // Pending intents survive reads/rebases/failures; only setItem success acknowledges them.
 let observed = null, acknowledged = null, run = null, warned = false;
@@ -42,7 +44,7 @@ const pending = { settings: {}, quick: {}, team: null, earned: [], resume: null,
 function decoded(s) {
   if (!object(s) || s.v !== 1) return null;
   const d = DEFAULT_SAVE(), out = { ...d, ...s };
-  for (const key of ['settings', 'story', 'quick', 'stats']) out[key] = { ...d[key], ...(object(s[key]) ? s[key] : {}) };
+  for (const key of ['settings', 'story', 'quick', 'stats', 'daily']) out[key] = { ...d[key], ...(object(s[key]) ? s[key] : {}) };
   out.story.stars = { ...(object(out.story.stars) ? out.story.stars : {}) };
   out.story.nuts = Array.isArray(out.story.nuts) ? out.story.nuts.slice() : [];
   for (const key of ['unlocked']) if (!number(out.story[key])) out.story[key] = d.story[key];
@@ -63,6 +65,14 @@ function decoded(s) {
   out.story.losses = object(out.story.losses) ? { ...out.story.losses } : {};
   for (const [id, n] of Object.entries(out.story.losses)) if (!(Number.isInteger(n) && n >= 1 && n <= 99)) delete out.story.losses[id];
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
+  // the Daily Duel (S3-03): the last day won, the streak, and the best win of each recent day; damaged parts fall back
+  const day = (n) => Number.isInteger(n) && n >= 20000101 && n <= 99991231;
+  out.daily.last = day(out.daily.last) ? out.daily.last : 0;
+  for (const key of ['streak', 'bestStreak', 'wins']) out.daily[key] = Number.isInteger(out.daily[key]) && out.daily[key] >= 0 && out.daily[key] <= 99999 ? out.daily[key] : 0;
+  const hist = object(out.daily.hist) ? out.daily.hist : {};
+  out.daily.hist = {};
+  for (const [k, v] of Object.entries(hist)) if (/^\d{8}$/.test(k) && day(+k) && Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && v[0] >= 1 && v[0] <= 999 && Number.isInteger(v[1]) && v[1] >= 0 && v[1] <= 99) out.daily.hist[k] = v.slice();
+  for (const k of Object.keys(out.daily.hist).sort().slice(0, -14)) delete out.daily.hist[k];
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
   if (!TIER_NAMES.includes(out.settings.difficulty)) out.settings.difficulty = d.settings.difficulty;
@@ -120,7 +130,7 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null, losses: {}, notes: [] };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null, losses: {}, notes: [], daily: null };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
     earned.notes = (s.story.notes || []).filter(id => !(before.story.notes || []).includes(id));
@@ -135,12 +145,13 @@ function capture(s, intent, fresh, fields = []) {
       if (Array.isArray(slots) && slots.some((n, i) => n > (old[i] || 0))) put(earned.tiers, id, slots);
     }
     if (number(s.story.acorns) && s.story.acorns !== before.story.acorns) earned.acorns = s.story.acorns;
+    if (s.daily && !same(s.daily, before.daily)) earned.daily = copy(s.daily);
     // a loss run that changed (a win clears it to 0); the latest value wins when two tabs disagree
     for (const id of new Set([...Object.keys(s.story.losses || {}), ...Object.keys(before.story.losses || {})])) {
       const n = (s.story.losses || {})[id] || 0;
       if (n !== ((before.story.losses || {})[id] || 0)) earned.losses[id] = n;
     }
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.notes.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || Object.keys(earned.losses).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.notes.length || earned.daily || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || Object.keys(earned.losses).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -150,7 +161,7 @@ function merged(latest, callback) {
   if (pending.reset) {
     if (pending.reset.known && same(progress(latest), pending.reset.expected)) {
       const d = DEFAULT_SAVE();
-      value = { ...value, story: d.story, quick: d.quick, stats: d.stats, resume: null,
+      value = { ...value, story: d.story, quick: d.quick, stats: d.stats, daily: d.daily, resume: null,
         progressGeneration: pending.reset.generation, resumeGeneration: pending.reset.resumeGeneration, resumeRevision: pending.reset.resumeRevision };
       resetApplied = true;
     } else { pending.reset = null; notice(callback); }
@@ -175,6 +186,14 @@ function merged(latest, callback) {
       put(value.story.starTier, id, slots.map((n, i) => Math.max(n, old[i] || 0)));
     }
     if (e.acorns != null) value.story.acorns = e.acorns;
+    if (e.daily) {
+      // two tabs: the later day wins the streak; each day keeps the better of its two results
+      const a = value.daily, b = e.daily, hist = { ...a.hist };
+      for (const [k, v] of Object.entries(b.hist)) { const o = hist[k]; if (!o || v[0] < o[0] || (v[0] === o[0] && v[1] < o[1])) hist[k] = v; }
+      const later = b.last >= a.last ? b : a;
+      value.daily = { last: later.last, streak: later.streak, bestStreak: Math.max(a.bestStreak, b.bestStreak), wins: Math.max(a.wins, b.wins), hist };
+      for (const k of Object.keys(value.daily.hist).sort().slice(0, -14)) delete value.daily.hist[k];
+    }
     for (const [id, n] of Object.entries(e.losses || {})) { if (n > 0) put(value.story.losses, id, n); else delete value.story.losses[id]; }
   } else notice(callback);
   let resumeApplied = false;
