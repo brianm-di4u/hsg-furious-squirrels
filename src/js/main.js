@@ -320,9 +320,10 @@ App.onMenu = (act, d) => {
       if (App.scene === 'battle') return screens.show('pause');
       return showTitle();
     case 'resume': App.paused = false; screens.hide(); kick(); return;
-    case 'restart': return startBattle({ ...App.setup, battle: null, seed: undefined });
+    case 'restart': if (askLeave('restart')) return; return startBattle({ ...App.setup, battle: null, seed: undefined });
     case 'again': if (App.setup.mode === 'story') return App.onMenu('play', { v: App.setup.levelId }); return startBattle({ ...App.setup, battle: null, seed: undefined, buys: App.setup.buys });
-    case 'menu': if (App.setup?.mode === 'story') { s.resume = null; persist('clear'); } else persist(); return showTitle();
+    case 'menu': if (askLeave('menu')) return; persist(); return showTitle();
+    case 'leaveYes': return App.onMenu(d.then, {});
     case 'resumeBattle': { const r = s.resume; if (r) return startBattle({ ...r.setup, battle: r.battle }); return; }
     case 'prepBuy': case 'prepUndo': {
       const pd = screens.data, k = d.kind, left = pd.setup.purse - Object.entries(pd.bought).reduce((n, [q, c]) => n + c * NUTS[q].price, 0), have = 1 + (pd.bought[k] || 0);
@@ -338,6 +339,14 @@ App.onMenu = (act, d) => {
     default: return;
   }
 };
+
+// Restart and Quit on the pause card ask first once something has been thrown (S2-05), so a slipped thumb does not
+// cost a battle. A Story battle quit this way keeps its resume slot, so the title still offers Resume battle.
+function askLeave(then) {
+  if (screens.cur !== 'pause' || !App.sim || App.sim.b.practice || !App.sim.b.teams.some((t) => t.stats.throws > 0)) return false;
+  screens.show('confirmLeave', { then, story: App.setup.mode === 'story' });
+  return true;
+}
 
 function showTitle() {
   App.scene = 'title'; document.body.dataset.scene = 'title';

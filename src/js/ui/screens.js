@@ -179,6 +179,13 @@ const TEMPLATES = {
       <nav class="menu">${btn('resume', 'Resume', 'autofocus data-back', 'btn primary')}${btn('help', 'How to Play')}${btn('settings', 'Settings')}${btn('restart', 'Restart battle')}${btn('menu', 'Quit to menu')}</nav>
     </div>`,
 
+  confirmLeave: (app, { then, story }) => `
+    <div class="panel" role="dialog" aria-label="${then === 'restart' ? 'Restart battle' : 'Leave battle'}" style="width:min(420px,100%)">
+      <h2>${then === 'restart' ? 'Restart this battle?' : 'Leave this battle?'}</h2>
+      <p>${then === 'menu' && story ? 'Your battle stays saved. Choose Resume battle on the title to pick it up from the start of your last turn.' : 'Your progress in it will be lost.'}</p>
+      <nav class="menu row">${btn('leaveYes', then === 'restart' ? 'Restart' : 'Leave', `data-then="${then}"`)}${btn('back', 'Cancel', 'autofocus data-back', 'btn primary')}</nav>
+    </div>`,
+
   help: () => `
     <div class="panel" role="dialog" aria-label="How to play">
       <h2>How to Play</h2>
