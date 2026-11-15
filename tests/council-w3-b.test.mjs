@@ -73,4 +73,31 @@ export const tests = [
       t.equal(await t.page.evaluate(() => window.__FS.ff), 1, 'the next turn starts at normal speed again');
     },
   },
+  // ---- S1-10 ----
+  {
+    name: 'S1-10 the knockout camera hold never disables a button, and any key, press or throw ends it',
+    async run(t) {
+      await humanFirst(t);
+      await t.waitFrames(4);
+      const hold = () => t.page.evaluate(() => { window.__FS.koHold = 5; window.__FS.reframe = true; window.__FS.guideKey = ''; });
+      await hold();
+      await t.waitFrames(3);
+      const dis = await t.page.evaluate(() => ({ throw: document.getElementById('b-throw').disabled, move: document.getElementById('b-move').disabled }));
+      t.expect(!dis.throw && !dis.move, 'Throw and Move are not dead while the camera holds on a knockout');
+      const a0 = (await t.state()).battle.teams[0].aim.angle;
+      await t.page.keyboard.press('ArrowLeft');
+      let st = await t.page.evaluate(() => ({ ko: window.__FS.koHold, re: window.__FS.reframe }));
+      t.equal(st.ko, 0, 'a key press ends the hold');
+      t.equal(st.re, false, 'and the camera has been put back');
+      t.equal((await t.state()).battle.teams[0].aim.angle, a0 + 1, 'the same key still aims');
+      await hold();
+      await t.page.mouse.click(t.vp.width / 2, t.vp.height / 3);
+      t.equal(await t.page.evaluate(() => window.__FS.koHold), 0, 'a press on the field ends the hold');
+      await hold();
+      await t.page.click('#b-throw');
+      st = await t.page.evaluate(() => ({ ko: window.__FS.koHold, re: window.__FS.reframe }));
+      t.equal(st.ko, 0, 'the Throw button ends the hold');
+      t.equal((await t.state()).battle.teams[0].stats.throws, 1, 'and the nut goes');
+    },
+  },
 ];

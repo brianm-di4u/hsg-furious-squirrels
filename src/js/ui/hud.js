@@ -123,9 +123,9 @@ export class Hud {
     const ro = `${Math.round(tm.aim.angle)}° · ${Math.round(tm.aim.power * 100)}%<span class="trick${d === NUTS.acorn ? ' plain' : ''}">${d.name}: ${d.trick}</span>`;
     const r = this.el('readout');
     if (r._h !== ro) { r.innerHTML = ro; r._h = ro; }
-    this.el('b-throw').disabled = !human || phase !== 'aim' || app.koHold > 0;
+    this.el('b-throw').disabled = !human || phase !== 'aim';
     const mv = this.el('b-move');
-    mv.disabled = !human || phase !== 'aim' || b.turn.stamina < 20 || app.koHold > 0;
+    mv.disabled = !human || phase !== 'aim' || b.turn.stamina < 20;
     mv.setAttribute('aria-pressed', String(!!app.showPerches));
     mv.textContent = app.showPerches ? 'Done' : compactView() ? 'Move' : `Move (${Math.round(b.turn.stamina / 3)}%)`;
     mv.setAttribute('aria-label', `Move: ${Math.round(b.turn.stamina / 3)}% stamina left`);

@@ -236,9 +236,17 @@ function humanTurn() {
   if (App.aiActive && (App.aiActive.n !== b.turn.n || App.aiActive.team !== b.turn.team)) App.aiActive = null;
   return b.teams[b.turn.team].human && !App.aiActive;
 }
+// The camera holds on a knockout for a moment; any input ends the hold (S1-10), so the view is back on the player's own
+// squirrel before a throw goes out, and the buttons never look dead while a key or a drag still works.
+function endKo() {
+  if (!(App.koHold > 0)) return;
+  App.koHold = 0;
+  if (App.reframe) { App.reframe = false; frameCamera(false); }
+}
 function throwNow() {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'aim' || !humanTurn() || screens.cur) return false;
+  endKo();
   App.showPerches = false;
   const ok = sim.throwNut({});
   if (ok) dismissTip();
@@ -582,7 +590,7 @@ const endPtr = (e) => {
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 // the hint is click-through, so a tap on it (or anywhere in the battle, HUD buttons included) closes it
-window.addEventListener('pointerdown', () => { if (App.scene === 'battle' && !screens.cur) dismissTip(); });
+window.addEventListener('pointerdown', () => { if (App.scene === 'battle' && !screens.cur) { dismissTip(); endKo(); } });
 canvas.addEventListener('wheel', (e) => { if (App.scene !== 'battle') return; e.preventDefault(); renderer.cam.zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); kick(); }, { passive: false });
 
 function perchAt(sx, sy) {
@@ -605,7 +613,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (App.scene !== 'battle') return;
-  dismissTip();
+  dismissTip(); endKo();
   const big = e.shiftKey ? 5 : 1;
   let used = true;
   switch (e.code) {
@@ -659,6 +667,7 @@ function pollPad() {
       if (m.up || m.down || m.left || m.right || m.cancel) screens.nav(m);
       if (edge('a') && document.activeElement && document.activeElement.click) document.activeElement.click();
     } else if (App.scene === 'battle') {
+      if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) endKo();
       if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
       if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
       if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry(); }
