@@ -24,7 +24,7 @@ const App = {
   scene: 'boot', ready: false, loading: 0, paused: false, testPaused: false, time: 0, clock: null, steps: 0,
   save: loadSave(), sim: null, level: null, setup: null, vis: {}, showPerches: false, hoverPerch: null,
   aimGuide: null, guideKey: '', aiActive: null, aimAnim: null, pendingEnd: null, held: new Set(), craterN: 0,
-  turnElapsed: 0, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
+  turnElapsed: 0, ff: 1, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
 };
 window.__FS = App;
 
@@ -172,7 +172,7 @@ function enterBattleScene() {
   App.paused = false;
   screens.hide();
   hud.show(true); hud.barKey = '';
-  App.tutorialStep = 0; App.tauntN = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
+  App.ff = 1; App.tutorialStep = 0; App.tauntN = 0; clearTimeout(tipTimer); App.targetsHit = []; App.koHold = 0; App.reframe = false; hud.clearCalls();
   sim.drain();
   setTension(false); playTheme(themeFor(L)); playAmbience(sceneFor(L));
   // a new battle opens with its place and a line about it (not on a resumed battle or in Practice)
@@ -250,6 +250,19 @@ function tapNow() {
   if (!sim || sim.b.phase !== 'flight') return false;
   if (!sim.b.teams[sim.b.shot ? sim.b.shot.team : sim.b.turn.team].human) return false;
   return sim.tap();
+}
+// A press while a shot or the rival's turn plays out hurries it along (S1-02): the rival skips its thinking and aim
+// animation, a flight or settle runs FAST times quicker until the turn passes, and the knockout slow-motion ends.
+const FAST = 3;
+function hurry() {
+  const sim = App.sim;
+  if (!sim || App.scene !== 'battle' || screens.cur || App.paused || App.testPaused) return false;
+  const ph = sim.b.phase;
+  if (ph === 'aim') { const A = App.aiActive; if (!A || A.skip) return false; A.skip = true; return true; }
+  if (ph !== 'flight' && ph !== 'settle') return false;
+  if (App.ff >= FAST && !(App.slowT > 0)) return false;
+  App.ff = FAST; App.slowT = 0;
+  return true;
 }
 function nudgeAim(da, dp) {
   const sim = App.sim;
@@ -527,8 +540,8 @@ canvas.addEventListener('pointerdown', (e) => {
   const sim = App.sim, b = sim.b;
   if (ptrs.size === 2) { const [p1, p2] = [...ptrs.values()]; pinch = { d: Math.hypot(p1.x - p2.x, p1.y - p2.y), cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2 }; drag = null; return; }
   if (e.button === 1 || e.button === 2) { drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
-  if (b.phase === 'flight') { if (tapNow()) kick(); return; }
-  if (b.phase !== 'aim' || !humanTurn()) { drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
+  if (b.phase === 'flight') { if (tapNow() || hurry()) kick(); return; }
+  if (b.phase !== 'aim' || !humanTurn()) { if (hurry()) kick(); drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
   if (App.showPerches) {
     const id = perchAt(e.clientX, e.clientY);
     if (id) { sim.move(id); sfx('chitter', sim.b.turn.team); App.guideKey = ''; kick(); return; }
@@ -603,7 +616,7 @@ window.addEventListener('keydown', (e) => {
     case 'Space': case 'Enter': case 'NumpadEnter':
       if (e.target && e.target.closest && e.target.closest('#hud button')) return; // activates the focused HUD button, not a throw
       if (e.repeat) break;
-      if (App.sim.b.phase === 'flight') tapNow(); else throwNow();
+      if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry();
       break;
     case 'KeyM': toggleMove(); break;
     case 'KeyA': stepPerch(-1, 0); break;
@@ -648,7 +661,7 @@ function pollPad() {
     } else if (App.scene === 'battle') {
       if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
       if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
-      if (edge('a')) { if (App.sim.b.phase === 'flight') tapNow(); else throwNow(); }
+      if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry(); }
       if (edge('lb')) cycleNut(-1);
       if (edge('rb')) cycleNut(1);
       if (edge('left')) stepPerch(-1, 0);
@@ -825,7 +838,7 @@ function handleEvents() {
   for (const ev of sim.drain()) {
     const v = vis(ev.sq);
     switch (ev.type) {
-      case 'throw': if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); break;
+      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); break;
       case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap'); break;
       case 'impact':
         if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst'); }
@@ -884,7 +897,7 @@ function handleEvents() {
         break;
       }
       case 'miss': hud.call('Missed!', 600); break;
-      case 'turn': onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
+      case 'turn': App.ff = 1; onTurnStart(false); if (!(App.koHold > 0)) frameCamera(false); else App.reframe = true; break;
       case 'round': break;
       case 'roundEnd': case 'battleEnd': App.pendingEnd = { type: ev.type, t: wallNow() + 1.3 }; break;
       default: break;
@@ -954,10 +967,10 @@ function updateAI() {
   }
   if (!A.plan) { App.aiActive = null; sim.nextTurn(); return true; }
   const now = wallNow();
-  if (now < A.t0 + A.plan.think) return true;
+  if (!A.skip && now < A.t0 + A.plan.think) return true;
   // animate the aim, then throw
   if (!A.anim) A.anim = { t: 0, from: { ...b.teams[b.turn.team].aim } };
-  A.anim.t += 1 / 30;
+  A.anim.t += A.skip ? 1 : 1 / 30;
   const u = Math.min(1, A.anim.t / (App.reduced ? 0.2 : 0.6)), e = u * u * (3 - 2 * u);
   sim.setAim({ nut: A.plan.nut, angle: A.anim.from.angle + (A.plan.angle - A.anim.from.angle) * e, power: A.anim.from.power + (A.plan.power - A.anim.from.power) * e });
   if (u >= 1) {
@@ -1014,9 +1027,9 @@ function frame(now) {
       if (App.hitstop > 0) App.hitstop -= dtw;
       sim.idle(dtt);
       if (sim.busy()) {
-        acc += App.hitstop > 0 ? 0 : App.slowT > 0 ? dtw * 0.35 : dtw;
+        acc += App.hitstop > 0 ? 0 : App.slowT > 0 ? dtw * 0.35 : dtw * App.ff;
         let n = 0;
-        while (acc >= DT && n < 12) { stepOnce(); acc -= DT; n++; }
+        while (acc >= DT && n < 12 * App.ff) { stepOnce(); acc -= DT; n++; }
         busy = true;
         if (sim.b.phase === 'flight' && !renderer.cam.user && !(App.koHold > 0)) frameCamera(false);
         if (sim.b.phase === 'flight' && !App.reduced && (App.puffT = (App.puffT || 0) + dtw) > 0.035) { App.puffT = 0; for (const n of sim.b.nuts) if (n.state !== 'husk') renderer.fx.puff(n.x, n.y); }
