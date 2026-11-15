@@ -188,9 +188,10 @@ const TEMPLATES = {
   results: (app, d) => `
     <div class="panel" role="dialog" aria-label="Battle results">
       ${d.finale ? finaleScene() : d.practice ? '' : `<div class="res-sq" aria-hidden="true"><canvas data-sq="${d.winner >= 0 ? d.winner : 0}:cheer"></canvas><canvas data-sq="${d.winner >= 0 ? 1 - d.winner : 1}:out:flip"></canvas></div>`}
-      <h2>${d.win ? 'Victory!' : d.practice ? 'Practice done' : 'So close!'}</h2>
+      <h2>${d.win ? 'Victory!' : d.practice ? 'Practice done' : d.loss ? d.loss.title : 'So close!'}</h2>
       <p class="winner">${d.winnerName ? `${d.winnerName} win the valley` : ''}</p>
       ${d.finale ? `<div class="finale-text"><h3>${FINALE.title}</h3>${FINALE.text.map((p) => `<p>${p}</p>`).join('')}</div>` : ''}
+      ${d.loss ? `<p class="losscause">${d.loss.cause}</p><p class="starrule losshint">${d.loss.hint}${d.loss.button ? ` <button type="button" class="btn small" data-act="${d.loss.button}">Aim guide: Always long</button>` : ''}</p>` : ''}
       ${d.line ? `<p class="feudline">${d.line}</p>` : ''}
       ${d.stars != null ? starStr(d.stars) : ''}
       ${d.par ? `<p class="starrule">Stars: win the battle, ${d.koAllowed ? 'lose at most one squirrel' : 'keep every squirrel in the trees'}, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}

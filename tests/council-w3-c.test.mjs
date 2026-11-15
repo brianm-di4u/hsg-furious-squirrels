@@ -162,4 +162,41 @@ export const tests = [
       await snap(t, 'S3-06-satchel-best-for');
     },
   },
+  // ---- S2-04 ----
+  {
+    name: 'S2-04 a loss says why the family lost, chooses its title by the margin, and gives one next step',
+    async run(t) {
+      const lose = async (prep) => {
+        await humanFirst(t);
+        await t.waitFrames(2);
+        await t.page.evaluate(prep);
+        await t.game('scene', 'results', { lose: true });
+        await t.waitFrames(2);
+        return t.page.evaluate(() => ({ h2: document.querySelector('#screens h2').textContent, cause: (document.querySelector('#screens .losscause') || {}).textContent || '', hint: (document.querySelector('#screens .losshint') || {}).textContent || '', btn: !!document.querySelector('#screens [data-act="guideLong"]') }));
+      };
+      // two rivals already out, nothing thrown: one left standing, no throws, so the plain wind hint and the near-miss title
+      let r = await lose(() => { const q = window.__FS.sim.b.squirrels.filter((x) => x.team === 1); q[0].out = true; q[1].out = true; window.__FS.sim.b.teams[0].stats.throws = 3; window.__FS.sim.b.teams[0].stats.hits = 1; });
+      t.equal(r.h2, 'So close!', 'one rival left and a hit landed: So close!');
+      t.expect(/All 3 of your squirrels were knocked out of the trees. The Tails had 1 left standing./.test(r.cause), `the cause: ${r.cause}`);
+      t.expect(/Wind bends every throw/.test(r.hint) && !r.btn, 'with hits landed the hint is about the wind');
+      await snap(t, 'S2-04-loss-close');
+      // three rivals left and not one hit: not close, and the aim guide is offered
+      r = await lose(() => { window.__FS.sim.b.teams[0].stats.throws = 4; window.__FS.sim.b.teams[0].stats.hits = 0; });
+      t.equal(r.h2, 'Not this time', 'three rivals left: Not this time');
+      t.expect(/had 3 left standing/.test(r.cause), 'the rivals left are counted');
+      t.expect(/None of your throws landed. The long aim guide shows the whole arc./.test(r.hint) && r.btn, 'no hits: the guide is offered with a button');
+      await snap(t, 'S2-04-loss-no-hits');
+      await t.page.click('#screens [data-act="guideLong"]');
+      t.equal((await t.state()).settings.aimGuide, 'always', 'the button sets the guide');
+      t.expect(/aim guide is now Always long/.test(await t.page.textContent('#screens .losshint')), 'and says so');
+      t.equal(await t.page.evaluate(() => !!document.querySelector('#screens [data-act="guideLong"]')), false, 'the button is gone');
+      // the guide already long: no button, a different hint
+      r = await lose(() => { window.__FS.save.settings.aimGuide = 'always'; window.__FS.sim.b.teams[0].stats.throws = 2; window.__FS.sim.b.teams[0].stats.hits = 0; });
+      t.expect(!r.btn && /Drag farther back for more power/.test(r.hint), 'with the guide on already, the hint turns to power and wind');
+      // a win has none of it
+      await humanFirst(t);
+      await t.game('scene', 'results', {});
+      t.equal(await t.page.evaluate(() => document.querySelectorAll('#screens .losscause, #screens .losshint').length), 0, 'a win shows no loss lines');
+    },
+  },
 ];
