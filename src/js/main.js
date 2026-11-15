@@ -8,7 +8,7 @@ import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
 import { Screens, factHtml } from './ui/screens.js';
-import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
+import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, muffleAudio, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, storageWorks, starTiers, DEFAULT_SAVE, TIP_IDS } from './save.js';
 import { installHooks } from './hooks.js';
@@ -1162,6 +1162,7 @@ function frame(now) {
     pollPad();
     pauseAudio(App.paused && App.scene === 'battle');
     updateSoundscape();
+    muffleAudio(App.scene === 'battle' && !App.paused && (App.hitstop > 0 || App.slowT > 0)); // the music goes dull for a hit-stop and the slow-motion knockout
     let busy = false;
     const sim = App.sim;
     if (sim && App.scene === 'battle' && !App.paused && !App.testPaused && !screens.cur) {

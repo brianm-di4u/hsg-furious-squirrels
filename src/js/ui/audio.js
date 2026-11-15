@@ -6,7 +6,7 @@ import { makeAudioKit, measureAudio } from './audiokit.js';
 import { SCORES, SCENES } from './music.js';
 
 let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null, tOff = 0; // tOff: seconds added to every cue's start, for the offline render
-const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
+const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, muffled: false, muffles: 0, hidden: false, paused: false, timer: false, played: 0 };
 const SFX_GAIN = 0.9; // the effects bus at its full level
 // The mix (S5-06): the master gain is the Volume setting times MASTER_SCALE (0.45 before wave 3: the quietest game in the
 // collection by a factor of two), and every cue is struck CUE_BOOST times harder than it is written (1 before wave 3, when
@@ -84,6 +84,7 @@ function unlock() {
     state.started = true;
     for (const [k, v] of Object.entries(state.params)) kit.amb.set(k, v, 0.01);
     kit.music.intensity(state.tension ? 1 : 0);
+    if (state.muffled) kit.music.muffle(true, 0.015);
     state.hidden = !!document.hidden;
     syncHold();
     syncSources();
@@ -121,7 +122,7 @@ export function handleVisibility(hidden) {
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, muffled: state.muffled, muffles: state.muffles, cutoff: kit ? Math.round(kit.music.cutoff) : 0, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -202,6 +203,16 @@ export function setTension(on) {
   if (state.tension === on) return;
   state.tension = on;
   if (kit) kit.music.intensity(on ? 1 : 0);
+}
+
+// The music is dulled while the sim is frozen for a hit and while the last knockout runs in slow motion (S5-16), so the
+// weight of the picture has a sound. It opens again over a moment.
+export function muffleAudio(on) {
+  on = !!on;
+  if (state.muffled === on) return;
+  state.muffled = on;
+  if (on) state.muffles++;
+  if (kit) kit.music.muffle(on, on ? 0.015 : 0.18);
 }
 
 // Test hooks: every piece, bed and cue by name, and a render of one on its own offline context, through the master

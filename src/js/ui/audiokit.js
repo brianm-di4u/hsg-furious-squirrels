@@ -19,7 +19,8 @@ export function makeAudioKit(ctx, out, opt = {}) {
   const noise = (t, dur) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(t, rr(0, 1.9)); if (dur) s.stop(t + dur); return s; };
 
   let mLevel = opt.music ?? 0.5, aLevel = opt.ambience ?? 0.5, inten = 0, held = false, timer = 0;
-  const musicBus = gain(mLevel, out), ambBus = gain(aLevel, out);
+  // the music passes a low-pass that stays wide open until music.muffle() closes it (a hit-stop or the slow-motion knockout)
+  const muffler = lowpass(sr / 2, out, 'lowpass', 0.5), musicBus = gain(mLevel, muffler), ambBus = gain(aLevel, out);
   const dead = [];   // { at, nodes }: sub-buses to disconnect once their fade-out has finished
   const retire = (bus, nodes, at, fade) => {
     bus.gain.cancelScheduledValues(at); bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), at);
@@ -180,6 +181,9 @@ export function makeAudioKit(ctx, out, opt = {}) {
       cur = score ? mStart(score, at, fade) : null;
     },
     stop(fade = 1) { music.play(null, { fade }); },
+    // Dull the music to about 800 Hz (on) or open it again (off): the audio side of a hit-stop and of slow motion.
+    get cutoff() { return muffler.frequency.value; },
+    muffle(on, tc = 0.05) { muffler.frequency.setTargetAtTime(on ? 800 : sr / 2, ctx.currentTime, tc); },
     level(v) { mLevel = v; if (!held) musicBus.gain.setTargetAtTime(v, ctx.currentTime, 0.05); },
     duck(db = 6, ms = 400) { if (held) return; const t = ctx.currentTime; musicBus.gain.cancelScheduledValues(t); musicBus.gain.setTargetAtTime(mLevel * 10 ** (-db / 20), t, 0.02); musicBus.gain.setTargetAtTime(mLevel, t + ms / 1000, 0.25); },
     intensity(x) { inten = Math.max(0, Math.min(1, x)); },

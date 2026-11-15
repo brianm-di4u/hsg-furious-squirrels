@@ -307,4 +307,49 @@ export const tests = [
       await t.game('setState', { settings: { vibration: true } });
     },
   },
+  // ---- S5-16 ----
+  {
+    name: 'S5-16 the music goes dull for a hit-stop and for slow motion, and opens again',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await startHuman(t);
+      await gesture(t);
+      await waitAudio(t, () => window.__game.getState().audio.cutoff > 5000);
+      // slow motion: the knockout sets App.slowT; the music is held at about 800 Hz while it runs
+      await t.page.evaluate(() => { window.__FS.slowT = 1.5; });
+      await waitAudio(t, () => window.__game.getState().audio.cutoff < 2000);
+      t.expect((await t.state()).audio.muffled, 'slow motion dulls the music');
+      await t.page.evaluate(() => { window.__FS.slowT = 0; });
+      await waitAudio(t, () => window.__game.getState().audio.cutoff > 5000);
+      t.expect(!(await t.state()).audio.muffled, 'and it opens when slow motion ends');
+      // a hit freezes the sim for a moment: the dulling is counted, however short it is
+      const before = (await t.state()).audio.muffles;
+      const aim = await hitAim(t);
+      await t.game('act', 'aim', aim);
+      await t.game('act', 'fire');
+      await t.game('act', 'skipFlight');
+      await waitAudio(t, (n) => window.__game.getState().audio.muffles > n, before);
+      await waitAudio(t, () => window.__game.getState().audio.cutoff > 5000);
+      t.expect(true, 'a hit dulled the music for its hit-stop and let go');
+    },
+  },
+  {
+    name: 'S5-16 with reduced motion a hit does not dull the music (there is no hit-stop)',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('setState', { settings: { reducedMotion: true } });
+      await startHuman(t);
+      await gesture(t);
+      const before = (await t.state()).audio.muffles;
+      await t.game('act', 'aim', await hitAim(t));
+      await t.game('act', 'fire');
+      await t.game('act', 'skipFlight');
+      await t.waitFrames(30);
+      t.equal((await t.state()).audio.muffles, before, 'no dulling');
+    },
+  },
 ];
