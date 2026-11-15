@@ -84,4 +84,63 @@ export const tests = [
       t.equal((await t.state()).setup.mode, 'story', 'it is the Story battle again');
     },
   },
+  // ---- S2-18 ----
+  {
+    name: 'S2-18 Retry same wind replays the battle with the same seed, wind and first thrower',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('newGame', { levelId: 'gray', seed: 4242 });
+      const a = await t.state();
+      await t.game('scene', 'results', { lose: true });
+      t.equal((await t.state()).screen, 'results', 'a lost battle shows the results card');
+      t.equal(await t.page.locator('[data-act="again"][data-same="1"]').count(), 1, 'it offers Retry same wind');
+      await snap(t, 'S2-18-retry-same-wind');
+      await t.page.click('[data-act="again"][data-same="1"]');
+      const b = await t.state();
+      t.equal(b.scene, 'battle', 'the battle starts again');
+      t.equal(b.setup.seed, 4242, 'with the same seed');
+      t.equal(b.battle.wind, a.battle.wind, 'the same wind');
+      t.equal(b.battle.turn.team, a.battle.turn.team, 'and the same family throws first');
+      // a plain Play again takes a new random seed (a chance of 1 in 65536 of repeating 4242: far under one in ten thousand of a false failure)
+      await t.game('scene', 'results', { lose: true });
+      await t.page.click('[data-act="again"]:not([data-same])');
+      t.expect((await t.state()).setup.seed !== 4242, 'Play again reshuffles');
+      await t.game('scene', 'results', { lose: false });
+      t.equal(await t.page.locator('[data-act="again"][data-same="1"]').count(), 0, 'a win does not offer it');
+    },
+  },
+  {
+    name: 'S2-18 three losses in a row on a Story battle offer Easy; a win clears the run',
+    async run(t) {
+      await storyBattle(t);
+      const lose = async () => { await t.game('scene', 'results', { lose: true }); };
+      await lose();
+      t.equal((await saved(t)).story.losses['story-01'], 1, 'one loss is counted in the save');
+      t.equal(await t.page.locator('[data-act="tryEasy"]').count(), 0, 'one loss offers nothing');
+      await t.page.click('[data-act="again"]:not([data-same])');
+      await lose();
+      t.equal(await t.page.locator('[data-act="tryEasy"]').count(), 0, 'two losses offer nothing');
+      await t.page.click('[data-act="again"]:not([data-same])');
+      await lose();
+      t.equal((await saved(t)).story.losses['story-01'], 3, 'three losses are counted');
+      t.equal(await t.page.locator('[data-act="tryEasy"]').count(), 1, 'the third offers Try Easy');
+      t.expect(/3 losses in a row/.test(await screenText(t)), 'and says why');
+      await snap(t, 'S2-18-try-easy');
+      await t.reload();
+      t.equal((await saved(t)).story.losses['story-01'], 3, 'the run survives a reload');
+      await storyBattle(t, 'story-01'); // clears the save: restart the run for the Easy check below
+      for (let i = 0; i < 3; i++) { await lose(); if (i < 2) await t.page.click('[data-act="again"]:not([data-same])'); }
+      await t.page.click('[data-act="tryEasy"]');
+      let s = await t.state();
+      t.equal(s.scene, 'battle', 'Try Easy starts the battle again');
+      t.equal(s.setup.difficulty, 'easy', 'on Easy');
+      t.equal((await saved(t)).settings.difficulty, 'easy', 'and the setting is saved');
+      await lose();
+      t.equal(await t.page.locator('[data-act="tryEasy"]').count(), 0, 'already on Easy: no offer');
+      await t.page.click('[data-act="again"]:not([data-same])');
+      await t.game('scene', 'results', { lose: false });
+      t.expect(!('story-01' in (await saved(t)).story.losses), 'a win clears the run');
+    },
+  },
 ];

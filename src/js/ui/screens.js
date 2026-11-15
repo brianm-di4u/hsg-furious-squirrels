@@ -162,6 +162,7 @@ const TEMPLATES = {
       ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
       ${recordLines(d.records)}
+      ${d.offerEasy ? `<p class="starrule"><b>${d.losses} losses in a row on this battle.</b> Easy gives a longer aim guide and a gentler rival. You can change it back on the story map.</p>` : ''}
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>
@@ -170,7 +171,7 @@ const TEMPLATES = {
       </div>` : ''}
       ${d.banked != null ? `<p class="banked">Acorns banked: <b>${d.banked}</b> <small>(kept for your next battle)</small></p>` : ''}
       ${d.fact ? `<div class="notes" role="note"><h3>Field Notes</h3>${d.fact.html}<span class="src">Source: ${d.fact.source}</span></div>` : ''}
-      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${d.finale ? btn('credits', FINALE.button, 'autofocus', 'btn primary') : ''}${btn('again', 'Play again', d.next || d.finale ? '' : 'autofocus')}${btn('menu', 'Menu', 'data-back')}</nav>
+      <nav class="menu row">${d.next ? btn('play', 'Next battle', `data-v="${d.next}" autofocus`, 'btn primary') : ''}${d.finale ? btn('credits', FINALE.button, 'autofocus', 'btn primary') : ''}${d.offerEasy ? btn('tryEasy', 'Try Easy', 'autofocus', 'btn primary') : ''}${btn('again', 'Play again', d.next || d.finale || d.offerEasy ? '' : 'autofocus')}${d.retry ? btn('again', 'Retry same wind', 'data-same="1"') : ''}${btn('menu', 'Menu', 'data-back')}</nav>
     </div>`,
 
   pause: () => `

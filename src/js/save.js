@@ -12,7 +12,7 @@ let mem = null;
 export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
-  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {} },
+  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {} },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
   resume: null,
@@ -57,6 +57,9 @@ function decoded(s) {
   // the fewest turns each Story battle was won in (a Records figure); a damaged entry is dropped, never guessed at
   out.story.bestTurns = object(out.story.bestTurns) ? { ...out.story.bestTurns } : {};
   for (const [id, n] of Object.entries(out.story.bestTurns)) if (!(Number.isInteger(n) && n >= 1 && n <= 999)) delete out.story.bestTurns[id];
+  // consecutive losses per Story battle (S2-18), cleared by a win; a damaged entry is dropped
+  out.story.losses = object(out.story.losses) ? { ...out.story.losses } : {};
+  for (const [id, n] of Object.entries(out.story.losses)) if (!(Number.isInteger(n) && n >= 1 && n <= 99)) delete out.story.losses[id];
   for (const key of Object.keys(d.stats)) if (!number(out.stats[key])) out.stats[key] = 0;
   // a hand-edited or damaged save must not feed odd values to CSS, audio or the Story map
   if (![1, 1.25, 1.5].includes(out.settings.textScale)) out.settings.textScale = d.settings.textScale;
@@ -109,7 +112,7 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null, losses: {} };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
     if (s.story.unlocked > before.story.unlocked) earned.unlocked = s.story.unlocked;
@@ -123,7 +126,12 @@ function capture(s, intent, fresh, fields = []) {
       if (Array.isArray(slots) && slots.some((n, i) => n > (old[i] || 0))) put(earned.tiers, id, slots);
     }
     if (number(s.story.acorns) && s.story.acorns !== before.story.acorns) earned.acorns = s.story.acorns;
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    // a loss run that changed (a win clears it to 0); the latest value wins when two tabs disagree
+    for (const id of new Set([...Object.keys(s.story.losses || {}), ...Object.keys(before.story.losses || {})])) {
+      const n = (s.story.losses || {})[id] || 0;
+      if (n !== ((before.story.losses || {})[id] || 0)) earned.losses[id] = n;
+    }
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || Object.keys(earned.losses).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -157,6 +165,7 @@ function merged(latest, callback) {
       put(value.story.starTier, id, slots.map((n, i) => Math.max(n, old[i] || 0)));
     }
     if (e.acorns != null) value.story.acorns = e.acorns;
+    for (const [id, n] of Object.entries(e.losses || {})) { if (n > 0) put(value.story.losses, id, n); else delete value.story.losses[id]; }
   } else notice(callback);
   let resumeApplied = false;
   if (pending.resume) {

@@ -296,7 +296,7 @@ App.onMenu = (act, d) => {
       const L = ALL[d.v];
       if (!L) return;
       if (L.practice) return App.onMenu('practice', {});
-      if (/^story-/.test(L.id)) return openPrep({ mode: 'story', levelId: L.id, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
+      if (/^story-/.test(L.id)) return openPrep({ mode: 'story', levelId: L.id, seed: d.seed != null ? +d.seed : undefined, team: s.story.team ?? 0, difficulty: s.settings.difficulty, loadout: 'story', unlocked: storyInventory(L.n), birds: L.tutorial ? 'off' : 'some' });
       return startBattle({ mode: 'quick', levelId: L.id, team: s.quick.team, birds: s.quick.birds });
     }
     case 'quick': freshSave(); fixQuickLevel(); return screens.show('quick', { levels: STORY });
@@ -321,7 +321,13 @@ App.onMenu = (act, d) => {
       return showTitle();
     case 'resume': App.paused = false; screens.hide(); kick(); return;
     case 'restart': if (askLeave('restart')) return; return startBattle({ ...App.setup, battle: null, seed: undefined });
-    case 'again': if (App.setup.mode === 'story') return App.onMenu('play', { v: App.setup.levelId }); return startBattle({ ...App.setup, battle: null, seed: undefined, buys: App.setup.buys });
+    case 'again': {
+      // "Retry same wind" replays the battle's own seed: the same wind, birds and first thrower
+      const seed = d.same ? App.setup.seed : undefined;
+      if (App.setup.mode === 'story') return App.onMenu('play', { v: App.setup.levelId, seed });
+      return startBattle({ ...App.setup, battle: null, seed, buys: App.setup.buys });
+    }
+    case 'tryEasy': s.settings.difficulty = 'easy'; persist('settings', 'difficulty'); applySettings(); return App.onMenu('play', { v: App.setup.levelId });
     case 'menu': if (askLeave('menu')) return; persist(); return showTitle();
     case 'leaveYes': return App.onMenu(d.then, {});
     case 'resumeBattle': { const r = s.resume; if (r) return startBattle({ ...r.setup, battle: r.battle }); return; }
@@ -372,6 +378,7 @@ function showTitle() {
 }
 
 const TIER_KEYS = ['Easy', 'Medium', 'Sharp', 'Hard']; // the saved win counters, in the order of TIERS
+const LOSS_OFFER = 3; // losses in a row on one Story battle before the results card offers Easy
 function battleOver() {
   const sim = App.sim, b = sim.b, res = b.result, L = App.level, s = App.save;
   const me = b.teams.findIndex((t) => t.human);
@@ -391,6 +398,8 @@ function battleOver() {
     s.story.starTier[L.id] = starTiers(s.story, L.id).map((t, i) => (i < stars ? Math.max(t, tier) : t));
     if (App.setup.purse != null) s.story.acorns = clamp(Math.floor(b.teams[me].acorns), 0, PURSE_CAP);
     if (win) s.story.bestTurns[L.id] = Math.min(Math.max(1, myTurns), s.story.bestTurns[L.id] ?? Infinity);
+    // a run of losses on one battle ends with a win; after LOSS_OFFER of them the results card offers Easy (S2-18)
+    if (win) delete s.story.losses[L.id]; else s.story.losses[L.id] = Math.min(99, (s.story.losses[L.id] || 0) + 1);
     if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
     if (win && STORY[L.n]) next = STORY[L.n].id;
     s.resume = null;
@@ -417,6 +426,8 @@ function battleOver() {
     line: App.setup.mode === 'story' && !App.setup.practice ? resultLine(L.n, win, me, TEAMS[1 - me].short, TEAMS[me].home) : '', unlock, next, tier,
     banked: App.setup.mode === 'story' && App.setup.purse != null ? s.story.acorns : null,
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
+    losses: App.setup.mode === 'story' && !win ? s.story.losses[L.id] || 0 : 0, offerEasy: App.setup.mode === 'story' && !win && (s.story.losses[L.id] || 0) >= LOSS_OFFER && s.settings.difficulty !== 'easy',
+    retry: !win && !practice,
     stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
   });
   decorateScreen();
