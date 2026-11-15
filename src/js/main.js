@@ -920,6 +920,13 @@ function stepOnce() {
   handleEvents();
 }
 
+// Haptics (S5-12): a short pulse on the player's throw (10 ms), a hit (18 ms) and a knockout or walnut burst (20, 30, 40),
+// where the device has a motor and the player has not turned Vibration off or asked for reduced motion.
+function buzz(pattern) {
+  if (App.save.settings.vibration === false || App.reduced || typeof navigator.vibrate !== 'function') return;
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; // the browser only allows it after a touch or key
+  try { navigator.vibrate(pattern); } catch (e) { /* not allowed here */ }
+}
 // The last human throw leaves its path as faint dots until the next throw (S2-02), and a throw that hit nothing says why.
 const TRAIL_EVERY = 4, TRAIL_MAX = 600, SHOT_CLOSE = 70, SHOT_WIND = 0.25;
 function recordShot() {
@@ -964,10 +971,10 @@ function handleEvents() {
   for (const ev of sim.drain()) {
     const v = vis(ev.sq);
     switch (ev.type) {
-      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); startShot(ev); break;
+      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); startShot(ev); if (b.teams[b.turn.team].human) buzz(10); break;
       case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap'); break;
       case 'impact':
-        if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst'); }
+        if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst'); buzz([20, 30, 40]); }
         else { fx.dust(ev.x, ev.y, ev.on === 'terrain' ? 16 : 8, L.season === 'winter' && ev.on === 'terrain' ? '#E8ECEA' : '#8A6A44'); fx.ring(ev.x, ev.y, 34, '#FFF6C8'); sfx('thock', ev.kind); if (ev.kind === 'hedgeapple') cam.shake = Math.max(cam.shake, 0.6); }
         if (ev.on === 'wood') { fx.chips(ev.x, ev.y, 12); fx.leaves(ev.x, ev.y, 12, L.season); }
         if (App.lastShot && App.lastShot.rec && ev.on === 'terrain') App.lastShot.end = { x: ev.x, y: ev.y };
@@ -980,7 +987,7 @@ function handleEvents() {
         fx.text(ev.x + 36, ev.y - 150, '-' + Math.round(ev.dmg), '#FFE0DA', true); fx.stars(ev.x, ev.y - 20);
         fx.leaves(ev.x, ev.y, 18, L.season); fx.chips(ev.x, ev.y, 8); fx.ring(ev.x, ev.y, 52, '#F2C230');
         if (!App.reduced) { App.hitstop = 0.06; cam.shake = Math.max(cam.shake, 0.35); }
-        sfx('boing');
+        sfx('boing'); buzz(18);
         break;
       case 'wood': fx.chips(ev.x || 0, ev.y || 0, 0); break;
       case 'break': {
@@ -997,7 +1004,7 @@ function handleEvents() {
         // follow the tumble into the leaf pile
         if (!sim.b.practice) { const mx = (ev.from.x + ev.to.x) / 2, my = Math.min(ev.from.y, ev.to.y) - 40; cam.set(mx, my, Math.max(cam.zoom, Math.min(1.1, cam.vw / 900)), false); App.koHold = 1.4; }
         fx.stars(ev.from.x, ev.from.y - 30); fx.chips(ev.from.x, ev.from.y, 10); fx.leaves(ev.from.x, ev.from.y - 10, 14, L.season);
-        sfx('ko');
+        sfx('ko'); buzz([20, 30, 40]);
         // the cheer is for the rival's loss: when the one human side loses a squirrel it stays quiet
         if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) setTimeout(() => sfx('cheer'), 500);
         hud.call(`${q.name} is out!`, 1400);

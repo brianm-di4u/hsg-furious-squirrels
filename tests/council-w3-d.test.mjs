@@ -31,6 +31,20 @@ const countStarts = () => {
   const start = proto.start;
   proto.start = function patched(...a) { window.__starts++; return start.apply(this, a); };
 };
+// a phone's vibration motor, as a list of the patterns asked for
+const fakeVibrate = () => {
+  window.__vib = [];
+  Object.defineProperty(navigator, 'vibrate', { configurable: true, value: (p) => { window.__vib.push(p); return true; } });
+};
+// an aim, found with the game's own preview, that hits a rival squirrel
+const hitAim = (t, nut = 'acorn') => t.page.evaluate((k) => {
+  const sim = window.__FS.sim;
+  for (let power = 0.5; power <= 1; power += 0.02) for (let angle = 20; angle <= 75; angle += 1) {
+    const pr = sim.preview({ nut: k, angle, power }, {});
+    if (pr && pr.impact && pr.impact.type === 'squirrel') return { nut: k, angle, power: Math.round(power * 100) / 100 };
+  }
+  return null;
+}, nut);
 const waitAudio = (t, fn, arg) => t.page.waitForFunction(fn, arg, { timeout: 15000 });
 const humanAims = (t) => t.page.waitForFunction(() => { const s = window.__game.getState(); return s.battle && s.battle.turn.team === 0 && s.battle.phase === 'aim' && !s.aiActive; }, null, { timeout: 90000 });
 
@@ -242,6 +256,55 @@ export const tests = [
       await waitAudio(t, () => { const x = window.__game.getState().audio; return x.scheduler && x.musicPlaying && x.ambiencePlaying && x.busMusic > 0.9; });
       t.expect((await rate(3000)) > 3, 'Sound on again brings the music and the bed back');
       t.equal((await audioNow()).theme, 'title', 'and it is still the title theme');
+    },
+  },
+  // ---- S5-12 ----
+  {
+    name: 'S5-12 a throw, a hit and a walnut burst buzz the phone, and Vibration Off or reduced motion keep it still',
+    viewports: ['mobile'],
+    initScript: fakeVibrate,
+    async run(t) {
+      const shoot = async (settings, nut) => {
+        await t.game('act', 'clearSave');
+        await t.reload();
+        await t.game('setState', { settings });
+        await startHuman(t);
+        await t.page.keyboard.press('Shift'); // a touch or key: the browser allows vibration only after one
+        const aim = nut === 'walnut' ? { nut, angle: 45, power: 0.5 } : await hitAim(t);
+        if (!aim) throw new Error('no aim hits a rival here');
+        await t.game('setState', { inventory: { walnut: 2 } });
+        await t.page.evaluate(() => { window.__vib.length = 0; });
+        await t.game('act', 'aim', aim);
+        await t.game('act', 'fire');
+        await t.game('act', 'skipFlight');
+        return t.page.evaluate(() => window.__vib.map((p) => JSON.stringify(p)));
+      };
+      let v = await shoot({}, 'acorn');
+      t.expect(v.includes('10') && v.includes('18'), `a throw and a hit buzz (${v.join(" ")})`);
+      v = await shoot({}, 'walnut');
+      t.expect(v.includes('10') && v.includes('[20,30,40]'), `a walnut burst buzzes the long pattern (${v.join(" ")})`);
+      v = await shoot({ vibration: false }, 'acorn');
+      t.equal(v.length, 0, 'Vibration Off: nothing');
+      v = await shoot({ reducedMotion: true }, 'acorn');
+      t.equal(v.length, 0, 'reduced motion: nothing');
+    },
+  },
+  {
+    name: 'S5-12 Settings has a Vibration switch that is saved, where the device can vibrate',
+    initScript: fakeVibrate,
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      t.equal((await t.state()).settings.vibration, true, 'a new profile has Vibration on');
+      await t.game('scene', 'settings');
+      t.expect(/Vibration/.test(await t.page.textContent('#screens')), 'Settings shows the row');
+      await t.page.click('[data-k="vibration"][data-v="false"]');
+      t.equal((await t.state()).settings.vibration, false, 'Off is saved');
+      await t.page.locator('[data-k="vibration"][data-v="false"]').scrollIntoViewIfNeeded();
+      await snap(t, 'S5-12-settings-vibration');
+      await t.reload();
+      t.equal((await t.state()).settings.vibration, false, 'and survives a reload');
+      await t.game('setState', { settings: { vibration: true } });
     },
   },
 ];

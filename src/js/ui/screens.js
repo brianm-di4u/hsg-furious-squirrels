@@ -263,6 +263,7 @@ const TEMPLATES = {
       <p class="starrule">This is the Story difficulty. Quick Battle sets its own Rival skill.</p>
       ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By difficulty'], ['always', 'Always long'], ['off', 'Off']]))}
       ${field('Release', seg('releaseThrows', s.releaseThrows, [[true, 'Throws'], [false, 'Only aims']]))}
+      ${typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' ? field('Vibration', seg('vibration', s.vibration, [[true, 'On'], [false, 'Off']])) : ''}
       ${field('Turn timer', seg('turnTimer', s.turnTimer, [[0, 'Off'], [30, '30 s'], [60, '60 s']]))}
       ${field('Text size', seg('textScale', s.textScale, [[1, '100%'], [1.25, '125%'], [1.5, '150%']]))}
       ${field('Tutorial hints', seg('tutorial', s.tutorial, [[true, 'On'], [false, 'Off']]))}
