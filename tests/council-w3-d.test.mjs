@@ -17,8 +17,12 @@ async function startHuman(t, opts = {}) {
   }
   throw new Error('no seed lets the player throw first');
 }
-const MASTER = 0.45; // the master gain is the Volume setting times this (audio.js)
+const MASTER = 0.7; // the master gain is the Volume setting times this (audio.js; 0.45 before S5-06)
 const render = (t, name, secs, opts) => t.page.evaluate(([n, s, o]) => window.__game.audioRender(n, s, false, o), [name, secs, opts || {}]);
+const gesture = async (t) => {
+  await t.page.keyboard.press('Shift');
+  await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
+};
 const humanAims = (t) => t.page.waitForFunction(() => { const s = window.__game.getState(); return s.battle && s.battle.turn.team === 0 && s.battle.phase === 'aim' && !s.aiActive; }, null, { timeout: 90000 });
 
 export const tests = [
@@ -83,7 +87,7 @@ export const tests = [
       const heard = await render(t, 'day', 30), raw = await render(t, 'day', 30, { raw: true }), full = await render(t, 'day', 30, { volume: 1 });
       // as heard is a fraction of the kit's own scale (the master gain is 0.225 at the shipped volume, and the limiter adds make-up gain), and full volume is twice the shipped one
       const frac = heard.peak / raw.peak;
-      t.expect(frac > 0.2 && frac < 0.45, `the default volume renders at ${frac.toFixed(3)} of the kit's own scale (the master gain is ${0.5 * MASTER})`);
+      t.expect(frac > 0.5 * MASTER && frac < 1 * MASTER, `the default volume renders at ${frac.toFixed(3)} of the kit's own scale (the master gain is ${0.5 * MASTER})`);
       t.expect(Math.abs(full.peak / heard.peak - 2) < 0.06, `full volume is twice the default (${(full.peak / heard.peak).toFixed(2)})`);
       const a = await render(t, 'cue:ko', 2), b = await render(t, 'cue:ko', 2, { volume: 1 });
       t.expect(a.peak > 0.001 && Math.abs(b.peak / a.peak - 2) < 0.1, `a cue renders, and doubles with the volume (${a.peak} then ${b.peak})`);
@@ -149,6 +153,51 @@ export const tests = [
       await move('pointercancel', 300, 470, 6);
       await t.waitFrames(3);
       await snap(t, 'S1-15-aim-mode');
+    },
+  },
+  // ---- S5-06 ----
+  {
+    name: 'S5-06 the master gain is the new scale, and the typical cue now sits clearly above the music as heard',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await gesture(t);
+      const a = (await t.state()).audio;
+      t.expect(Math.abs(a.master - 0.5 * MASTER) < 0.005, `the live master gain is the Volume 0.5 times ${MASTER} (${a.master})`);
+      const list = await t.game('audioList');
+      const peaks = [];
+      for (const c of list.cues) peaks.push((await render(t, 'cue:' + c, 2.5, { arg: c === 'thock' ? 'acorn' : undefined })).peak);
+      peaks.sort((x, y) => x - y);
+      const median = peaks[peaks.length >> 1], loudest = peaks[peaks.length - 1];
+      const music = Math.max(...(await Promise.all(['title', 'day', 'night'].map((n) => render(t, n, 30, { intensity: 1 })))).map((r) => r.peak));
+      t.log(`as heard at the default volume: median cue ${median}, loudest cue ${loudest}, loudest music peak ${music}`);
+      t.expect(median >= 0.15 && median <= 0.45, `the typical cue peaks at ${median}, inside 0.15 to 0.45 (the range is 0.2 to 0.45, with one repeat's allowance)`);
+      t.expect(median > music * 1.8, `the typical cue (${median}) is clearly above the music's peak (${music})`);
+      t.expect(music >= 0.06 && music <= 0.16, `the music peaks at ${music} as heard, inside 0.06 to 0.16`);
+      const bed = await render(t, 'summerDay', 20);
+      t.expect(bed.peak < 0.07 && bed.rmsDb >= -52, `the bed stays under 0.07 and above -52 dB (peak ${bed.peak}, ${bed.rmsDb} dB)`);
+      // at the maximum volume the loudest cue, struck twenty times, stays under the clip
+      const hot = await render(t, 'cue:burst', 22, { volume: 1, repeats: 20 });
+      t.expect(hot.peak < 0.95, `the loudest cue repeated twenty times at maximum volume peaks at ${hot.peak}`);
+    },
+  },
+  {
+    name: 'S5-06 the music ducks under a burst and a knockout, then comes back',
+    viewports: ['desktop'],
+    async run(t) {
+      await startHuman(t);
+      await gesture(t);
+      await t.page.waitForFunction(() => window.__game.getState().audio.busMusic > 0.95, null, { timeout: 15000 });
+      await t.game('setState', { inventory: { walnut: 3 } });
+      await t.game('act', 'aim', { nut: 'walnut', angle: 45, power: 0.5 });
+      await t.page.evaluate(() => { window.__low = 1; window.__sampler = setInterval(() => { window.__low = Math.min(window.__low, window.__game.getState().audio.busMusic); }, 20); });
+      await t.game('act', 'fire');
+      await t.game('act', 'skipFlight');
+      await t.page.waitForFunction(() => window.__low < 0.85, null, { timeout: 8000 });
+      await t.page.waitForFunction(() => window.__game.getState().audio.busMusic > 0.95, null, { timeout: 15000 });
+      t.expect(true, 'a walnut burst ducked the music and it came back');
+      await t.page.evaluate(() => clearInterval(window.__sampler));
     },
   },
 ];

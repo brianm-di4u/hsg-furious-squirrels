@@ -8,7 +8,11 @@ import { SCORES, SCENES } from './music.js';
 let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null, tOff = 0; // tOff: seconds added to every cue's start, for the offline render
 const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
 const SFX_GAIN = 0.9; // the effects bus at its full level
-const MASTER_SCALE = 0.45; // the master gain is the Volume setting times this
+// The mix (S5-06): the master gain is the Volume setting times MASTER_SCALE (0.45 before wave 3: the quietest game in the
+// collection by a factor of two), and every cue is struck CUE_BOOST times harder than it is written (1 before wave 3, when
+// the loudest cue sat below the music's peak as heard). To undo the retune set them back to 0.45 and 1.
+const MASTER_SCALE = 0.7;
+const CUE_BOOST = 5.5;
 const SHIPPED_VOLUME = 0.5; // the Volume a new profile starts at (save.js)
 const FADE_MUSIC = 1.6, FADE_SCENE = 2.5; // seconds a mood or a place takes to cross-fade into the next
 
@@ -102,7 +106,7 @@ export function handleVisibility(hidden) {
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -110,7 +114,7 @@ function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, atta
   const t = ctx.currentTime + tOff + at, o = ctx.createOscillator(), g = ctx.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, t);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol * CUE_BOOST, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   let node = o;
   if (filter) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filter; o.connect(f); node = f; }
   node.connect(g); g.connect(bus);
@@ -122,7 +126,7 @@ function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, 
   s.buffer = noiseBuf; s.loop = true;
   f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
   if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(40, freq * sweep), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol * CUE_BOOST, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   s.connect(f); f.connect(g); g.connect(bus);
   s.start(t, 0.1); s.stop(t + dur + 0.02);
 }
@@ -140,12 +144,12 @@ export function sfx(name, arg) {
     case 'tap': for (let i = 0; i < 3; i++) tone(1200 + i * 300, 0.07, { type: 'sine', vol: 0.06, at: i * 0.03 }); break;
     case 'thock': tone(POP[arg] || 500, 0.09, { type: 'triangle', vol: 0.16, slide: 0.55 }); noise(0.06, { vol: 0.08, freq: 2200, q: 2 }); break;
     case 'thud': tone(110, 0.25, { type: 'sine', vol: 0.2, slide: 0.6 }); noise(0.2, { vol: 0.12, type: 'lowpass', freq: 500 }); break;
-    case 'burst': noise(0.45, { vol: 0.22, type: 'lowpass', freq: 900, sweep: 0.25 }); tone(90, 0.4, { type: 'sine', vol: 0.18, slide: 0.5 }); break;
+    case 'burst': if (kit) kit.music.duck(4, 450); noise(0.45, { vol: 0.22, type: 'lowpass', freq: 900, sweep: 0.25 }); tone(90, 0.4, { type: 'sine', vol: 0.18, slide: 0.5 }); break;
     case 'crack': noise(0.12, { vol: 0.2, freq: 2600, q: 3 }); noise(0.3, { vol: 0.1, freq: 600, q: 1, at: 0.05 }); tone(180, 0.18, { type: 'sawtooth', vol: 0.05, slide: 0.5, filter: 900 }); break;
     case 'rustle': noise(0.25, { vol: 0.07, type: 'highpass', freq: 3500 }); break;
     case 'boing': tone(300, 0.28, { type: 'sine', vol: 0.12, slide: 2.2 }); tone(600, 0.2, { type: 'sine', vol: 0.05, at: 0.05, slide: 1.5 }); break;
     case 'chitter': for (let i = 0; i < 4; i++) tone((arg ? 2200 : 1800) + (i % 2) * 300, 0.04, { type: 'square', vol: 0.035, at: i * 0.055, filter: 4000 }); break;
-    case 'ko': tone(900, 0.7, { type: 'sine', vol: 0.12, slide: 0.3 }); noise(0.4, { vol: 0.08, type: 'highpass', freq: 3000, at: 0.5 }); break;
+    case 'ko': if (kit) kit.music.duck(4, 600); tone(900, 0.7, { type: 'sine', vol: 0.12, slide: 0.3 }); noise(0.4, { vol: 0.08, type: 'highpass', freq: 3000, at: 0.5 }); break;
     case 'cheer': if (kit) kit.music.duck(6, 500); for (let i = 0; i < 4; i++) tone([523, 659, 784, 1046][i], 0.18, { type: 'triangle', vol: 0.09, at: i * 0.09 }); noise(0.6, { vol: 0.05, freq: 1500, q: 0.6 }); break;
     case 'win': if (kit) kit.music.duck(6, 700); [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, 0.22, { type: 'triangle', vol: 0.1, at: i * 0.12 })); break;
     case 'lose': if (kit) kit.music.duck(6, 700); [392, 349, 330, 262].forEach((f, i) => tone(f, 0.28, { type: 'triangle', vol: 0.08, at: i * 0.16 })); break;
@@ -192,6 +196,8 @@ export function setTension(on) {
 // touches the live audio or the settings.
 //   name: a score, a scene, 'cue:<name>' (opts.arg, opts.repeats times, one a second) or 'mix' (the busiest moment).
 const RENDER_PARAMS = { wind: 0.6, steam: 0.6, birds: 1 };
+// a render starts with the limiter at rest, which holds the first hit back for a moment: the cues begin after this lead, as they do on a live page
+const CUE_LEAD = 0.5;
 const MIX_CUES = [['burst'], ['crack'], ['boing'], ['ko'], ['cheer'], ['win']]; // struck in turn, one a second, over the piece and the bed
 export function audioList() { return { music: Object.keys(SCORES), ambience: Object.keys(SCENES), cues: CUES.slice() }; }
 function renderCues(oc, m, k, list, repeats, gap) {
@@ -199,7 +205,7 @@ function renderCues(oc, m, k, list, repeats, gap) {
   try {
     ctx = oc; kit = k; noiseBuf = makeNoise(oc); state.on = true; state.sfxVol = 1;
     sfxBus = oc.createGain(); sfxBus.gain.value = SFX_GAIN; sfxBus.connect(m);
-    for (let i = 0; i < repeats; i++) { tOff = i * gap; const [n, a] = list[i % list.length]; sfx(n, a); }
+    for (let i = 0; i < repeats; i++) { tOff = CUE_LEAD + i * gap; const [n, a] = list[i % list.length]; sfx(n, a); }
   } finally { ({ ctx, sfxBus, noiseBuf, kit, tOff } = keep); state.on = keep.on; state.sfxVol = keep.sfxVol; state.played = keep.played; }
 }
 export function audioRender(name, seconds = 60, wantWav = false, opts = {}) {
