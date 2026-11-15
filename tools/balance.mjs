@@ -127,7 +127,7 @@ if (!isMainThread && workerData && workerData.job) {
   process.exit(0);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) && isMainThread && args.includes('--study')) await study();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) && isMainThread && (args.includes('--study') || args.includes('--stars'))) await study();
 else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) && isMainThread) {
   const t0 = performance.now();
   const pairs = [['medium', 'medium'], ['hard', 'easy'], ['easy', 'hard'], ['medium', 'easy'], ['easy', 'medium'], ['easy', 'easy'], ['hard', 'hard'],
