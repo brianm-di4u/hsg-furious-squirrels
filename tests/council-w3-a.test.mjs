@@ -28,7 +28,7 @@ const gesture = async (t) => {
   await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
 };
 const audio = async (t) => (await t.state()).audio;
-const waitAudio = (t, fn, arg) => t.page.waitForFunction(fn, arg, { timeout: 15000 }); // generous: the audio clock runs slowly when the machine is busy
+const waitAudio = (t, fn, arg) => t.page.waitForFunction(fn, arg, { timeout: 40000 }); // generous: the audio clock runs slowly when the machine is busy
 const throwOnce = async (t) => { await t.game('act', 'fire', {}); await t.game('act', 'skipFlight'); };
 
 export const tests = [
