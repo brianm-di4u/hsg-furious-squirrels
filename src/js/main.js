@@ -1108,12 +1108,18 @@ function updateGuide() {
   let frac = App.setup.mode === 'practice' ? 1 : set === 'always' ? 0.6 : set === 'off' ? 0 : GUIDE[App.setup.difficulty || 'medium'] ?? 0.22;
   if (!frac) { App.aimGuide = null; return; }
   const aim = b.teams[b.turn.team].aim, q = sim.active();
-  const key = [aim.nut, aim.angle, aim.power, q.x, q.y, b.wind, b.turn.n, frac].join(',');
+  // the birds fly while the player aims, so with any aloft the guide is worked out again as they move (P-N05): it is what a throw made now would do
+  const aloft = (b.birds || []).some((x) => !x.flee), key = [aim.nut, aim.angle, aim.power, q.x, q.y, b.wind, b.turn.n, frac, aloft ? Math.round(b.birdT * 15) : 0].join(',');
   if (key === App.guideKey) return;
   App.guideKey = key;
-  const pr = sim.preview(aim, { every: 4, squirrels: false });
+  let pr = sim.preview(aim, { every: 4, squirrels: false, birds: aloft }), bird = null;
+  if (pr.impact && pr.impact.type === 'bird') {
+    // the dots stay the clear arc; a ring marks the bird that would meet it
+    bird = { x: pr.impact.bx, y: pr.impact.by, kind: sim.b.birds[pr.impact.bird].k };
+    pr = sim.preview(aim, { every: 4, squirrels: false });
+  }
   const n = Math.max(2, Math.round(pr.pts.length * frac));
-  App.aimGuide = { pts: pr.pts.slice(1, n) };
+  App.aimGuide = { pts: pr.pts.slice(1, n), bird };
 }
 
 function showError(err) {

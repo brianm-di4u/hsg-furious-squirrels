@@ -153,13 +153,16 @@ function stepRoll(nut, env, dt) {
 export function predict(env, nut, opts = {}) {
   const pts = [], maxSteps = opts.maxSteps || 1440, every = opts.every || 4, dt = opts.dt;
   const live = [nut];
+  // birds fly on while the nut does: each step sees them where the battle's bird clock will have put them (the AI passes none)
+  const e = env.birds && env.birds.length ? { ...env } : env;
   let first = null, step = 0;
   for (; step < maxSteps && live.length; step++) {
     if (opts.tapAt != null && step === opts.tapAt) {
       for (const k of applyTap(live[0], opts.rngNull)) live.push(k);
     }
     for (let i = live.length - 1; i >= 0; i--) {
-      const k = live[i], ev = stepNut(k, env, dt);
+      if (e !== env) e.birdT = env.birdT + step * dt;
+      const k = live[i], ev = stepNut(k, e, dt);
       if (i === 0 && step % every === 0) pts.push([k.x, k.y]);
       if (!ev || ev.cont) continue;
       if (ev.type === 'terrain' && k.kind === 'hedgeapple' && !k.rolled) { startRoll(k, env); continue; }

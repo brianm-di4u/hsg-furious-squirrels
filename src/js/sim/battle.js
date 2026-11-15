@@ -478,7 +478,7 @@ export class Sim {
     if (!q) return null;
     const h = this.hand(q);
     const nut = makeNut(aim.nut || 'acorn', h.x, h.y, aim.angle, aim.power, VMAX, q.team, q.id, q.facing, this.homeTree(q));
-    return predict({ ...this.env(), squirrels: opts.squirrels === false ? [] : this.b.squirrels, birds: [] }, nut, { dt: DT, ...opts });
+    return predict({ ...this.env(), squirrels: opts.squirrels === false ? [] : this.b.squirrels, birds: opts.birds ? this.b.birds : [] }, nut, { dt: DT, ...opts });
   }
 
   alive(team) { return this.b.squirrels.filter((q) => q.team === team && !q.out && !q.dummy).length; }

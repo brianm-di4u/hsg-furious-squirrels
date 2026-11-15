@@ -224,6 +224,36 @@ export const tests = [
       t.equal(await tapped(), true, 'Space still spends the trick at once');
     },
   },
+  // ---- P-N05 ----
+  {
+    name: 'P-N05 the aim guide rings the bird that a throw made now would meet, and drops the ring when the bird is out of the way',
+    async run(t) {
+      await humanFirst(t, { birds: 'lots' });
+      await t.game('setState', { settings: { aimGuide: 'always' }, wind: 0, aim: { nut: 'acorn', angle: 45, power: 0.7 } });
+      await t.game('pause'); // the bird clock stands still, so the test decides where the bird is
+      // a bird parked (no speed, no wind) on the arc, a third of the way along it
+      const place = (dy) => t.page.evaluate((off) => {
+        const sim = window.__FS.sim, clean = sim.preview(sim.b.teams[0].aim, { squirrels: false }), pt = clean.pts[Math.floor(clean.pts.length * 0.3)];
+        sim.b.birds = [{ k: 'crow', dir: 1, x0: pt[0], alt: 0, v: 0, ph: 0, ox: 0, oy: 0, R: 1, cx: 0, flee: null }];
+        sim.b.birdT = 0;
+        sim.b.birds[0].oy = pt[1] - sim.level.floorY + off; // the bird's height is the floor, minus its altitude (0), plus this offset
+        window.__FS.guideKey = ''; window.__FS.kick();
+        return { n: clean.pts.length };
+      }, dy);
+      const guide = () => t.page.evaluate(() => { const g = window.__FS.aimGuide; return g ? { dots: g.pts.length, bird: g.bird } : null; });
+      const arc = await place(0);
+      await t.waitFrames(4);
+      let g = await guide();
+      t.expect(g && g.bird && g.bird.kind === 'crow', 'a crow on the arc is marked');
+      t.expect(g.dots >= Math.round(arc.n * 0.6) - 2, `and the dots are still the whole clear arc (${g.dots} of ${arc.n})`);
+      await t.waitFrames(3);
+      await snap(t, 'P-N05-bird-in-the-way');
+      await place(-500);
+      await t.waitFrames(4);
+      g = await guide();
+      t.expect(g && !g.bird, 'a bird well off the arc is not marked');
+    },
+  },
   // ---- S6-09 ----
   {
     name: 'S6-09 the title is whole on a phone on its side, and never loses its top edge in a very short window',

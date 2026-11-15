@@ -1,6 +1,6 @@
 // Canvas2D renderer (MECHANICS.md §10): sky, painted/vector Row backdrop with parallax, steam, terrain, the
 // tower, trees, leaf piles, squirrels, nuts, falling branches, FX, the aim guide and in-world labels.
-import { W, H, SQ_UP, NUTS, GRIP } from '../sim/const.js';
+import { W, H, SQ_UP, NUTS, GRIP, BIRDS } from '../sim/const.js';
 import { SKY } from './looks.js';
 import { Camera } from './camera.js';
 import { TerrainLayer } from './terrainfx.js';
@@ -85,7 +85,7 @@ export class Renderer {
     drawBirds(g, cam, sim, app.time, this.birdSprites);
     if (level.targets) this.drawTargets(g, app);
     if (app.showPerches) this.drawPerches(g, app);
-    if (app.aimGuide) this.drawGuide(g, app.aimGuide);
+    if (app.aimGuide) { this.drawGuide(g, app.aimGuide); if (app.aimGuide.bird) this.drawBirdMark(g, app.aimGuide.bird); }
     this.drawSquirrels(g, app);
     this.drawAimWedge(g, app);
     if (app.dragRing) this.drawCancelRing(g, app.dragRing);
@@ -362,6 +362,17 @@ export class Renderer {
       g.setLineDash([]); g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#1A1410'; g.fillStyle = '#FFF6C8';
       g.strokeText('Release to cancel', ring.x, ring.y - ring.r - 34); g.fillText('Release to cancel', ring.x, ring.y - ring.r - 34);
     }
+    g.restore();
+  }
+
+  // a ring round the bird that a throw made now would meet, and its name: a miss there is the bird's, not the player's
+  drawBirdMark(g, bird) {
+    const cam = this.cam, [x, y] = cam.toScreen(bird.x, bird.y), r = Math.max(16, (BIRDS[bird.kind].r + 12) * cam.zoom), name = BIRDS[bird.kind].name[0].toUpperCase() + BIRDS[bird.kind].name.slice(1);
+    g.save();
+    for (const [col, w] of [['#1A1410', 5], ['#FF8A6B', 2.5]]) { g.strokeStyle = col; g.lineWidth = w; g.setLineDash([5, 5]); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke(); }
+    g.setLineDash([]); g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#1A1410'; g.fillStyle = '#FFE0DA';
+    const txt = name + ' in the way', half = g.measureText(txt).width / 2 + 6, tx = Math.max(half, Math.min(cam.vw - half, x)), ty = y - r - 6 < 16 ? y + r + 16 : y - r - 6; // kept inside the window, below the ring when there is no room above
+    g.strokeText(txt, tx, ty); g.fillText(txt, tx, ty);
     g.restore();
   }
 
