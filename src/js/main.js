@@ -630,8 +630,9 @@ canvas.addEventListener('pointerdown', (e) => {
   if (b.phase !== 'aim' || !humanTurn()) { if (hurry()) kick(); drag = { pan: true, x: e.clientX, y: e.clientY }; return; }
   if (App.showPerches) {
     const id = perchAt(e.clientX, e.clientY);
-    if (id) { sim.move(id); sfx('chitter', sim.b.turn.team); App.guideKey = ''; kick(); return; }
-    drag = { pan: true, x: e.clientX, y: e.clientY }; return;
+    // a scamper ends Move mode, so the next drag aims (S1-15); a drag that misses a perch only pans, and says so
+    if (id) { sim.move(id); sfx('chitter', sim.b.turn.team); App.guideKey = ''; App.showPerches = false; hud.call('Aim mode', 900); say('Aim mode.'); kick(); return; }
+    drag = { pan: true, x: e.clientX, y: e.clientY, dist: 0, move: true }; return;
   }
   drag = { aim: true, x0: e.clientX, y0: e.clientY, moved: false, a0: { ...b.teams[b.turn.team].aim } };
 });
@@ -646,7 +647,11 @@ canvas.addEventListener('pointermove', (e) => {
     pinch = { d, cx, cy }; kick(); return;
   }
   if (!drag) return;
-  if (drag.pan) { cam.panBy(e.clientX - drag.x, e.clientY - drag.y); drag.x = e.clientX; drag.y = e.clientY; kick(); return; }
+  if (drag.pan) {
+    drag.dist = (drag.dist || 0) + Math.hypot(e.clientX - drag.x, e.clientY - drag.y);
+    if (drag.move && !drag.noted && drag.dist > 12 && App.showPerches) { drag.noted = true; hud.call('Move is on: tap Done to aim', 1400); }
+    cam.panBy(e.clientX - drag.x, e.clientY - drag.y); drag.x = e.clientX; drag.y = e.clientY; kick(); return;
+  }
   if (drag.aim) {
     const tx = drag.x0 - e.clientX, ty = drag.y0 - e.clientY, len = Math.hypot(tx, ty);
     if (len < 12 && !drag.moved) return;

@@ -112,4 +112,43 @@ export const tests = [
       t.expect(worst > 0.01, 'and the mix is not silent');
     },
   },
+  // ---- S1-15 ----
+  {
+    name: 'S1-15 a scamper ends Move mode so the next drag aims, and a drag that only pans says Move is on',
+    async run(t) {
+      await startHuman(t);
+      await t.waitFrames(4);
+      const move = async (type, x, y, id = 5) => t.page.evaluate(([ty, px, py, pid]) => { document.getElementById('view').dispatchEvent(new PointerEvent(ty, { pointerId: pid, pointerType: 'touch', clientX: px, clientY: py, button: 0, bubbles: true })); }, [type, x, y, id]);
+      const call = () => t.page.evaluate(() => ({ text: window.__FS.hud.el('call').textContent, show: window.__FS.hud.el('call').classList.contains('show'), moveOn: window.__FS.showPerches, label: window.__FS.hud.el('b-move').querySelector('.lbl').textContent }));
+      // Move on, then a drag that misses every perch: it pans, and says why
+      await t.page.evaluate(() => window.__FS.onHud('move'));
+      await t.waitFrames(3);
+      t.equal((await call()).label, 'Done', 'Move is on and the button says Done');
+      const cam0 = (await t.state()).camera;
+      await move('pointerdown', 60, 300); await move('pointermove', 100, 300); await move('pointermove', 160, 310);
+      let c = await call();
+      t.equal(c.text, 'Move is on: tap Done to aim', 'a pan drag in Move mode is explained');
+      t.expect((await t.state()).camera.x !== cam0.x, 'and it did pan');
+      await move('pointerup', 160, 310);
+      t.expect((await call()).moveOn, 'Move stays on until a scamper or Done');
+      // a scamper: tap a reachable perch
+      const spot = await t.page.evaluate(() => {
+        const S = window.__game, p = S.act('perches').find((n) => n.cost > 0), cam = window.__FS.renderer.cam;
+        const [x, y] = cam.toScreen(p.x, p.y); return { x, y, id: p.id };
+      });
+      await move('pointerdown', spot.x, spot.y); await move('pointerup', spot.x, spot.y);
+      await t.waitFrames(3);
+      c = await call();
+      t.expect(!c.moveOn && c.label !== 'Done', 'a scamper ends Move mode, and the button is Move again');
+      t.equal(c.text, 'Aim mode', 'and the game says Aim mode');
+      // the very next drag aims
+      const aim0 = { ...(await t.state()).battle.teams[0].aim };
+      await move('pointerdown', 400, 400, 6); await move('pointermove', 330, 440, 6); await move('pointermove', 300, 470, 6);
+      const aim1 = (await t.state()).battle.teams[0].aim;
+      t.expect(aim1.angle !== aim0.angle || aim1.power !== aim0.power, `the next drag changed the aim (${aim0.angle} deg, ${aim0.power} to ${aim1.angle} deg, ${aim1.power})`);
+      await move('pointercancel', 300, 470, 6);
+      await t.waitFrames(3);
+      await snap(t, 'S1-15-aim-mode');
+    },
+  },
 ];
