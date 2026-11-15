@@ -352,4 +352,34 @@ export const tests = [
       t.equal((await t.state()).audio.muffles, before, 'no dulling');
     },
   },
+  // ---- S5-18 ----
+  {
+    name: 'S5-18 each nut plucks its own note when chosen, and Move mode has a rising and a falling click',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await startHuman(t);
+      await gesture(t);
+      await t.waitFrames(3);
+      for (const k of ['pecan', 'walnut']) {
+        await t.page.click(`#nutbar .nut[data-nut="${k}"]`);
+        t.equal((await t.state()).audio.last, `pick:${k}`, `choosing the ${k} plays its own cue`);
+      }
+      await t.page.click('#b-move');
+      t.equal((await t.state()).audio.last, 'move:true', 'opening Move has its own click');
+      await t.page.click('#b-move');
+      t.equal((await t.state()).audio.last, 'move:false', 'and so does closing it');
+      // the pitch is the nut's own: count zero crossings in the first 60 ms of a rendered pluck
+      const pitch = async (nut) => {
+        const w = await t.page.evaluate((n) => window.__game.audioRender('cue:pick', 1, true, { arg: n, raw: true }).then((r) => r.wav), nut);
+        const b = Buffer.from(w, 'base64'), rate = 22050, from = Math.round(0.5 * rate), n = Math.round(0.06 * rate);
+        let z = 0, prev = 0;
+        for (let i = from; i < from + n; i++) { const v = b.readInt16LE(44 + i * 4); if (prev < 0 && v >= 0) z++; prev = v; }
+        return z / 0.06; // Hz, near enough
+      };
+      const low = await pitch('walnut'), high = await pitch('chinquapin');
+      t.expect(high > low * 1.8, `a chinquapin (${Math.round(high)} Hz) plucks well above a walnut (${Math.round(low)} Hz)`);
+    },
+  },
 ];

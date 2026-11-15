@@ -273,7 +273,7 @@ App.pickNut = (k) => {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'aim' || !humanTurn()) return;
   if (!sim.canUse(sim.b.turn.team, k)) return;
-  sim.setAim({ nut: k }); App.guideKey = ''; sfx('ui'); kick();
+  sim.setAim({ nut: k }); App.guideKey = ''; sfx('pick', k); kick();
 };
 function humanTurn() {
   const b = App.sim.b;
@@ -333,6 +333,7 @@ function toggleMove(on) {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'aim' || !humanTurn()) return;
   App.showPerches = on ?? !App.showPerches;
+  sfx('move', App.showPerches);
   if (App.showPerches) { const q = sim.active(); App.renderer.cam.set(q.x, q.y - 60, Math.max(App.renderer.cam.zoom, Math.min(1, App.renderer.cam.vw / 700)), false); App.renderer.cam.user = true; }
   kick();
 }
@@ -631,7 +632,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (App.showPerches) {
     const id = perchAt(e.clientX, e.clientY);
     // a scamper ends Move mode, so the next drag aims (S1-15); a drag that misses a perch only pans, and says so
-    if (id) { sim.move(id); sfx('chitter', sim.b.turn.team); App.guideKey = ''; App.showPerches = false; hud.call('Aim mode', 900); say('Aim mode.'); kick(); return; }
+    if (id) { sim.move(id); sfx('chitter', sim.b.turn.team); App.guideKey = ''; App.showPerches = false; sfx('move', false); hud.call('Aim mode', 900); say('Aim mode.'); kick(); return; }
     drag = { pan: true, x: e.clientX, y: e.clientY, dist: 0, move: true }; return;
   }
   drag = { aim: true, x0: e.clientX, y0: e.clientY, moved: false, a0: { ...b.teams[b.turn.team].aim } };

@@ -6,7 +6,7 @@ import { makeAudioKit, measureAudio } from './audiokit.js';
 import { SCORES, SCENES } from './music.js';
 
 let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null, tOff = 0; // tOff: seconds added to every cue's start, for the offline render
-const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, muffled: false, muffles: 0, hidden: false, paused: false, timer: false, played: 0 };
+const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, muffled: false, muffles: 0, last: '', hidden: false, paused: false, timer: false, played: 0 };
 const SFX_GAIN = 0.9; // the effects bus at its full level
 // The mix (S5-06): the master gain is the Volume setting times MASTER_SCALE (0.45 before wave 3: the quietest game in the
 // collection by a factor of two), and every cue is struck CUE_BOOST times harder than it is written (1 before wave 3, when
@@ -122,7 +122,7 @@ export function handleVisibility(hidden) {
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, muffled: state.muffled, muffles: state.muffles, cutoff: kit ? Math.round(kit.music.cutoff) : 0, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, last: state.last, muffled: state.muffled, muffles: state.muffles, cutoff: kit ? Math.round(kit.music.cutoff) : 0, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -149,12 +149,16 @@ function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, 
 
 // Short parameterised effects (in the spirit of ZzFX by Frank Force, MIT: one call per sound, no samples).
 const POP = { acorn: 520, chinquapin: 760, pecan: 620, walnut: 300, hickory: 560, sweetgum: 680, hedgeapple: 220 };
-export const CUES = ['ui', 'aim', 'throw', 'tap', 'thock', 'thud', 'burst', 'crack', 'rustle', 'boing', 'chitter', 'ko', 'cheer', 'win', 'lose', 'buy', 'land', 'honk', 'squawk', 'steam'];
+export const CUES = ['ui', 'pick', 'move', 'aim', 'throw', 'tap', 'thock', 'thud', 'burst', 'crack', 'rustle', 'boing', 'chitter', 'ko', 'cheer', 'win', 'lose', 'buy', 'land', 'honk', 'squawk', 'steam'];
 export function sfx(name, arg) {
   if (!ctx || !state.on || state.sfxVol <= 0) return;
   state.played++;
+  state.last = arg === undefined ? name : name + ':' + arg;
   switch (name) {
     case 'ui': tone(880, 0.05, { type: 'square', vol: 0.05, filter: 3000 }); break;
+    // choosing a nut plucks that nut's own note; Move mode opens with a rising click and closes with a falling one (S5-18)
+    case 'pick': tone(POP[arg] || 500, 0.12, { type: 'triangle', vol: 0.1, slide: 0.9 }); tone((POP[arg] || 500) * 2, 0.07, { type: 'sine', vol: 0.03 }); break;
+    case 'move': tone(arg ? 520 : 780, 0.045, { type: 'square', vol: 0.05, filter: 3000 }); tone(arg ? 780 : 520, 0.06, { type: 'square', vol: 0.05, at: 0.05, filter: 3000 }); break;
     case 'aim': tone(420 + (arg || 0) * 500, 0.03, { type: 'sine', vol: 0.03 }); break;
     case 'throw': noise(0.22, { vol: 0.12, freq: 900, sweep: 2.4, q: 0.8 }); tone(240, 0.12, { type: 'sine', vol: 0.06, slide: 1.8 }); break;
     case 'tap': for (let i = 0; i < 3; i++) tone(1200 + i * 300, 0.07, { type: 'sine', vol: 0.06, at: i * 0.03 }); break;
