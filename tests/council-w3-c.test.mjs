@@ -89,4 +89,30 @@ export const tests = [
       await snap(t, 'S1-03-settings');
     },
   },
+  // ---- S2-10 ----
+  {
+    name: 'S2-10 Settings has the Difficulty row, each tier says what it changes, and the Story map follows it',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('scene', 'settings');
+      const text = () => t.page.evaluate(() => document.getElementById('screens').textContent);
+      const body = await text();
+      t.expect(/Difficulty/.test(body) && /By difficulty/.test(body) && !/By skill/.test(body), 'the row is there and the aim guide choice is named for it');
+      t.expect(/Medium: a short aim guide, a steady rival./.test(body), 'Medium says what it changes');
+      await t.page.click('#screens [data-k="difficulty"][data-v="hard"]');
+      t.equal((await t.state()).settings.difficulty, 'hard', 'choosing Hard is saved as the Story difficulty');
+      t.expect(/Hard: no aim guide, a rival that rarely misses./.test(await text()), 'and the line under the row follows');
+      await t.page.click('#screens [data-k="aimGuide"][data-v="always"]');
+      t.expect(/Hard: a rival that rarely misses. The aim guide follows your Settings./.test(await text()), 'with the guide set by hand, the line says so rather than promise none');
+      await t.page.click('#screens [data-k="aimGuide"][data-v="auto"]');
+      await snap(t, 'S2-10-settings-difficulty');
+      await t.game('scene', 'story');
+      const pressed = await t.page.evaluate(() => [...document.querySelectorAll('#screens [data-k="difficulty"]')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.dataset.v));
+      t.equal(pressed.join(), 'hard', 'the Story map shows the same choice');
+      t.expect(/Hard: no aim guide/.test(await text()), 'and the same line');
+      await t.game('scene', 'quick');
+      t.expect(/Medium: a short aim guide/.test(await text()), 'Quick Battle explains its own Rival skill the same way');
+    },
+  },
 ];

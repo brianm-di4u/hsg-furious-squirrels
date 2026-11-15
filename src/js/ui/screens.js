@@ -44,6 +44,9 @@ const seg = (k, cur, opts) => `<div class="seg" role="group">${opts.map(([v, l])
 const field = (label, inner) => `<div class="field"><label>${label}</label>${inner}</div>`;
 const starStr = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[0, 1, 2].map((i) => (i < n ? `<span class="on" style="animation-delay:${0.25 + i * 0.2}s">★</span>` : '<span class="off">★</span>')).join('')}</span>`;
 const TIER_NAME = ['', 'Easy', 'Medium', 'Sharp', 'Hard']; // difficulty tier numbers saved with each star
+// what each rival skill means for the player (S2-10): the aim guide that "By difficulty" gives, and how the rival aims
+const TIER_HINT = { easy: ['a long aim guide', 'a wobbly rival', 'Easy'], medium: ['a short aim guide', 'a steady rival', 'Medium'], sharp: ['a very short aim guide', 'a sharp-eyed rival', 'Sharp'], hard: ['no aim guide', 'a rival that rarely misses', 'Hard'] };
+const tierHint = (tier, guide) => { const h = TIER_HINT[tier] || TIER_HINT.medium; return `<p class="starrule tierhint">${h[2]}: ${guide === 'auto' ? h[0] + ', ' : ''}${h[1]}.${guide === 'auto' ? '' : ' The aim guide follows your Settings.'}</p>`; };
 const escHtml = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 // a Field Note as it reads on the results card and in the journal: a landmark note leads with its question and answer
 // (so a text that begins "Its dome..." still stands alone); a nature note is its text. The source follows.
@@ -128,6 +131,7 @@ const TEMPLATES = {
       }).join('')}</div>
       <p class="blurb" id="blurb">${blurbFor(Math.min(st.unlocked, levels.length))}</p>
       ${field('Difficulty', seg('difficulty', app.save.settings.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']]))}
+      ${tierHint(app.save.settings.difficulty, app.save.settings.aimGuide)}
       <nav class="menu row">${btn('switchTeam', 'Switch family')}${btn('back', 'Back', 'data-back')}</nav>
     </div>`;
   },
@@ -146,6 +150,7 @@ const TEMPLATES = {
       ${field('Birds', `<div class="seg">${[['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="birds" data-v="${v}" aria-pressed="${(q.birds || 'some') === v}">${l}</button>`).join('')}</div>`)}
       ${field('Nuts', `<div class="seg"><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="all" aria-pressed="${q.loadout === 'all'}">All seven</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="story" aria-pressed="${q.loadout === 'story'}">Story unlocks</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="acorn" aria-pressed="${q.loadout === 'acorn'}">Acorns only</button></div>`)}
       ${field('Rival skill', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="difficulty" data-v="${v}" aria-pressed="${q.difficulty === v}">${l}</button>`).join('')}</div>`)}
+      ${tierHint(q.difficulty, app.save.settings.aimGuide)}
       <nav class="menu row">${btn('quickGo', 'Start battle', 'autofocus', 'btn primary')}${btn('back', 'Back', 'data-back')}</nav>
     </div>`;
   },
@@ -249,7 +254,10 @@ const TEMPLATES = {
       ${field('Effects level', seg('sfxVol', s.sfxVol, [[0, 'Off'], [0.35, 'Low'], [0.65, 'Medium'], [1, 'High']]))}
       ${field('Music level', seg('musicVol', s.musicVol, [[0.35, 'Low'], [0.65, 'Medium'], [1, 'High']]))}
       ${field('Motion', seg('reducedMotion', s.reducedMotion == null ? 'auto' : s.reducedMotion, [['auto', 'System'], [false, 'Full'], [true, 'Reduced']]))}
-      ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By skill'], ['always', 'Always long'], ['off', 'Off']]))}
+      ${field('Difficulty', seg('difficulty', s.difficulty, [['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']]))}
+      ${tierHint(s.difficulty, s.aimGuide)}
+      <p class="starrule">This is the Story difficulty. Quick Battle sets its own Rival skill.</p>
+      ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By difficulty'], ['always', 'Always long'], ['off', 'Off']]))}
       ${field('Release', seg('releaseThrows', s.releaseThrows, [[true, 'Throws'], [false, 'Only aims']]))}
       ${field('Turn timer', seg('turnTimer', s.turnTimer, [[0, 'Off'], [30, '30 s'], [60, '60 s']]))}
       ${field('Text size', seg('textScale', s.textScale, [[1, '100%'], [1.25, '125%'], [1.5, '150%']]))}
