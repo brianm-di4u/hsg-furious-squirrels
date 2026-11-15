@@ -345,4 +345,54 @@ export const tests = [
       await t.page.setViewportSize({ width: 390, height: 844 });
     },
   },
+  // ---- S5-11 ----
+  ...['touchend', 'click'].map((ev) => ({
+    name: `S5-11 a ${ev} alone unlocks the audio, and the context is asked to resume`,
+    viewports: ['desktop'],
+    initScript: () => {
+      const Real = window.AudioContext;
+      window.__ac = { made: 0, resumed: 0, last: null };
+      window.AudioContext = class extends Real {
+        constructor(...a) { super(...a); window.__ac.made++; window.__ac.last = this; }
+        resume() { window.__ac.resumed++; return super.resume(); }
+      };
+    },
+    async run(t) {
+      t.equal(await t.page.evaluate(() => window.__ac.made), 0, 'nothing is made before a gesture');
+      await t.page.evaluate((e) => window.dispatchEvent(new Event(e)), ev);
+      await t.page.waitForFunction(() => window.__game.getState().audio.started, null, { timeout: 5000 });
+      t.equal(await t.page.evaluate(() => window.__ac.made), 1, `${ev} creates the audio context`);
+      t.expect(await t.page.evaluate(() => window.__ac.resumed) >= 1, 'and asks it to run as it is made');
+      // the browser suspends it again (an iOS interruption): the next touch brings it back
+      await t.page.evaluate(() => window.__ac.last.suspend());
+      await t.page.waitForFunction(() => window.__ac.last.state === 'suspended', null, { timeout: 5000 });
+      const before = await t.page.evaluate(() => window.__ac.resumed);
+      await t.page.evaluate((e) => window.dispatchEvent(new Event(e)), ev);
+      await t.page.waitForFunction(() => window.__ac.last.state === 'running', null, { timeout: 5000 });
+      t.expect(await t.page.evaluate(() => window.__ac.resumed) > before, `a later ${ev} resumes a suspended context`);
+      t.equal(await t.page.evaluate(() => window.__ac.made), 1, 'without making a second one');
+    },
+  })),
+  {
+    name: 'S5-11 a gamepad button press in a battle wakes the audio too',
+    viewports: ['desktop'],
+    initScript: () => {
+      const Real = window.AudioContext;
+      window.__ac = { made: 0 };
+      window.AudioContext = class extends Real { constructor(...a) { super(...a); window.__ac.made++; } };
+    },
+    async run(t) {
+      await t.game('newGame', { levelId: 'gray' });
+      t.equal(await t.page.evaluate(() => window.__ac.made), 0, 'no context yet');
+      await t.page.evaluate(() => {
+        window.__padA = false;
+        const pad = { connected: true, index: 0, id: 'test pad', axes: [0, 0, 0, 0], get buttons() { return Array.from({ length: 17 }, (_, i) => ({ pressed: i === 0 && window.__padA, value: 0 })); } };
+        navigator.getGamepads = () => [pad];
+        window.dispatchEvent(new Event('gamepadconnected'));
+      });
+      await t.page.evaluate(() => { window.__padA = true; });
+      await t.page.waitForFunction(() => window.__ac.made === 1, null, { timeout: 5000 });
+      t.expect((await t.state()).audio.started, 'a pad press starts the audio');
+    },
+  },
 ];

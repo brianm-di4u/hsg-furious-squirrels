@@ -13,9 +13,14 @@ const FADE_MUSIC = 1.6, FADE_SCENE = 2.5; // seconds a mood or a place takes to 
 export function initAudio(settings) {
   setFlags(settings);
   const start = () => { if (!state.started) unlock(); else if (ctx && ctx.state !== 'running' && !document.hidden) ctx.resume().catch(() => {}); };
-  window.addEventListener('keydown', start);
-  window.addEventListener('pointerdown', start);
+  wake = start;
+  // older iOS Safari only unlocks audio from touchend or click, not from pointerdown, so all four are listened for
+  // for as long as the page lives: each one also resumes a context the browser has suspended again (S5-11)
+  for (const ev of ['keydown', 'pointerdown', 'touchend', 'click']) window.addEventListener(ev, start);
 }
+// A pad's button press is not a gesture on every browser, so this is a best effort: it unlocks or resumes where allowed.
+let wake = () => {};
+export function wakeAudio() { wake(); }
 function setFlags(s) { state.on = s.sound !== false; state.music = s.music !== false; state.ambience = s.ambience !== false; state.vol = s.volume ?? 0.5; state.sfxVol = s.sfxVol ?? 1; state.musicVol = s.musicVol ?? 1; }
 function applyLevels() { if (!kit) return; if (sfxBus) sfxBus.gain.setTargetAtTime(SFX_GAIN * state.sfxVol, ctx.currentTime, 0.05); kit.music.level(state.music ? state.musicVol : 0); kit.amb.level(state.ambience ? 1 : 0); }
 // Music and ambience are held (faded out, nothing scheduled) on the pause card and in a hidden tab.
@@ -30,6 +35,9 @@ function unlock() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
+    // a context made outside an unlocking gesture starts suspended: ask for it to run, and play one silent sample to prime iOS
+    ctx.resume().catch(() => {});
+    const prime = ctx.createBufferSource(); prime.buffer = ctx.createBuffer(1, 1, ctx.sampleRate); prime.connect(ctx.destination); prime.start(0);
     master = ctx.createGain(); master.gain.value = state.on ? state.vol * 0.45 : 0;
     // a limiter on the master keeps music, ambience and the loudest cue from clipping together
     const limiter = ctx.createDynamicsCompressor();

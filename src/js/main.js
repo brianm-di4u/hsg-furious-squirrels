@@ -8,7 +8,7 @@ import { SKY } from './gfx/looks.js';
 import { makeRng } from './rng.js';
 import { Hud } from './ui/hud.js';
 import { Screens, factHtml } from './ui/screens.js';
-import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
+import { initAudio, wakeAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTension, audioState, pauseAudio, handleVisibility } from './ui/audio.js';
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
@@ -614,6 +614,7 @@ function pollPad() {
     const bt = (i) => !!(p.buttons[i] && p.buttons[i].pressed);
     const now = { a: bt(0), b: bt(1), lb: bt(4), rb: bt(5), start: bt(9), select: bt(8), up: bt(12), down: bt(13), left: bt(14), right: bt(15) };
     const prev = padPrev[p.index] || {}, edge = (k) => now[k] && !prev[k];
+    if (edge('a') || edge('b') || edge('start')) wakeAudio();
     if (screens.cur) {
       const m = { up: edge('up') || (p.axes[1] < -0.6 && !prev.ay), down: edge('down') || (p.axes[1] > 0.6 && !prev.ay), left: edge('left'), right: edge('right'), cancel: edge('b') };
       if (m.up || m.down || m.left || m.right || m.cancel) screens.nav(m);
