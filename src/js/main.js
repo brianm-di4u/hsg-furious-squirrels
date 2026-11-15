@@ -494,7 +494,7 @@ function battleOver() {
   const win = res.battleWinner === me;
   const myTurns = Math.ceil(b.turn.n / 2); // this family's turns: the count par is judged by
   const myStats = b.teams[me].stats;
-  let stars = null, unlock = null, next = null, tier = null;
+  let stars = null, unlock = null, next = null, tier = null, opened = false;
   // what this battle may beat, read before the save changes (the Records screen and the "New best!" lines)
   const before = { turns: s.story.bestTurns[L.id], stars: s.story.stars[L.id] || 0, shot: s.stats.bestShot };
   const ti = TIERS.indexOf(App.setup.difficulty);
@@ -510,7 +510,7 @@ function battleOver() {
     if (win) s.story.bestTurns[L.id] = Math.min(Math.max(1, myTurns), s.story.bestTurns[L.id] ?? Infinity);
     // a run of losses on one battle ends with a win; after LOSS_OFFER of them the results card offers Easy (S2-18)
     if (win) delete s.story.losses[L.id]; else s.story.losses[L.id] = Math.min(99, (s.story.losses[L.id] || 0) + 1);
-    if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
+    if (win && L.n >= s.story.unlocked && L.n < STORY.length) { s.story.unlocked = L.n + 1; opened = true; const nl = STORY[L.n]; unlock = nl && nl.unlock; }
     if (win && STORY[L.n]) next = STORY[L.n].id;
     s.resume = null;
   }
@@ -539,6 +539,8 @@ function battleOver() {
   if (fact && !s.story.notes.includes(fact.id)) s.story.notes.push(fact.id);
   persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
+  if (win && stars) sfx('stars', stars);
+  if (win && (unlock || opened)) sfx('unlock', stars || 0);
   screens.show('results', {
     win, practice, records, n: L.n, stars,
     finale: App.setup.mode === 'story' && win && L.n === STORY.length,
@@ -1182,7 +1184,7 @@ function frame(now) {
       if (App.pendingEnd && wallNow() >= App.pendingEnd.t) {
         const pe = App.pendingEnd; App.pendingEnd = null;
         if (pe.type === 'battleEnd') battleOver();
-        else { const me = sim.b.teams.findIndex((t) => t.human); screens.show('shop', { team: me, round: sim.b.result.round, winner: sim.b.result.winner }); }
+        else { const me = sim.b.teams.findIndex((t) => t.human); if (sim.b.result.winner === me) sfx('roundWin'); screens.show('shop', { team: me, round: sim.b.result.round, winner: sim.b.result.winner }); }
       } else if (App.pendingEnd) busy = true;
       // turn timer
       // (S6-04) only time the player could use counts: not on the pause card, behind a screen, or in a hidden tab

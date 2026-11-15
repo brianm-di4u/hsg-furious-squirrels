@@ -6,7 +6,7 @@ import { makeAudioKit, measureAudio } from './audiokit.js';
 import { SCORES, SCENES } from './music.js';
 
 let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null, tOff = 0; // tOff: seconds added to every cue's start, for the offline render
-const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, muffled: false, muffles: 0, last: '', hidden: false, paused: false, timer: false, played: 0 };
+const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, muffled: false, muffles: 0, last: '', recent: [], hidden: false, paused: false, timer: false, played: 0 };
 const SFX_GAIN = 0.9; // the effects bus at its full level
 // The mix (S5-06): the master gain is the Volume setting times MASTER_SCALE (0.45 before wave 3: the quietest game in the
 // collection by a factor of two), and every cue is struck CUE_BOOST times harder than it is written (1 before wave 3, when
@@ -122,7 +122,7 @@ export function handleVisibility(hidden) {
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, last: state.last, muffled: state.muffled, muffles: state.muffles, cutoff: kit ? Math.round(kit.music.cutoff) : 0, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, master: master ? +master.gain.value.toFixed(3) : 0, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, last: state.last, recent: state.recent.slice(), muffled: state.muffled, muffles: state.muffles, cutoff: kit ? Math.round(kit.music.cutoff) : 0, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPlaying: kit ? !!kit.music.score : false, ambiencePlaying: kit ? !!kit.amb.scene : false, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -148,12 +148,14 @@ function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, 
 }
 
 // Short parameterised effects (in the spirit of ZzFX by Frank Force, MIT: one call per sound, no samples).
+const STAR_AT = 0.95; // seconds after the win jingle starts that the star notes begin (the jingle is about 0.9 s long)
 const POP = { acorn: 520, chinquapin: 760, pecan: 620, walnut: 300, hickory: 560, sweetgum: 680, hedgeapple: 220 };
-export const CUES = ['ui', 'pick', 'move', 'aim', 'throw', 'tap', 'thock', 'thud', 'burst', 'crack', 'rustle', 'boing', 'chitter', 'ko', 'cheer', 'win', 'lose', 'buy', 'land', 'honk', 'squawk', 'steam'];
+export const CUES = ['ui', 'pick', 'move', 'aim', 'throw', 'tap', 'thock', 'thud', 'burst', 'crack', 'rustle', 'boing', 'chitter', 'ko', 'cheer', 'win', 'lose', 'buy', 'land', 'honk', 'squawk', 'steam', 'stars', 'unlock', 'roundWin'];
 export function sfx(name, arg) {
   if (!ctx || !state.on || state.sfxVol <= 0) return;
   state.played++;
   state.last = arg === undefined ? name : name + ':' + arg;
+  state.recent.push(state.last); if (state.recent.length > 8) state.recent.shift();
   switch (name) {
     case 'ui': tone(880, 0.05, { type: 'square', vol: 0.05, filter: 3000 }); break;
     // choosing a nut plucks that nut's own note; Move mode opens with a rising click and closes with a falling one (S5-18)
@@ -178,6 +180,11 @@ export function sfx(name, arg) {
     // birds: a two-note goose honk, or a jay/crow squawk (other birds chirp)
     case 'honk': for (let i = 0; i < 2; i++) tone(330 - i * 40, 0.13, { type: 'sawtooth', vol: 0.07, at: i * 0.16, slide: 0.8, filter: 1400 }); break;
     case 'squawk': if (arg === 'jay' || arg === 'crow') { tone(arg === 'crow' ? 520 : 900, 0.16, { type: 'sawtooth', vol: 0.06, slide: 0.7, filter: 2600 }); noise(0.1, { vol: 0.05, freq: 2400, q: 1.5 }); } else for (let i = 0; i < 3; i++) tone(2600 + i * 400, 0.05, { type: 'sine', vol: 0.05, at: i * 0.05, slide: 1.2 }); break;
+    // milestones (S5-19), played after the win jingle: a rising note for each star earned, a sparkle for an unlock, and a
+    // short stinger when a round is won and the shop opens
+    case 'stars': if (kit) kit.music.duck(5, 1300 + (arg || 0) * 150); for (let i = 0; i < (arg || 0); i++) { tone([784, 988, 1175][i], 0.22, { type: 'triangle', vol: 0.09, at: STAR_AT + i * 0.15 }); tone([1568, 1976, 2349][i], 0.14, { type: 'sine', vol: 0.03, at: STAR_AT + i * 0.15 }); } break;
+    case 'unlock': for (let i = 0; i < 5; i++) tone([1319, 1568, 1760, 2093, 2637][i], 0.16, { type: 'sine', vol: 0.05, at: STAR_AT + (arg || 0) * 0.15 + 0.1 + i * 0.05 }); break;
+    case 'roundWin': if (kit) kit.music.duck(5, 700); [392, 523, 659].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.09, at: i * 0.09 })); tone(1319, 0.12, { type: 'square', vol: 0.03, at: 0.3, filter: 3000 }); break;
     case 'steam': noise(0.5, { vol: 0.03, type: 'highpass', freq: 5000 }); break;
     default: break;
   }

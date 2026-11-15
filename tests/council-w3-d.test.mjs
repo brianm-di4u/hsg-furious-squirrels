@@ -382,4 +382,65 @@ export const tests = [
       t.expect(high > low * 1.8, `a chinquapin (${Math.round(high)} Hz) plucks well above a walnut (${Math.round(low)} Hz)`);
     },
   },
+  // ---- S5-19 ----
+  {
+    name: 'S5-19 a won Story battle plays the stars and the unlock after the win, a loss and a Quick Battle play neither',
+    viewports: ['desktop'],
+    async run(t) {
+      const results = async (mode, opts, over) => {
+        await t.game('act', 'clearSave');
+        await t.reload();
+        await t.seed(7);
+        await t.game('newGame', { mode, levelId: mode === 'story' ? 'story-01' : 'gray', team: 0, birds: 'off', wind: 'off', ...opts });
+        await gesture(t);
+        await t.game('scene', 'results', over);
+        return (await t.state()).audio.recent;
+      };
+      let r = await results('story', {}, {});
+      const at = (n) => r.findIndex((x) => x === n || x.startsWith(n + ':'));
+      t.expect(at('win') >= 0 && at('stars') > at('win') && at('unlock') > at('stars'), `win, then stars, then the unlock sparkle (${r.join(" ")})`);
+      const stars = +r[at('stars')].split(':')[1];
+      t.expect(stars >= 1 && stars <= 3, `one note a star, ${stars} earned`);
+      r = await results('story', {}, { lose: true });
+      t.expect(at('lose') >= 0 && at('stars') < 0 && at('unlock') < 0, `a loss plays no star and no unlock (${r.join(" ")})`);
+      r = await results('quick', {}, {});
+      t.expect(at('win') >= 0 && at('stars') < 0, `a Quick Battle win has no stars to play (${r.join(" ")})`);
+    },
+  },
+  {
+    name: 'S5-19 a won round plays its own stinger as the shop opens',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.seed(7);
+      await t.game('newGame', { mode: 'quick', levelId: 'gray', team: 0, rounds: 3, birds: 'off', wind: 'off' });
+      await gesture(t);
+      const b = (await t.state()).battle;
+      t.expect(b.rounds > 1, `the battle has more than one round (${b.rounds})`);
+      await t.page.evaluate(() => { const sim = window.__FS.sim, me = sim.b.teams.findIndex((x) => x.human); sim.forceRound(me); });
+      await t.page.waitForFunction(() => window.__game.getState().screen === 'shop', null, { timeout: 15000 });
+      const r = (await t.state()).audio.recent;
+      t.expect(r.includes('roundWin'), `the round stinger played (${r.join(" ")})`);
+      // the cues themselves render
+      for (const c of ['stars', 'unlock', 'roundWin']) {
+        const x = await t.page.evaluate((n) => window.__game.audioRender('cue:' + n, 3, false, { arg: 3 }), c);
+        t.expect(x.peak > 0.01, `${c} renders (peak ${x.peak})`);
+      }
+    },
+  },
+  {
+    name: 'S5-06 no cue clips at maximum volume, struck twenty times running',
+    viewports: ['desktop'],
+    async run(t) {
+      const list = await t.game('audioList');
+      let worst = 0, name = '';
+      for (const c of list.cues) {
+        const r = await render(t, 'cue:' + c, 11.5, { volume: 1, repeats: 20, gap: 0.5, arg: c === 'stars' ? 3 : c === 'thock' ? 'acorn' : undefined });
+        if (r.peak > worst) { worst = r.peak; name = c; }
+      }
+      t.log(`loudest at maximum volume over twenty repeats: ${name} ${worst}`);
+      t.expect(worst < 0.95, `every cue stays under 0.95 at maximum volume (worst ${name} ${worst})`);
+    },
+  },
 ];
