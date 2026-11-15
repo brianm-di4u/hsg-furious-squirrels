@@ -271,7 +271,7 @@ export class Renderer {
       if (q.out && this.sprites) for (let i = 0; i < 3; i++) { const a = app.time * 3 + (i * Math.PI * 2) / 3; star(g, x + Math.cos(a) * 12 * s, y - 48 * s + Math.sin(a) * 4 * s, 4 * s, '#F2C230'); }
       if (q.out || app.scene !== 'battle' || this.inInset || x < -10 || x > cam.vw + 10) continue;
       // name + grip pill (shape emblem + label + bar)
-      const k = Math.max(1.05, Math.min(1.35, z * 1.8)), ph = 21 * k, pw = Math.max(72 * k, ph + 12 + q.name.length * 8.8 * k);
+      const k = Math.max(1.05, Math.min(1.35, z * 1.8)) * (this.textScale || 1), ph = 21 * k, pw = Math.max(72 * k, ph + 12 + q.name.length * 8.8 * k);
       const px = Math.max(4, Math.min(cam.vw - pw - 4, x - pw / 2)); // kept inside the view
       let py = y - 74 * z - ph - 4;
       // stack nameplates that would overlap one already drawn this frame

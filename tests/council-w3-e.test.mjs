@@ -152,4 +152,33 @@ export const tests = [
       t.expect(Math.abs(right - 0.5) < 0.1, `a thrower half a half-view right of the centre pans ${right.toFixed(2)} (about 0.5)`);
     },
   },
+  // ---- S2-08 ----
+  {
+    name: 'S2-08 the page can be pinch-zoomed, and the nut names, the turn label and the nameplates follow Text size',
+    async run(t) {
+      t.equal(await t.page.evaluate(() => document.querySelector('meta[name=viewport]').content.includes('user-scalable')), false, 'the viewport no longer forbids zooming');
+      await startHuman(t);
+      await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
+      await t.page.waitForSelector('.nut .nm', { timeout: 10000 });
+      const read = () => t.page.evaluate(() => {
+        const nm = document.querySelector('.nut .nm'), tl = document.getElementById('turnlabel'), tile = document.querySelector('.nut');
+        const mid = document.querySelector('.mid').getBoundingClientRect(), wind = document.getElementById('wind').getBoundingClientRect();
+        return { nm: parseFloat(getComputedStyle(nm).fontSize), tlCut: tl.scrollWidth > tl.clientWidth + 1 || tl.scrollHeight > tl.clientHeight + 1, tlText: tl.textContent, tile: tile.getBoundingClientRect().width, plates: window.__FS.renderer.textScale, overlap: mid.right > window.innerWidth + 1, windBelow: wind.top >= 0 };
+      });
+      const one = await read();
+      await t.game('setState', { settings: { textScale: 1.5 } });
+      await t.page.waitForFunction(() => window.__FS.renderer.textScale === 1.5, null, { timeout: 5000 });
+      const big = await read();
+      t.expect(Math.abs(big.nm / one.nm - 1.5) < 0.05, `a nut name is ${one.nm}px, and ${big.nm}px at 150%`);
+      t.equal(big.plates, 1.5, 'the nameplates on the canvas are told the Text size');
+      t.expect(big.tile >= one.tile, 'a nut tile grows with its name, it never shrinks');
+      t.equal(big.tlCut, false, `the turn label is whole at 150%: "${big.tlText}"`);
+      t.equal(big.overlap, false, 'and the banner row stays inside the screen');
+      await snap(t, 'S2-08-text150');
+      await t.game('setState', { settings: { textScale: 1 } });
+      await t.page.waitForFunction(() => window.__FS.renderer.textScale === 1, null, { timeout: 5000 });
+      const back = await read();
+      t.expect(Math.abs(back.nm - one.nm) < 0.01, 'back at 100% the names are as they were');
+    },
+  },
 ];

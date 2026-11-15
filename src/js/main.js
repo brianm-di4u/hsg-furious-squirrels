@@ -46,6 +46,8 @@ function applySettings() {
   const sys = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   App.reduced = s.reducedMotion == null ? sys : !!s.reducedMotion;
   renderer.reduced = App.reduced;
+  renderer.textScale = s.textScale || 1;
+  document.documentElement.classList.toggle('bigtext', (s.textScale || 1) > 1);
   document.body.classList.toggle('reduced', App.reduced);
   setAudio(s);
 }
