@@ -185,7 +185,7 @@ const TEMPLATES = {
       ${d.finale ? `<div class="finale-text"><h3>${FINALE.title}</h3>${FINALE.text.map((p) => `<p>${p}</p>`).join('')}</div>` : ''}
       ${d.line ? `<p class="feudline">${d.line}</p>` : ''}
       ${d.stars != null ? starStr(d.stars) : ''}
-      ${d.par ? `<p class="starrule">Stars: win the battle, keep every squirrel in the trees, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
+      ${d.par ? `<p class="starrule">Stars: win the battle, ${d.koAllowed ? 'lose at most one squirrel' : 'keep every squirrel in the trees'}, and win within ${d.par} turns (this battle: ${d.turns}).</p>` : ''}
       ${d.tier ? `<p class="starrule">Played on ${TIER_NAME[d.tier]}.${d.tier > 2 && d.stars ? ' Those stars are marked on the map.' : ''}</p>` : ''}
       ${recordLines(d.records)}
       ${d.daily ? dailyLines(d.daily) : ''}

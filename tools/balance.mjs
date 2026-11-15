@@ -6,6 +6,8 @@
 //   --study [--shop on|off] [--skill on|off] [--purse 60] [--seeds 4 --jobs 6 --rivals easy,medium,sharp,hard --levels 1,2,...]   the Story study (S3-01, S3-04): a Medium player proxy
 //   (team 0) against the rival at each tier on every Story level, with the satchel shop before the battle (both families
 //   pack the same purse) and the per-level skill field; `--shop off --skill off` is the game as it was before those two.
+//   --stars   the star check (S3-05): a Hard-skill player proxy against a Medium rival on every Story level, and the share of battles that
+//   earn three stars against tools/balance-targets.json (threeStars). Exit code 1 when it is outside the target.
 import fs from 'node:fs';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import path from 'node:path';
@@ -14,6 +16,7 @@ import { Sim } from '../src/js/sim/battle.js';
 import { planTurn, aiTier } from '../src/js/sim/ai.js';
 import { aiBuys, aiShop } from '../src/js/sim/battle.js';
 import { NUT_ORDER, ACORNS } from '../src/js/sim/const.js';
+import { starsFor } from '../src/js/story.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'levels/all.json'), 'utf8'));
@@ -43,7 +46,7 @@ export function storyBattle(L, seed, me, rival, { shop = true, skill = true, pur
   const outs = sim.b.squirrels.filter((q) => q.team === 0 && q.out).length;
   const win = sim.b.result && sim.b.result.battleWinner === 0;
   const myTurns = Math.ceil(sim.b.turn.n / 2);
-  return { win: !!win, turns, outs, par: win && myTurns <= L.par };
+  return { win: !!win, turns, outs, par: win && myTurns <= L.par, stars: starsFor({ win: !!win, outs, size: L.teamSize, turns: myTurns, par: L.par }) };
 }
 
 export function battle(L, seed, d0, d1, size = 3) {
@@ -84,10 +87,10 @@ function nutStudy(perNut) {
 // level against one rival tier, so the result does not depend on how many workers there are.
 async function study() {
   const on = (k, d) => (arg(k, d) !== 'off'), shop = on('--shop', 'on'), skill = on('--skill', 'on'), purse = +arg('--purse', ACORNS.start), seeds = +arg('--seeds', 4);
-  const me = arg('--me', 'medium'), jobsN = +arg('--jobs', 6), cfg = { shop, skill, purse, me };
+  const starsMode = args.includes('--stars'), me = arg('--me', starsMode ? 'hard' : 'medium'), jobsN = +arg('--jobs', 6), cfg = { shop, skill, purse, me };
   const only = arg('--levels', null) ? arg('--levels', '').split(',').map(Number) : LEVELS.map((L) => L.n);
   const jobs = [];
-  const rivals = arg('--rivals', 'easy,medium,sharp,hard').split(',');
+  const rivals = arg('--rivals', starsMode ? 'medium' : 'easy,medium,sharp,hard').split(',');
   for (const rival of rivals) for (const n of only) jobs.push({ rival, n, seeds: n === 12 ? Math.max(1, Math.ceil(seeds / 2)) : seeds });
   const t0 = performance.now(), results = [];
   await new Promise((resolve) => {
@@ -104,18 +107,23 @@ async function study() {
   });
   const out = { config: { ...cfg, seeds }, vs: {}, perLevel: {} };
   for (const rival of rivals) {
-    const rs = results.filter((r) => r.rival === rival), n = rs.reduce((a, r) => a + r.n, 0), w = rs.reduce((a, r) => a + r.w, 0), turns = rs.reduce((a, r) => a + r.turns, 0);
-    out.vs[rival] = { win: +(w / n).toFixed(3), turns: +(turns / n).toFixed(1), n };
+    const rs = results.filter((r) => r.rival === rival), n = rs.reduce((a, r) => a + r.n, 0), w = rs.reduce((a, r) => a + r.w, 0), turns = rs.reduce((a, r) => a + r.turns, 0), s3 = rs.reduce((a, r) => a + r.s3, 0);
+    out.vs[rival] = { win: +(w / n).toFixed(3), threeStars: +(s3 / n).toFixed(3), turns: +(turns / n).toFixed(1), n };
     for (const r of rs) (out.perLevel[rival] ||= {})[r.level] = +(r.w / r.n).toFixed(2);
   }
   console.log(JSON.stringify(out));
   console.log(`study ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  if (starsMode) {
+    const [lo, hi] = T.threeStars, v = out.vs.medium.threeStars, ok = v >= lo && v <= hi;
+    console.log(`${ok ? 'OK  ' : 'MISS'} three stars, ${me} player vs medium rival ${v.toFixed(2)}  target ${lo}-${hi}  (${out.vs.medium.n} battles)`);
+    process.exit(ok ? 0 : 1);
+  }
 }
 if (!isMainThread && workerData && workerData.job) {
   const { job, cfg } = workerData, L = LEVELS.find((x) => x.n === job.n);
-  let w = 0, turns = 0;
-  for (let i = 0; i < job.seeds; i++) { const r = storyBattle(L, 900 + i * 13 + L.n, cfg.me, job.rival, cfg); turns += r.turns; if (r.win) w++; }
-  parentPort.postMessage({ rival: job.rival, level: job.n, n: job.seeds, w, turns });
+  let w = 0, turns = 0, s3 = 0;
+  for (let i = 0; i < job.seeds; i++) { const r = storyBattle(L, 900 + i * 13 + L.n, cfg.me, job.rival, cfg); turns += r.turns; if (r.win) w++; if (r.stars === 3) s3++; }
+  parentPort.postMessage({ rival: job.rival, level: job.n, n: job.seeds, w, turns, s3 });
   process.exit(0);
 }
 
@@ -123,7 +131,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) && isMainThread) {
   const t0 = performance.now();
   const pairs = [['medium', 'medium'], ['hard', 'easy'], ['easy', 'hard'], ['medium', 'easy'], ['easy', 'medium'], ['easy', 'easy'], ['hard', 'hard'],
-    ['sharp', 'medium'], ['medium', 'sharp'], ['hard', 'sharp'], ['sharp', 'hard']];
+    ['sharp', 'medium'], ['medium', 'sharp'], ['hard', 'sharp'], ['sharp', 'hard'], ['human', 'medium'], ['medium', 'human'], ['human', 'hard'], ['hard', 'human']];
   const res = {}, hitT = { easy: [0, 0], medium: [0, 0], sharp: [0, 0], hard: [0, 0] };
   let turnSum = 0, rounds = 0, firstWins = 0, decided = 0;
   for (const [a, b] of pairs) {
@@ -133,6 +141,8 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
       if (o.winner === 0) r.w0++; else if (o.winner === 1) r.w1++;
       r.turns += o.turns;
       // easy vs easy never happens in play (a human is always one side), so it doesn't count toward round length
+      // the stand-in for a person (S3-12) is played only to place it among the tiers: it does not move the figures for the real tiers
+      if (a === 'human' || b === 'human') continue;
       if (!(a === 'easy' && b === 'easy')) { turnSum += o.turns; rounds++; }
       if (o.winner >= 0) { decided++; if (o.winner === o.first) firstWins++; }
       hitT[a][0] += o.hits[0]; hitT[a][1] += o.throws[0]; hitT[b][0] += o.hits[1]; hitT[b][1] += o.throws[1];
@@ -143,6 +153,7 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
   const hardEasy = (res['hard-easy'].win0 + res['easy-hard'].win1) / 2;
   const medEasy = (res['medium-easy'].win0 + res['easy-medium'].win1) / 2;
   const sharpMed = (res['sharp-medium'].win0 + res['medium-sharp'].win1) / 2, hardSharp = (res['hard-sharp'].win0 + res['sharp-hard'].win1) / 2;
+  const humanMed = (res['human-medium'].win0 + res['medium-human'].win1) / 2, hardHuman = (res['hard-human'].win0 + res['human-hard'].win1) / 2;
   const hit = Object.fromEntries(Object.entries(hitT).map(([k, v]) => [k, +(v[0] / Math.max(1, v[1])).toFixed(2)]));
   const nuts = nutStudy(Math.max(12, N));
   const specials = NUT_ORDER.filter((k) => k !== 'acorn').map((k) => nuts[k]);
@@ -154,6 +165,8 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
     ['medium beats easy', medEasy, medEasy >= T.mediumBeatsEasy, '>= ' + T.mediumBeatsEasy],
     ['sharp beats medium', sharpMed, sharpMed >= T.sharpBeatsMedium, '>= ' + T.sharpBeatsMedium],
     ['hard beats sharp', hardSharp, hardSharp >= T.hardBeatsSharp, '>= ' + T.hardBeatsSharp],
+    ['human beats medium', humanMed, humanMed >= T.humanBeatsMedium[0] && humanMed <= T.humanBeatsMedium[1], T.humanBeatsMedium.join('-')],
+    ['hard beats human', hardHuman, hardHuman >= T.hardBeatsHuman, '>= ' + T.hardBeatsHuman],
     ['first mover wins', firstWins / Math.max(1, decided), firstWins / Math.max(1, decided) <= T.firstMoverMax, '<= ' + T.firstMoverMax],
     ...Object.entries(T.hitRate).map(([d, [lo, hi]]) => ['hit rate ' + d, hit[d], hit[d] >= lo && hit[d] <= hi, `${lo}-${hi}`]),
     ['special nut spread (max/mean)', spread, spread <= T.specialSpread, '<= ' + T.specialSpread],
@@ -164,6 +177,6 @@ else if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(impo
   for (const [name, v, ok, want] of checks) { console.log(`${ok ? 'OK  ' : 'MISS'} ${name.padEnd(30)} ${(+v).toFixed(2).padStart(6)}  target ${want}`); if (!ok) bad++; }
   console.log(`${N * pairs.length} battles in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   fs.mkdirSync(path.join(ROOT, 'tools/out'), { recursive: true });
-  fs.writeFileSync(path.join(ROOT, 'tools/out/balance.json'), JSON.stringify({ res, nuts, hit, turnsMean, hardEasy, medEasy, sharpMed, hardSharp, firstMover: firstWins / Math.max(1, decided), spread }, null, 1));
+  fs.writeFileSync(path.join(ROOT, 'tools/out/balance.json'), JSON.stringify({ res, nuts, hit, turnsMean, hardEasy, medEasy, sharpMed, hardSharp, humanMed, hardHuman, firstMover: firstWins / Math.max(1, decided), spread }, null, 1));
   process.exit(bad ? 1 : 0);
 }

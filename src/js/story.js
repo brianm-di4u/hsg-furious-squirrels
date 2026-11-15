@@ -75,6 +75,13 @@ export const GROANS = [
 // note first; after that it shows one the player has not read yet.
 export const LEVEL_FACTS = ['hs-0093', 'hs-0094', 'hs-0082', 'n-redbud', 'n-wind', 'hs-0066', 'hs-0086', 'n-gumball', 'n-hedgeapple', 'n-pine', 'hs-0084', 'hs-0071'];
 
+// The three stars of a Story battle (S3-05): the win, at most KO_ALLOWED squirrels lost (none in a battle of two a side, one in
+// three or four a side: keeping all four untouched was met in about 3 battles in 100 by an even match, and by 9 in 100 for a
+// stronger player), and the win within the level's par of the family's own turns. KO_ALLOWED was 0 for every size.
+const KO_SIZE = 3, KO_ALLOWED = 1;
+export const koAllowed = (size) => (size >= KO_SIZE ? KO_ALLOWED : 0);
+export function starsFor({ win, outs, size, turns, par }) { return win ? 1 + (outs <= koAllowed(size) ? 1 : 0) + (turns <= par ? 1 : 0) : 0; }
+
 export function blurbFor(n) { return BLURBS[n - 1] || ''; }
 
 // the line shown on the results card

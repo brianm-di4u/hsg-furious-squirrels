@@ -49,3 +49,33 @@ test('a bird that is not on the arc, or has flown off, changes nothing', () => {
   sim.b.birds[0].oy += 400; sim.b.birds[0].flee = { t: 0, x: 0, y: 0, vx: 1, vy: 1 };
   assert.notEqual(sim.preview(aim, { squirrels: false, birds: true }).impact.type, 'bird', 'a startled bird cannot be hit again');
 });
+
+// ---- S3-05 ----
+import { starsFor, koAllowed } from '../src/js/story.js';
+
+test('the star rule: two a side keeps every squirrel, three or four a side may lose one', () => {
+  const s = (win, outs, size, turns = 5, par = 10) => starsFor({ win, outs, size, turns, par });
+  assert.equal(s(false, 0, 3), 0, 'a loss earns nothing, however neat');
+  assert.equal(s(true, 0, 2, 20), 2, 'two a side, nothing lost, over par: two stars');
+  assert.equal(s(true, 1, 2, 20), 1, 'two a side, one lost: one star');
+  assert.equal(s(true, 1, 3, 20), 2, 'three a side, one lost: the second star');
+  assert.equal(s(true, 2, 3, 5), 2, 'three a side, two lost, within par: win and par, no second star');
+  assert.equal(s(true, 1, 4, 10), 3, 'four a side, one lost, exactly at par: three stars');
+  assert.equal(s(true, 2, 4, 5), 2, 'four a side, two lost: no second star');
+  assert.equal(s(true, 0, 4, 11), 2, 'four a side, nothing lost, one turn over par: two stars');
+  assert.deepEqual([2, 3, 4].map(koAllowed), [0, 1, 1]);
+});
+
+// ---- S3-12 ----
+import { DIFF, TIERS, aiTier } from '../src/js/sim/ai.js';
+
+test('the human stand-in is noisier than Medium, Sharp and Hard, is not a tier a player can pick, and has targets', () => {
+  assert.ok(!TIERS.includes('human'), 'it is not one of the four tiers');
+  assert.equal(aiTier('human'), 1, 'asking the game for it by name gives Medium, as for any unknown name');
+  for (const t of ['medium', 'sharp', 'hard']) assert.ok(DIFF.human.sa > DIFF[t].sa && DIFF.human.sp > DIFF[t].sp, `noisier than ${t}`);
+  assert.ok(DIFF.human.sa >= 2 && DIFF.human.sp >= 0.025, 'a couple of degrees and a few percent of power');
+  const T = JSON.parse(fs.readFileSync(new URL('../tools/balance-targets.json', import.meta.url), 'utf8'));
+  assert.ok(T.humanBeatsMedium[0] < T.humanBeatsMedium[1] && T.humanBeatsMedium[0] >= 0.3 && T.humanBeatsMedium[1] <= 0.6, 'human against Medium is meant to be an even match');
+  assert.ok(T.threeStars[0] > 0 && T.threeStars[1] < 0.5, 'three stars is meant to be reachable but not common');
+  assert.ok(Object.keys(DIFF).filter((k) => !TIERS.includes(k)).join() === 'human', 'and nothing else is in the table beside the tiers');
+});

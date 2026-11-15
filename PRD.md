@@ -18,7 +18,7 @@ A sunny, silly, turn-based nut-throwing duel across the real valley of Hot Sprin
 ## 2. Modes
 | Mode | Content |
 |---|---|
-| **Story: "The Valley Nut Feud"** | 12 battles (table §5), unlocking one nut every one or two battles. Earn 1–3 acorn stars per battle (win; win with no squirrel out; win within the par turns). |
+| **Story: "The Valley Nut Feud"** | 12 battles (table §5), unlocking one nut every one or two battles. Earn 1–3 acorn stars per battle (win; win with no more than one squirrel out (none in a two-a-side battle); win within the par turns). |
 | **Quick Battle** | Pick any unlocked level, family (Tails or Rustlers), family size 2–4, rounds 1/3/5, wind (off/light/normal/gusty), steam (off/on/strong), loadout (story unlocks or all nuts) and AI difficulty. |
 | **Practice range** | Your family's mountain with target boards and practice dummies across the valley. Every nut, a full arc preview, adjustable wind, and no opponent. |
 

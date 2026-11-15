@@ -24,7 +24,7 @@ const phase = async (t) => (await t.state()).battle.phase;
 export const tests = [
   // ---- S1-02 ----
   {
-    name: 'S1-02 a press hurries the rival: it throws within a few frames of the press, without its thinking time',
+    name: 'S1-02 a press hurries the rival: it throws within a few frames of the press, whatever its thinking time',
     viewports: ['desktop'],
     async run(t) {
       await humanFirst(t);
@@ -32,8 +32,8 @@ export const tests = [
       await t.game('act', 'skipFlight');
       t.equal((await t.state()).battle.turn.team, 1, "it is the rival's turn");
       await t.page.waitForFunction(() => window.__FS.aiActive && window.__FS.aiActive.done && window.__FS.aiActive.plan, null, { timeout: 15000 });
-      const think = await t.page.evaluate(() => window.__FS.aiActive.plan.think);
-      t.expect(think >= 0.4, `the rival would have thought for ${think.toFixed(2)} s`);
+      // make it think for a minute, so that only the press can bring its throw
+      await t.page.evaluate(() => { window.__FS.aiActive.plan.think = 60; });
       // count animation frames from the press to the rival's throw: frames, not seconds, so a slow machine cannot fail it
       await t.page.evaluate(() => {
         window.__frames = -1;
@@ -224,6 +224,38 @@ export const tests = [
       t.equal(await tapped(), true, 'Space still spends the trick at once');
     },
   },
+  // ---- S3-05 ----
+  {
+    name: 'S3-05 a win with one squirrel lost can earn the second star in a three-a-side battle, and the card says so',
+    async run(t) {
+      const finish = async (levelId, lost, turnN = 60) => {
+        await t.game('act', 'clearSave');
+        await t.reload();
+        await t.game('setState', { story: { team: 0, unlocked: 12 } });
+        await t.seed(5);
+        await t.game('newGame', { levelId, mode: 'story', loadout: 'story', unlocked: [], difficulty: 'medium' });
+        await t.page.evaluate(([n, tn]) => { const S = window.__FS.sim; S.b.turn.n = tn; S.b.squirrels.filter((q) => q.team === 0).slice(0, n).forEach((q) => { q.out = true; }); }, [lost, turnN]);
+        await t.game('scene', 'results');
+        await t.page.waitForSelector('.starrule');
+        const rule = await t.page.$eval('.starrule', (p) => p.textContent);
+        const stars = (await t.state()).save.story.stars[levelId];
+        return { rule, stars };
+      };
+      let r = await finish('story-03', 1);
+      t.equal(r.stars, 2, 'story-03 (three a side): a win with one lost, over par: two stars (the win and the squirrels)');
+      t.expect(/lose at most one squirrel/.test(r.rule) && !/keep every squirrel/.test(r.rule), `the card names the rule (${r.rule})`);
+      await snap(t, 'S3-05-results-three-a-side');
+      r = await finish('story-03', 1, 4);
+      t.equal(r.stars, 3, 'the same win within par: three stars');
+      r = await finish('story-03', 2);
+      t.equal(r.stars, 1, 'two lost in a three-a-side battle: one star');
+      r = await finish('story-01', 1);
+      t.equal(r.stars, 1, 'story-01 (two a side): one lost is still one star');
+      t.expect(/keep every squirrel in the trees/.test(r.rule), 'and its card still asks for every squirrel');
+      r = await finish('story-01', 0);
+      t.equal(r.stars, 2, 'story-01 with nothing lost, over par: two stars');
+    },
+  },
   // ---- P-N05 ----
   {
     name: 'P-N05 the aim guide rings the bird that a throw made now would meet, and drops the ring when the bird is out of the way',
@@ -259,7 +291,7 @@ export const tests = [
     name: 'S6-09 the title is whole on a phone on its side, and never loses its top edge in a very short window',
     viewports: ['mobile'],
     async run(t) {
-      for (const [w, h, fits] of [[844, 390, true], [667, 375, true], [932, 430, true], [568, 320, false], [390, 844, true]]) {
+      for (const [w, h, fits] of [[844, 390, true], [667, 375, true], [932, 430, true], [568, 320, false], [360, 300, false], [390, 844, true]]) {
         await t.page.setViewportSize({ width: w, height: h });
         await t.game('scene', 'title');
         await t.waitFrames(4);

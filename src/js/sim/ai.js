@@ -12,6 +12,9 @@ export const DIFF = {
   // between Medium and Hard (S3-04): roughly the geometric middle of their aim noise, so each step is a similar jump
   sharp: { sa: SHARP_SA, sp: 0.0124, wind: 1, special: 0.68, move: 0.45, bracket: 0.6, think: [0.6, 1.0] },
   hard: { sa: 0.6, sp: 0.007, wind: 1, special: 0.8, move: 0.6, bracket: 0.7, think: [0.5, 0.9] },
+  // not a tier a player can pick and not in TIERS: a stand-in for a person at the controls (S3-12), who cannot set an angle better
+  // than a degree or two or a power better than a few percent. tools/balance.mjs plays it against the real tiers to see where it sits.
+  human: { sa: 2.5, sp: 0.03, wind: 1, special: 0.55, move: 0.3, bracket: 0.5, think: [0.7, 1.1] },
 };
 // The skill scale the rival sits on: 0 Easy, 1 Medium, 2 Sharp, 3 Hard. A Story level nudges it up or down with its
 // `skill` field (levels/*.json), so the campaign ramps inside whichever tier the player picked. Between two tiers the

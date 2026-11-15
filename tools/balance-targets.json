@@ -1,11 +1,14 @@
 {
-  "note": "Targets for tools/balance.mjs (PRD AC15, AC16). Turns are total throws per round, both families; 3 vs 3 on story levels; easy-vs-easy AI is excluded from the turn mean because a human always plays one side. Sharp (S3-04) sits between Medium and Hard.",
+  "note": "Targets for tools/balance.mjs (PRD AC15, AC16). Turns are total throws per round, both families; 3 vs 3 on story levels; easy-vs-easy AI is excluded from the turn mean because a human always plays one side. Sharp (S3-04) sits between Medium and Hard. threeStars (S3-05, run with --stars) is the share of Story battles a Hard-skill player proxy earns three stars in against a Medium rival.",
   "turnsPerRound": { "min": 10, "max": 26 },
   "hardBeatsEasy": 0.75,
   "mediumBeatsEasy": 0.6,
   "sharpBeatsMedium": 0.55,
   "hardBeatsSharp": 0.55,
   "hitRate": { "easy": [0.15, 0.4], "medium": [0.3, 0.6], "sharp": [0.38, 0.75], "hard": [0.45, 0.85] },
+  "threeStars": [0.15, 0.35],
+  "humanBeatsMedium": [0.3, 0.55],
+  "hardBeatsHuman": 0.7,
   "specialSpread": 1.4,
   "firstMoverMax": 0.62
 }
