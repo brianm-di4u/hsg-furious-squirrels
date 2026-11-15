@@ -12,7 +12,7 @@ import { initAudio, setAudio, sfx, playTheme, playAmbience, ambienceParam, setTe
 import { themeFor, sceneFor } from './ui/music.js';
 import { loadSave, writeSave, refreshSave, beginBattleSave, takeSaveNotice, starTiers, DEFAULT_SAVE } from './save.js';
 import { installHooks } from './hooks.js';
-import { blurbFor, resultLine, TAUNTS, GROANS } from './story.js';
+import { blurbFor, resultLine, LEVEL_FACTS, TAUNTS, GROANS } from './story.js';
 
 /* global LEVELS, FACTS, MANIFEST, SPRITES */
 const ALL = typeof LEVELS !== 'undefined' ? LEVELS : {};
@@ -418,6 +418,8 @@ function battleOver() {
     shot: !practice && myStats.best > before.shot && before.shot > 0 ? myStats.best : 0,
     streak: !practice && win && s.stats.streak >= 2 ? s.stats.streak : 0,
   };
+  const fact = pickFact(L);
+  if (fact && !s.story.notes.includes(fact.id)) s.story.notes.push(fact.id);
   persist('result');
   sfx(win || App.setup.mode === 'practice' ? 'win' : 'lose');
   screens.show('results', {
@@ -428,7 +430,7 @@ function battleOver() {
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     losses: App.setup.mode === 'story' && !win ? s.story.losses[L.id] || 0 : 0, offerEasy: App.setup.mode === 'story' && !win && (s.story.losses[L.id] || 0) >= LOSS_OFFER && s.settings.difficulty !== 'easy',
     retry: !win && !practice,
-    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact: pickFact(L), me, winner: res.battleWinner,
+    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? L.par : null, acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
   });
   decorateScreen();
   say((win ? 'Victory!' : 'Battle over.') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));
@@ -440,7 +442,10 @@ function pickFact(L) {
   const nat = FACTS.nature.filter((f) => f.season === L.season || f.season === 'any');
   const pool = [...land.map((f) => ({ ...f, kind: 'land' })), ...nat.map((f) => ({ ...f, kind: 'nature' }))];
   if (!pool.length) return null;
-  const f = pool[(L.n * 7 + App.save.stats.battles * 3) % pool.length];
+  // the battle's own note if it has not been read yet, then any unread note that suits the place, then the old rotation
+  const seen = App.save.story.notes, fresh = (x) => !seen.includes(x.id), start = (L.n * 7 + App.save.stats.battles * 3) % pool.length;
+  const all = [...FACTS.landmarks.map((x) => ({ ...x, kind: 'land' })), ...FACTS.nature.map((x) => ({ ...x, kind: 'nature' }))], own = all.find((x) => x.id === LEVEL_FACTS[L.n - 1]);
+  const f = (own && fresh(own) ? own : null) || pool.slice(start).concat(pool.slice(0, start)).find(fresh) || pool[start];
   const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   // skip the short answer when the explanation already states it
   const says = f.kind === 'land' && f.text.toLowerCase().includes(String(f.a).toLowerCase().split(' ')[0]);

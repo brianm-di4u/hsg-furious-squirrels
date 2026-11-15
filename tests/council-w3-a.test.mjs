@@ -1,5 +1,6 @@
 // Council wave 3, batch A: saves, lifecycle and robustness (S2-05, S2-18, S4-06, S5-08, S5-10, S5-11, S6-04, S6-15, S3-03, S4-17).
 import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 const SAVE_KEY = 'hsg-furious-squirrels-v1';
 const SHOTS = '../_council/hsg-furious-squirrels/wave-3/shots';
 
@@ -11,14 +12,15 @@ const snap = async (t, name) => {
 };
 const screenText = (t) => t.page.textContent('#screens');
 // a fresh profile, then a Story battle in which the player's family throws first (so the resume slot is written at once)
-async function storyBattle(t, levelId = 'story-01', settings = {}) {
+async function storyBattle(t, levelId = 'story-01', settings = {}, story = {}) {
   await t.game('act', 'clearSave');
   await t.reload();
-  await t.game('setState', { settings });
+  await t.game('setState', { settings, story });
   await t.game('act', 'menu', 'story');
   await t.game('act', 'menu', 'team', { v: '0' });
   await t.seed(35594);
   await t.game('act', 'menu', 'play', { v: levelId });
+  if ((await t.state()).screen === 'prep') await t.game('act', 'menu', 'prepGo');
   await t.page.waitForFunction((k) => { try { return !!JSON.parse(localStorage.getItem(k)).resume.battle; } catch { return false; } }, SAVE_KEY, { timeout: 5000 });
 }
 const throwOnce = async (t) => { await t.game('act', 'fire', {}); await t.game('act', 'skipFlight'); };
@@ -141,6 +143,40 @@ export const tests = [
       await t.page.click('[data-act="again"]:not([data-same])');
       await t.game('scene', 'results', { lose: false });
       t.expect(!('story-01' in (await saved(t)).story.losses), 'a win clears the run');
+    },
+  },
+  // ---- S4-06 ----
+  {
+    name: 'S4-06 every battle has a Field Note of its own, and a note is not repeated while unread ones remain',
+    node: true,
+    async run(t) {
+      const { LEVEL_FACTS } = await import(pathToFileURL(`${process.cwd()}/src/js/story.js`).href);
+      const facts = JSON.parse(fs.readFileSync('data/facts.json', 'utf8')), ids = new Set([...facts.landmarks, ...facts.nature].map((f) => f.id));
+      t.equal(LEVEL_FACTS.length, 12, 'one note per Story battle');
+      t.expect(LEVEL_FACTS.every((id) => ids.has(id)), 'every id is a real fact in data/facts.json');
+      t.equal(new Set(LEVEL_FACTS).size, 12, 'no two battles share one');
+    },
+  },
+  {
+    name: 'S4-06 the results card shows the battle\'s own note first, then notes not read yet, and saves what was read',
+    async run(t) {
+      await storyBattle(t, 'story-02', {}, { unlocked: 2 });
+      const noteText = () => t.page.textContent('#screens .notes');
+      await t.game('scene', 'results');
+      const first = await noteText();
+      t.expect(/216 feet|Hot Springs Mountain Tower/.test(first), 'Under the Tower shows the tower note');
+      t.expect(((await saved(t)).story.notes || []).includes('hs-0094'), 'its id is saved as read');
+      const seen = [first];
+      for (let i = 0; i < 3; i++) {
+        await t.page.click('[data-act="again"]:not([data-same])');
+        if ((await t.state()).screen === 'prep') await t.game('act', 'menu', 'prepGo');
+        await t.game('scene', 'results');
+        seen.push(await noteText());
+      }
+      t.equal(new Set(seen).size, 4, 'four results, four different notes');
+      t.equal(((await saved(t)).story.notes || []).length, 4, 'four ids saved');
+      await t.reload();
+      t.equal(((await saved(t)).story.notes || []).length, 4, 'and kept after a reload');
     },
   },
 ];

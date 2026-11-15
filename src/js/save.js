@@ -12,7 +12,7 @@ let mem = null;
 export const DEFAULT_SAVE = () => ({
   v: 1,
   settings: { sound: true, music: true, ambience: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true },
-  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {} },
+  story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {}, notes: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
   resume: null,
@@ -57,6 +57,8 @@ function decoded(s) {
   // the fewest turns each Story battle was won in (a Records figure); a damaged entry is dropped, never guessed at
   out.story.bestTurns = object(out.story.bestTurns) ? { ...out.story.bestTurns } : {};
   for (const [id, n] of Object.entries(out.story.bestTurns)) if (!(Number.isInteger(n) && n >= 1 && n <= 999)) delete out.story.bestTurns[id];
+  // the Field Notes read so far (ids from data/facts.json); anything else in the list is dropped
+  out.story.notes = Array.isArray(out.story.notes) ? [...new Set(out.story.notes.filter((id) => typeof id === 'string' && id.length > 0 && id.length <= 40))].slice(0, 200) : [];
   // consecutive losses per Story battle (S2-18), cleared by a win; a damaged entry is dropped
   out.story.losses = object(out.story.losses) ? { ...out.story.losses } : {};
   for (const [id, n] of Object.entries(out.story.losses)) if (!(Number.isInteger(n) && n >= 1 && n <= 99)) delete out.story.losses[id];
@@ -112,9 +114,10 @@ function capture(s, intent, fresh, fields = []) {
       if (!same(s.quick[key], before.quick[key]) || (intent === 'quick' && fields.includes(key))) put(pending.quick, key, { value: s.quick[key], epoch: setupEpoch });
     }
     if (!same(s.story.team, before.story.team) || intent === 'family') pending.team = { value: s.story.team, epoch: setupEpoch };
-    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null, losses: {} };
+    const earned = { epoch: intent === 'result' && run ? run.epoch : localEpoch, stars: {}, nuts: [], stats: {}, unlocked: 0, bestShot: 0, tiers: {}, acorns: null, turns: {}, bestStreak: 0, streak: null, losses: {}, notes: [] };
     for (const [id, n] of Object.entries(s.story.stars || {})) if (number(n) && n > (before.story.stars[id] || 0)) put(earned.stars, id, n);
     earned.nuts = (s.story.nuts || []).filter(id => !before.story.nuts.includes(id));
+    earned.notes = (s.story.notes || []).filter(id => !(before.story.notes || []).includes(id));
     if (s.story.unlocked > before.story.unlocked) earned.unlocked = s.story.unlocked;
     for (const key of TALLIES) earned.stats[key] = Math.max(0, s.stats[key] - before.stats[key]);
     if (s.stats.bestStreak > before.stats.bestStreak) earned.bestStreak = s.stats.bestStreak;
@@ -131,7 +134,7 @@ function capture(s, intent, fresh, fields = []) {
       const n = (s.story.losses || {})[id] || 0;
       if (n !== ((before.story.losses || {})[id] || 0)) earned.losses[id] = n;
     }
-    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || Object.keys(earned.losses).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
+    if (!(intent === 'result' && run?.invalidated) && (Object.keys(earned.stars).length || earned.nuts.length || earned.notes.length || earned.unlocked || earned.bestShot || earned.acorns != null || Object.keys(earned.tiers).length || Object.keys(earned.turns).length || Object.keys(earned.losses).length || earned.bestStreak || earned.streak != null || Object.values(earned.stats).some(Boolean))) pending.earned.push(earned);
   }
   mem = copy(s); observed = copy(s);
 }
@@ -155,6 +158,7 @@ function merged(latest, callback) {
     value.story.unlocked = Math.max(value.story.unlocked, e.unlocked);
     for (const [id, n] of Object.entries(e.stars)) put(value.story.stars, id, Math.max(value.story.stars[id] || 0, n));
     value.story.nuts = [...new Set([...value.story.nuts, ...e.nuts])];
+    value.story.notes = [...new Set([...value.story.notes, ...e.notes])];
     for (const key of TALLIES) value.stats[key] += e.stats[key];
     if (e.streak != null) value.stats.streak = e.streak;
     value.stats.bestStreak = Math.max(value.stats.bestStreak, e.bestStreak || 0, value.stats.streak);

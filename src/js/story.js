@@ -71,6 +71,10 @@ export const GROANS = [
   ['Oh, my acorns!', 'That stung my pride!', 'Somebody catch my cap!'],
 ];
 
+// the Field Note that goes with each battle (S4-06), by battle number: ids from data/facts.json. A battle shows its own
+// note first; after that it shows one the player has not read yet.
+export const LEVEL_FACTS = ['hs-0093', 'hs-0094', 'hs-0082', 'n-redbud', 'n-wind', 'hs-0066', 'hs-0086', 'n-gumball', 'n-hedgeapple', 'n-pine', 'hs-0084', 'hs-0071'];
+
 export function blurbFor(n) { return BLURBS[n - 1] || ''; }
 
 // the line shown on the results card
