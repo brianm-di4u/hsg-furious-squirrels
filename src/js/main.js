@@ -597,6 +597,9 @@ function overviewBox() {
   top = Math.min(top, L.tower.y - 330);
   return { x0: 20, y0: top - 40, x1: W - 20, y1: L.floorY + 10 };
 }
+// A wide window frames the whole battlefield a little lower than before (S4-09), so less of it is bare soil: the view's centre
+// moves up by this many screen pixels (0 is the old framing, which sat 50 px below the middle of the box).
+const SOIL_LIFT = 90;
 function frameCamera(snap) {
   const cam = renderer.cam, sim = App.sim, b = sim.b, box = overviewBox();
   const fit = Math.min(cam.vw / (box.x1 - box.x0), cam.vh / (box.y1 - box.y0 + 160));
@@ -613,7 +616,7 @@ function frameCamera(snap) {
     const T = App.level.targets; cam.frame(q.x - 120, q.y - 160, T[1].x + 60, App.level.floorY - 40, 4, false);
     cam.ty = App.level.floorY - 30 - (cam.vh / 2 - 240) / cam.tz; if (snap) cam.snap(); return;
   }
-  if (fit >= 0.36 || !q || App.scene !== 'battle') { cam.frame(box.x0, box.y0, box.x1, box.y1, 0, snap); cam.ty += 50 / cam.tz; if (snap) cam.snap(); return; }
+  if (fit >= 0.36 || !q || App.scene !== 'battle') { cam.frame(box.x0, box.y0, box.x1, box.y1, 0, snap); cam.ty += (50 - SOIL_LIFT) / cam.tz; if (snap) cam.snap(); return; }
   // phones: frame the active squirrel and the first part of its throw
   const span = 820, cx = q.x + q.facing * 150;
   cam.set(cx, q.y + 170, cam.vw / span, snap);

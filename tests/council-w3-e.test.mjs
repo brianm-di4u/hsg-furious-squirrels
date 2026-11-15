@@ -342,4 +342,33 @@ export const tests = [
       t.expect(true, 'and they come back when it is off');
     },
   },
+  // ---- S4-09 ----
+  {
+    name: 'S4-09 a wide window frames the battlefield lower, so less of it is bare soil, and nothing meets the HUD',
+    viewports: ['desktop'],
+    async run(t) {
+      for (const levelId of ['gray', 'story-01', 'story-05', 'story-08', 'story-11']) {
+        await t.seed(7);
+        await t.game('newGame', { levelId, birds: 'off', wind: 'off' });
+        await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
+        await t.page.evaluate(() => window.__game.pause());
+        await t.game('act', 'cam', 'frame');
+        await t.page.waitForFunction(() => { const c = window.__FS.renderer.cam; return Math.abs(c.x - c.tx) < 1 && Math.abs(c.y - c.ty) < 1; }, null, { timeout: 10000 });
+        const v = await t.page.evaluate(() => {
+          const A = window.__FS, c = A.renderer.cam, L = A.level, sy = (x) => c.toScreen(x, A.sim.terrain.surfaceY(x))[1];
+          const sq = A.sim.b.squirrels.map((q) => c.toScreen(q.x, q.y)[1]);
+          const [px, pile] = c.toScreen(L.leafPiles[0].x, L.leafPiles[0].y);
+          // the controls the pile could sit behind: the nut bar and the aim box, not the empty gap between them
+          const hit = [...document.querySelectorAll('.hud .bottom > *')].map((e) => e.getBoundingClientRect()).filter((r) => px > r.left - 40 && px < r.right + 40 && pile + 20 > r.top);
+          const bannersBottom = Math.max(...[...document.querySelectorAll('.hud .top > *')].map((e) => e.getBoundingClientRect().bottom));
+          return { rim: Math.min(sy(L.crestX[0]), sy(L.crestX[1])), vh: c.vh, topSquirrel: Math.min(...sq), pile, covered: hit.length, bannersBottom };
+        });
+        // the ridge between the two families sat at 0.36 to 0.40 of the height before; the soil below it was the rest
+        t.expect(v.rim / v.vh >= 0.46, `${levelId}: the ridges sit at ${(v.rim / v.vh).toFixed(2)} of the height (0.36 to 0.40 before)`);
+        t.expect(v.topSquirrel - 40 > v.bannersBottom, `${levelId}: the highest nameplate (${Math.round(v.topSquirrel - 40)}) is clear of the banners (${Math.round(v.bannersBottom)})`);
+        t.equal(v.covered, 0, `${levelId}: the leaf pile (at ${Math.round(v.pile)}) is not under the nut bar or the aim box`);
+        if (levelId === 'story-01' || levelId === 'story-08') await snap(t, 'S4-09-framing-' + levelId);
+      }
+    },
+  },
 ];
