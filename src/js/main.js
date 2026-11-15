@@ -203,6 +203,7 @@ function onTurnStart(first) {
 
 // tutorial tips: each shows once, on the player's own turn, until any tap/key or TIP_MS passes
 const TIPS = ['Drag back from anywhere to aim. Let go to throw. Slide back to where you began to cancel.', 'Next: wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
+const TIP_AIM_ONLY = 'Drag back from anywhere to aim. Then press Throw! Slide back to where you began to cancel.';
 const TIP_MS = 8000;
 let tipTimer = 0;
 function tutorial() {
@@ -211,7 +212,8 @@ function tutorial() {
   if (!App.level || !App.level.tutorial || !App.save.settings.tutorial || !q || !App.sim.b.teams[q.team].human || App.tutorialStep >= TIPS.length) { hud.hint(''); return; }
   // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
   if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return; }
-  hud.hint(TIPS[App.tutorialStep]);
+  // with "Release: Only aims" the first tip names the Throw button instead of the release
+  hud.hint(App.tutorialStep === 0 && App.save.settings.releaseThrows === false ? TIP_AIM_ONLY : TIPS[App.tutorialStep]);
   tipTimer = setTimeout(dismissTip, TIP_MS);
 }
 function dismissTip() {
@@ -547,7 +549,7 @@ function frameCamera(snap) {
 // a press on the field spends a trick nut's trick only if it is a short press that does not move and has no second finger (P-N01)
 const TAP_MS = 250, TAP_PX = 10;
 let tapArm = null;
-const CANCEL_POWER = 0.08; // a drag shorter than this fraction of full power is a cancel, not a throw
+const CANCEL_POWER = 0.18; // a drag shorter than this fraction of full power is a cancel, not a throw (S1-03; it was 0.08, a few pixels of finger jitter)
 const ptrs = new Map();
 let drag = null, pinch = null;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -603,7 +605,8 @@ const endPtr = (e) => {
   if (!drag) return;
   const d = drag; drag = null;
   if (App.dragRing) { App.dragRing = null; kick(); }
-  if (d.aim && d.moved && (d.power || 0) >= CANCEL_POWER && e.type === 'pointerup') throwNow();
+  if (d.aim && d.moved && (d.power || 0) >= CANCEL_POWER && e.type === 'pointerup' && App.save.settings.releaseThrows !== false) throwNow();
+  else if (d.aim && d.moved && (d.power || 0) >= CANCEL_POWER && e.type === 'pointerup') { App.guideKey = ''; kick(); } // "Only aims": the aim stays and Throw! sends it
   else if (d.aim && d.moved && e.type === 'pointerup') { App.sim.setAim(d.a0); App.guideKey = ''; kick(); }
 };
 canvas.addEventListener('pointerup', endPtr);

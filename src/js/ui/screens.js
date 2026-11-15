@@ -219,8 +219,8 @@ const TEMPLATES = {
       <h2>How to Play</h2>
       <p class="sub">${FICTION} <span class="label-fiction">Scroll for all seven tips and the nut guide ↓</span></p>
       <div class="cards">
-        <div class="card"><b>1. Aim</b><br>Drag back from anywhere like a slingshot: the direction sets the angle, the length sets the power. To cancel, slide back to where you began before you let go. Keys: ←/→ angle, ↑/↓ power (Shift for big steps).</div>
-        <div class="card"><b>2. Throw</b><br>Let go, press <b>Throw</b>, or press Space/Enter. While a shot flies or the rival takes a turn, tap or press Space to hurry it along.</div>
+        <div class="card"><b>1. Aim</b><br>Drag back from anywhere like a slingshot: the direction sets the angle, the length sets the power. To cancel, slide back to where you began before you let go; a short pull cancels too. Keys: ←/→ angle, ↑/↓ power (Shift for big steps).</div>
+        <div class="card"><b>2. Throw</b><br>Let go, press <b>Throw</b>, or press Space/Enter. (In Settings, "Release: Only aims" keeps your aim until you press Throw.) While a shot flies or the rival takes a turn, tap or press Space to hurry it along.</div>
         <div class="card"><b>3. Tap for the trick</b><br>While a special nut flies, tap or press Space once to trigger its trick.</div>
         <div class="card"><b>4. Scamper</b><br>Press <b>Move</b> (or M), then pick a glowing perch on your own mountain. Each turn has a little stamina.</div>
         <div class="card"><b>5. Wind and steam</b><br>The flag shows wind (0–10). The steam over Bathhouse Row lifts nuts that fly through it (game rule).</div>
@@ -250,6 +250,7 @@ const TEMPLATES = {
       ${field('Music level', seg('musicVol', s.musicVol, [[0.35, 'Low'], [0.65, 'Medium'], [1, 'High']]))}
       ${field('Motion', seg('reducedMotion', s.reducedMotion == null ? 'auto' : s.reducedMotion, [['auto', 'System'], [false, 'Full'], [true, 'Reduced']]))}
       ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By skill'], ['always', 'Always long'], ['off', 'Off']]))}
+      ${field('Release', seg('releaseThrows', s.releaseThrows, [[true, 'Throws'], [false, 'Only aims']]))}
       ${field('Turn timer', seg('turnTimer', s.turnTimer, [[0, 'Off'], [30, '30 s'], [60, '60 s']]))}
       ${field('Text size', seg('textScale', s.textScale, [[1, '100%'], [1.25, '125%'], [1.5, '150%']]))}
       ${field('Tutorial hints', seg('tutorial', s.tutorial, [[true, 'On'], [false, 'Off']]))}

@@ -164,7 +164,7 @@ export const tests = [
       await pointer('pointerdown', x0, y0);
       let ring = await pointer('pointermove', x0 - 120, y0 + 60);
       t.expect(ring && !ring.inside && Math.abs(ring.x - x0) < 1 && Math.abs(ring.y - y0) < 1, 'pulling back draws the ring at the start of the drag');
-      t.expect(ring.r >= 12 && ring.r < 60, `of a sensible size (${ring.r.toFixed(1)} px)`);
+      t.expect(ring.r >= 12 && ring.r < 70, `of a sensible size (${ring.r.toFixed(1)} px)`);
       await t.waitFrames(3);
       await snap(t, 'S2-13-ring-pull');
       ring = await pointer('pointermove', x0 + 3, y0 + 4);
