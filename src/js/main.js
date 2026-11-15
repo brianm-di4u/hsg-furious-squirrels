@@ -35,7 +35,8 @@ const hud = new Hud(document.getElementById('hud'), App);
 const screens = new Screens(document.getElementById('screens'), App);
 App.hud = hud; App.screens = screens;
 const live = document.getElementById('live');
-const say = (t) => { live.textContent = ''; setTimeout(() => { live.textContent = t; }, 30); App.lastSaid = t; };
+// `add`: a tip that follows a call made a moment ago (the battle's title, the turn) is read after it, in the same announcement, not over it
+const say = (t, add) => { const full = add && App.lastSaid && performance.now() - (App.saidAt || 0) < 1500 ? `${App.lastSaid} ${t}` : t; live.textContent = ''; setTimeout(() => { live.textContent = full; }, 30); App.lastSaid = full; App.saidAt = performance.now(); };
 
 // ---------------------------------------------------------------------------------------------------------------
 // settings
@@ -245,7 +246,7 @@ function contextTip(q) {
   // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
   if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return true; }
   const text = CONTEXT_TIPS[id]();
-  hud.hint(text); say(text);
+  hud.hint(text); say(text, true);
   tipTimer = setTimeout(dismissTip, TIP_MS);
   markTip(id);
   return true;

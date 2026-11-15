@@ -318,4 +318,16 @@ export const tests = [
       t.equal((await t.state()).settings.seenTips.length, 0, 'a fresh profile has seen none');
     },
   },
+  {
+    name: 'S2-01 a tip is read out after the battle title in the same announcement, not over it',
+    viewports: ['desktop'],
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await startHuman(t, { levelId: 'story-02' });
+      const said = (await t.state()).lastSaid;
+      t.expect(said.startsWith('Under the Tower'), `the title comes first: ${said}`);
+      t.expect(/Knock every rival out of the trees/.test(said), 'and the tip follows it');
+    },
+  },
 ];
