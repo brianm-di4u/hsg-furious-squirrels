@@ -5,9 +5,11 @@
 import { makeAudioKit, measureAudio } from './audiokit.js';
 import { SCORES, SCENES } from './music.js';
 
-let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null;
+let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null, tOff = 0; // tOff: seconds added to every cue's start, for the offline render
 const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
 const SFX_GAIN = 0.9; // the effects bus at its full level
+const MASTER_SCALE = 0.45; // the master gain is the Volume setting times this
+const SHIPPED_VOLUME = 0.5; // the Volume a new profile starts at (save.js)
 const FADE_MUSIC = 1.6, FADE_SCENE = 2.5; // seconds a mood or a place takes to cross-fade into the next
 
 export function initAudio(settings) {
@@ -30,6 +32,22 @@ function runScheduler(on) {
   if (on && !state.timer) { kit.start(); state.timer = true; } else if (!on && state.timer) { kit.stop(); state.timer = false; }
 }
 
+// What every sound passes through on its way out: the master gain, then a limiter so music, ambience and the loudest cue
+// cannot clip together. The page and the offline render hook build it the same way.
+function makeChain(c, dest, gain) {
+  const m = c.createGain(); m.gain.value = gain;
+  const limiter = c.createDynamicsCompressor();
+  limiter.threshold.value = -8; limiter.knee.value = 6; limiter.ratio.value = 14; limiter.attack.value = 0.003; limiter.release.value = 0.25;
+  m.connect(limiter); limiter.connect(dest);
+  return m;
+}
+function makeNoise(c) {
+  const buf = c.createBuffer(1, c.sampleRate, c.sampleRate), d = buf.getChannelData(0);
+  let s = 12345;
+  for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
+  return buf;
+}
+
 function unlock() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -38,16 +56,9 @@ function unlock() {
     // a context made outside an unlocking gesture starts suspended: ask for it to run, and play one silent sample to prime iOS
     ctx.resume().catch(() => {});
     const prime = ctx.createBufferSource(); prime.buffer = ctx.createBuffer(1, 1, ctx.sampleRate); prime.connect(ctx.destination); prime.start(0);
-    master = ctx.createGain(); master.gain.value = state.on ? state.vol * 0.45 : 0;
-    // a limiter on the master keeps music, ambience and the loudest cue from clipping together
-    const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -8; limiter.knee.value = 6; limiter.ratio.value = 14; limiter.attack.value = 0.003; limiter.release.value = 0.25;
-    master.connect(limiter); limiter.connect(ctx.destination);
+    master = makeChain(ctx, ctx.destination, state.on ? state.vol * MASTER_SCALE : 0);
     sfxBus = ctx.createGain(); sfxBus.gain.value = SFX_GAIN * state.sfxVol; sfxBus.connect(master);
-    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    let s = 12345;
-    for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
+    noiseBuf = makeNoise(ctx);
     ctx.onstatechange = () => { if (ctx && ctx.state === 'interrupted' && !document.hidden) ctx.resume().catch(() => {}); };
     kit = makeAudioKit(ctx, master, { seed: (Math.random() * 0x7fffffff) >>> 0, music: state.music ? state.musicVol : 0, ambience: state.ambience ? 1 : 0 });
     state.started = true;
@@ -64,7 +75,7 @@ function unlock() {
 export function setAudio(settings) {
   setFlags(settings);
   if (!ctx) return;
-  master.gain.setTargetAtTime(state.on ? state.vol * 0.45 : 0, ctx.currentTime, 0.05);
+  master.gain.setTargetAtTime(state.on ? state.vol * MASTER_SCALE : 0, ctx.currentTime, 0.05);
   applyLevels();
 }
 // The pause card fades the music and ambience out, so a paused battle does not sound like it is still running.
@@ -96,7 +107,7 @@ export function audioState() {
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
   if (!ctx) return;
-  const t = ctx.currentTime + at, o = ctx.createOscillator(), g = ctx.createGain();
+  const t = ctx.currentTime + tOff + at, o = ctx.createOscillator(), g = ctx.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, t);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t + dur);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -107,7 +118,7 @@ function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, atta
 }
 function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, sweep = 0, bus = sfxBus } = {}) {
   if (!ctx) return;
-  const t = ctx.currentTime + at, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  const t = ctx.currentTime + tOff + at, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
   s.buffer = noiseBuf; s.loop = true;
   f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
   if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(40, freq * sweep), t + dur);
@@ -118,6 +129,7 @@ function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, 
 
 // Short parameterised effects (in the spirit of ZzFX by Frank Force, MIT: one call per sound, no samples).
 const POP = { acorn: 520, chinquapin: 760, pecan: 620, walnut: 300, hickory: 560, sweetgum: 680, hedgeapple: 220 };
+export const CUES = ['ui', 'aim', 'throw', 'tap', 'thock', 'thud', 'burst', 'crack', 'rustle', 'boing', 'chitter', 'ko', 'cheer', 'win', 'lose', 'buy', 'land', 'honk', 'squawk', 'steam'];
 export function sfx(name, arg) {
   if (!ctx || !state.on || state.sfxVol <= 0) return;
   state.played++;
@@ -173,17 +185,40 @@ export function setTension(on) {
   if (kit) kit.music.intensity(on ? 1 : 0);
 }
 
-// Test hooks: every piece by name, and a render of one piece or scene on its own offline context at the level it
-// ships (before the master volume), which never touches the live audio or the settings.
-export function audioList() { return { music: Object.keys(SCORES), ambience: Object.keys(SCENES) }; }
+// Test hooks: every piece, bed and cue by name, and a render of one on its own offline context, through the master
+// gain and the limiter the player hears, so its levels are the levels at the speakers. The Volume setting is
+// `opts.volume` (0 to 1, default the shipped 0.5); `opts.raw` skips the master gain and the limiter and gives the
+// kit's own scale (the limiter also adds make-up gain, so this is not just the volume divided out). A render never
+// touches the live audio or the settings.
+//   name: a score, a scene, 'cue:<name>' (opts.arg, opts.repeats times, one a second) or 'mix' (the busiest moment).
 const RENDER_PARAMS = { wind: 0.6, steam: 0.6, birds: 1 };
+const MIX_CUES = [['burst'], ['crack'], ['boing'], ['ko'], ['cheer'], ['win']]; // struck in turn, one a second, over the piece and the bed
+export function audioList() { return { music: Object.keys(SCORES), ambience: Object.keys(SCENES), cues: CUES.slice() }; }
+function renderCues(oc, m, k, list, repeats, gap) {
+  const keep = { ctx, sfxBus, noiseBuf, kit, tOff, on: state.on, sfxVol: state.sfxVol, played: state.played };
+  try {
+    ctx = oc; kit = k; noiseBuf = makeNoise(oc); state.on = true; state.sfxVol = 1;
+    sfxBus = oc.createGain(); sfxBus.gain.value = SFX_GAIN; sfxBus.connect(m);
+    for (let i = 0; i < repeats; i++) { tOff = i * gap; const [n, a] = list[i % list.length]; sfx(n, a); }
+  } finally { ({ ctx, sfxBus, noiseBuf, kit, tOff } = keep); state.on = keep.on; state.sfxVol = keep.sfxVol; state.played = keep.played; }
+}
 export function audioRender(name, seconds = 60, wantWav = false, opts = {}) {
-  const score = SCORES[name], scene = SCENES[name];
-  if (!score && !scene) return Promise.reject(new Error('unknown piece: ' + name));
+  const cue = /^cue:(.+)$/.exec(name), score = SCORES[name], scene = SCENES[name];
+  if (!score && !scene && !cue && name !== 'mix') return Promise.reject(new Error('unknown piece: ' + name));
+  if (cue && !CUES.includes(cue[1])) return Promise.reject(new Error('unknown cue: ' + cue[1]));
   return measureAudio((oc, dest) => {
-    const k = makeAudioKit(oc, dest, { seed: 7 });
+    const m = opts.raw ? dest : makeChain(oc, dest, (opts.volume ?? SHIPPED_VOLUME) * MASTER_SCALE), k = makeAudioKit(oc, m, { seed: 7 });
+    if (cue) { const n = opts.repeats || 1; renderCues(oc, m, k, [[cue[1], opts.arg]], n, opts.gap || 1); return () => ({ cue: cue[1], repeats: n }); }
+    if (name === 'mix') {
+      k.music.intensity(1); k.music.play(SCORES[opts.piece || 'day'], { at: 0, fade: 0.02 });
+      for (const [p, v] of Object.entries({ wind: 1, steam: 1, birds: 1 })) k.amb.set(p, v, 0.01);
+      k.amb.play(SCENES[opts.scene || 'summerDay'], { at: 0, fade: 0.02 });
+      renderCues(oc, m, k, MIX_CUES, Math.max(1, Math.floor(seconds) - 1), 1);
+      k.scheduleUntil(seconds);
+      return () => ({ mix: true });
+    }
     if (score) { k.music.intensity(opts.intensity || 0); k.music.play(score, { at: 0, fade: 0.02 }); }
-    else { for (const [p, v] of Object.entries({ ...RENDER_PARAMS, ...opts })) k.amb.set(p, v, 0.01); k.amb.play(scene, { at: 0, fade: 0.02 }); }
+    else { for (const [p, v] of Object.entries({ ...RENDER_PARAMS, ...opts })) if (typeof v === 'number' && p in RENDER_PARAMS) k.amb.set(p, v, 0.01); k.amb.play(scene, { at: 0, fade: 0.02 }); }
     k.scheduleUntil(seconds);
     return () => {
       if (!score) return { scene: name };

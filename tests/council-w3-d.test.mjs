@@ -17,6 +17,8 @@ async function startHuman(t, opts = {}) {
   }
   throw new Error('no seed lets the player throw first');
 }
+const MASTER = 0.45; // the master gain is the Volume setting times this (audio.js)
+const render = (t, name, secs, opts) => t.page.evaluate(([n, s, o]) => window.__game.audioRender(n, s, false, o), [name, secs, opts || {}]);
 const humanAims = (t) => t.page.waitForFunction(() => { const s = window.__game.getState(); return s.battle && s.battle.turn.team === 0 && s.battle.phase === 'aim' && !s.aiActive; }, null, { timeout: 90000 });
 
 export const tests = [
@@ -68,6 +70,46 @@ export const tests = [
       await humanAims(t); await t.waitFrames(4);
       t.equal(await t.page.evaluate(() => window.__FS.shotTrail), null, 'with the Aim guide off there are no dots');
       await t.game('setState', { settings: { aimGuide: 'auto' } });
+    },
+  },
+
+  // ---- CL-01 ----
+  {
+    name: 'CL-01 renders go through the master gain and limiter the player hears, and cues can be rendered',
+    viewports: ['desktop'],
+    async run(t) {
+      const list = await t.game('audioList');
+      t.expect(Array.isArray(list.cues) && ['throw', 'thock', 'boing', 'burst', 'ko', 'win'].every((c) => list.cues.includes(c)), 'the list names the cues: ' + (list.cues || []).join(', '));
+      const heard = await render(t, 'day', 30), raw = await render(t, 'day', 30, { raw: true }), full = await render(t, 'day', 30, { volume: 1 });
+      // as heard is a fraction of the kit's own scale (the master gain is 0.225 at the shipped volume, and the limiter adds make-up gain), and full volume is twice the shipped one
+      const frac = heard.peak / raw.peak;
+      t.expect(frac > 0.2 && frac < 0.45, `the default volume renders at ${frac.toFixed(3)} of the kit's own scale (the master gain is ${0.5 * MASTER})`);
+      t.expect(Math.abs(full.peak / heard.peak - 2) < 0.06, `full volume is twice the default (${(full.peak / heard.peak).toFixed(2)})`);
+      const a = await render(t, 'cue:ko', 2), b = await render(t, 'cue:ko', 2, { volume: 1 });
+      t.expect(a.peak > 0.001 && Math.abs(b.peak / a.peak - 2) < 0.1, `a cue renders, and doubles with the volume (${a.peak} then ${b.peak})`);
+      const five = await render(t, 'cue:thock', 6, { arg: 'pecan', repeats: 5 });
+      t.expect(five.secs.slice(0, 5).every((x) => x > 0.0005) && five.built.repeats === 5, 'repeats strike once a second');
+      const before = (await t.state()).audio.played;
+      await render(t, 'cue:boing', 2);
+      t.equal((await t.state()).audio.played, before, 'a render does not count as a played cue or touch the live audio');
+      let err = '';
+      try { await render(t, 'cue:nonsense', 2); } catch (e) { err = String(e.message || e); }
+      t.expect(/unknown cue/.test(err), 'an unknown cue is refused');
+    },
+  },
+  {
+    name: 'CL-01 the busiest moment at the maximum volume stays under 0.95',
+    viewports: ['desktop'],
+    async run(t) {
+      const list = await t.game('audioList');
+      let worst = 0;
+      for (const piece of list.music) {
+        const r = await render(t, 'mix', 12, { volume: 1, piece });
+        t.log(`${piece} + the bed + six loud cues at maximum volume: peak ${r.peak}`);
+        worst = Math.max(worst, r.peak);
+      }
+      t.expect(worst < 0.95, `the loudest mix peaks at ${worst}, under 0.95`);
+      t.expect(worst > 0.01, 'and the mix is not silent');
     },
   },
 ];

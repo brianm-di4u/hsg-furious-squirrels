@@ -12,7 +12,7 @@ const countStarts = () => {
   const start = proto.start;
   proto.start = function patched(...a) { window.__starts++; return start.apply(this, a); };
 };
-const render = (t, name, secs, opts) => t.page.evaluate(([n, s, o]) => window.__game.audioRender(n, s, false, o), [name, secs, opts || {}]);
+const render = (t, name, secs, opts) => t.page.evaluate(([n, s, o]) => window.__game.audioRender(n, s, false, o), [name, secs, { raw: true, ...(opts || {}) }]);
 const gesture = async (t) => {
   await t.page.keyboard.press('Shift');
   await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
