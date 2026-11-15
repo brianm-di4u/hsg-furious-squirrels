@@ -202,7 +202,7 @@ function onTurnStart(first) {
 }
 
 // tutorial tips: each shows once, on the player's own turn, until any tap/key or TIP_MS passes
-const TIPS = ['Drag back from anywhere, like a slingshot, to aim. Let go to throw!', 'Next: wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
+const TIPS = ['Drag back from anywhere to aim. Let go to throw. Slide back to where you began to cancel.', 'Next: wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
 const TIP_MS = 8000;
 let tipTimer = 0;
 function tutorial() {
@@ -538,6 +538,7 @@ function frameCamera(snap) {
 
 // ---------------------------------------------------------------------------------------------------------------
 // input
+const CANCEL_POWER = 0.08; // a drag shorter than this fraction of full power is a cancel, not a throw
 const ptrs = new Map();
 let drag = null, pinch = null;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -576,6 +577,8 @@ canvas.addEventListener('pointermove', (e) => {
     const ang = (Math.atan2(-ty, tx * q.facing) * 180) / Math.PI;
     sim.setAim({ angle: clamp(Math.round(ang), ANGLE_MIN, ANGLE_MAX), power: clamp(Math.round((len / maxLen) * 100) / 100, 0.05, 1) });
     drag.power = len / maxLen;
+    // the cancel ring: where the pull started and how far back it must slide for a release to cancel (S2-13)
+    App.dragRing = { x: drag.x0, y: drag.y0, r: Math.max(12, maxLen * CANCEL_POWER), inside: drag.power < CANCEL_POWER };
     App.guideKey = ''; kick();
   }
 });
@@ -584,7 +587,8 @@ const endPtr = (e) => {
   if (ptrs.size < 2) pinch = null;
   if (!drag) return;
   const d = drag; drag = null;
-  if (d.aim && d.moved && (d.power || 0) >= 0.08 && e.type === 'pointerup') throwNow();
+  if (App.dragRing) { App.dragRing = null; kick(); }
+  if (d.aim && d.moved && (d.power || 0) >= CANCEL_POWER && e.type === 'pointerup') throwNow();
   else if (d.aim && d.moved && e.type === 'pointerup') { App.sim.setAim(d.a0); App.guideKey = ''; kick(); }
 };
 canvas.addEventListener('pointerup', endPtr);

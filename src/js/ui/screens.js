@@ -219,7 +219,7 @@ const TEMPLATES = {
       <h2>How to Play</h2>
       <p class="sub">${FICTION} <span class="label-fiction">Scroll for all seven tips and the nut guide ↓</span></p>
       <div class="cards">
-        <div class="card"><b>1. Aim</b><br>Drag back from anywhere like a slingshot: the direction sets the angle, the length sets the power. Keys: ←/→ angle, ↑/↓ power (Shift for big steps).</div>
+        <div class="card"><b>1. Aim</b><br>Drag back from anywhere like a slingshot: the direction sets the angle, the length sets the power. To cancel, slide back to where you began before you let go. Keys: ←/→ angle, ↑/↓ power (Shift for big steps).</div>
         <div class="card"><b>2. Throw</b><br>Let go, press <b>Throw</b>, or press Space/Enter. While a shot flies or the rival takes a turn, tap or press Space to hurry it along.</div>
         <div class="card"><b>3. Tap for the trick</b><br>While a special nut flies, tap or press Space once to trigger its trick.</div>
         <div class="card"><b>4. Scamper</b><br>Press <b>Move</b> (or M), then pick a glowing perch on your own mountain. Each turn has a little stamina.</div>

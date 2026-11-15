@@ -136,4 +136,50 @@ export const tests = [
       await snap(t, 'S2-07-move-perches');
     },
   },
+  // ---- S2-13 ----
+  {
+    name: 'S2-13 the first tip and the Aim card teach the cancel, and a drag shows a ring where a release cancels',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('act', 'menu', 'story');
+      await t.game('act', 'menu', 'team', { v: '0' });
+      await t.seed(35594);
+      await t.game('act', 'menu', 'play', { v: 'story-01' });
+      if ((await t.state()).screen === 'prep') await t.game('act', 'menu', 'prepGo');
+      await t.page.waitForFunction(() => /cancel/.test(window.__game.getState().hint), null, { timeout: 8000 });
+      t.expect(/Slide back to where you began to cancel/.test((await t.state()).hint), 'the first tip says how to cancel');
+      await snap(t, 'S2-13-tip');
+      await t.game('scene', 'help');
+      t.expect(/slide back to where you began/.test(await t.page.textContent('#screens')), 'the Aim card says it too');
+      await humanFirst(t);
+      await t.waitFrames(4);
+      // synthetic pointer events: the same handlers a mouse or a finger reaches, but the test controls every position
+      const pointer = (type, x, y) => t.page.evaluate(([ty, px, py]) => {
+        document.getElementById('view').dispatchEvent(new PointerEvent(ty, { pointerId: 7, pointerType: 'touch', clientX: px, clientY: py, button: 0, bubbles: true }));
+        return window.__FS.dragRing ? { ...window.__FS.dragRing } : null;
+      }, [type, x, y]);
+      const x0 = Math.round(t.vp.width * 0.5), y0 = Math.round(t.vp.height * 0.55);
+      const aim0 = (await t.state()).battle.teams[0].aim;
+      await pointer('pointerdown', x0, y0);
+      let ring = await pointer('pointermove', x0 - 120, y0 + 60);
+      t.expect(ring && !ring.inside && Math.abs(ring.x - x0) < 1 && Math.abs(ring.y - y0) < 1, 'pulling back draws the ring at the start of the drag');
+      t.expect(ring.r >= 12 && ring.r < 60, `of a sensible size (${ring.r.toFixed(1)} px)`);
+      await t.waitFrames(3);
+      await snap(t, 'S2-13-ring-pull');
+      ring = await pointer('pointermove', x0 + 3, y0 + 4);
+      t.expect(ring.inside, 'sliding back inside it marks the cancel');
+      await t.waitFrames(3);
+      await snap(t, 'S2-13-ring-cancel');
+      await pointer('pointerup', x0 + 3, y0 + 4);
+      let s = await t.state();
+      t.equal(s.battle.teams[0].stats.throws, 0, 'a release inside the ring throws nothing');
+      t.equal(s.battle.teams[0].aim.angle, aim0.angle, 'and the old aim comes back');
+      t.equal(await t.page.evaluate(() => window.__FS.dragRing), null, 'and the ring is gone');
+      await pointer('pointerdown', x0, y0);
+      await pointer('pointermove', x0 - 120, y0 + 60);
+      await pointer('pointerup', x0 - 120, y0 + 60);
+      t.equal((await t.state()).battle.teams[0].stats.throws, 1, 'a release outside it still throws');
+    },
+  },
 ];

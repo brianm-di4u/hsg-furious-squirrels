@@ -88,6 +88,7 @@ export class Renderer {
     if (app.aimGuide) this.drawGuide(g, app.aimGuide);
     this.drawSquirrels(g, app);
     this.drawAimWedge(g, app);
+    if (app.dragRing) this.drawCancelRing(g, app.dragRing);
     this.drawRivalPointer(g, app);
     this.drawInset(g, app);
     this.drawNuts(g, sim);
@@ -347,6 +348,21 @@ export class Renderer {
     g.font = '700 13px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#1A1410'; g.fillStyle = '#FFFFFF';
     const lbl = e.name, lx = px - Math.cos(a) * 26, ly = py - Math.sin(a) * 26 + 24;
     g.strokeText(lbl, lx, ly); g.fillText(lbl, lx, ly);
+  }
+
+  // a dashed ring where the drag began: a release inside it cancels the throw (solid and labelled once the finger is inside)
+  drawCancelRing(g, ring) {
+    g.save();
+    g.lineCap = 'round';
+    for (const [col, w] of [['#1A1410', 5], [ring.inside ? '#FFF6C8' : '#F2C230', 2.5]]) {
+      g.strokeStyle = col; g.lineWidth = w; g.setLineDash(ring.inside ? [] : [6, 6]);
+      g.beginPath(); g.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2); g.stroke();
+    }
+    if (ring.inside) {
+      g.setLineDash([]); g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#1A1410'; g.fillStyle = '#FFF6C8';
+      g.strokeText('Release to cancel', ring.x, ring.y - ring.r - 34); g.fillText('Release to cancel', ring.x, ring.y - ring.r - 34);
+    }
+    g.restore();
   }
 
   drawGuide(g, guide) {
