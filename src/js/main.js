@@ -971,43 +971,45 @@ function handleEvents() {
   const sim = App.sim, L = App.level, fx = renderer.fx, cam = renderer.cam, b = sim.b;
   // new craters -> carve the visual terrain at exactly the sim's circles
   while (App.craterN < b.craters.length) { const c = b.craters[App.craterN++]; renderer.carve(c.x, c.y, c.r); }
+  // where across the view an event is, for the cues: -1 at the left edge, 1 at the right, past 1 out of view (S5-04)
+  const pan = (x) => (x - cam.x) / (cam.vw / 2 / cam.zoom);
   for (const ev of sim.drain()) {
     const v = vis(ev.sq);
     switch (ev.type) {
-      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw'); startShot(ev); if (b.teams[b.turn.team].human) buzz(10); break;
-      case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap'); break;
+      case 'throw': App.ff = 1; if (v) { v.pose = 'throw'; v.poseT = 0.35; v.squash = 0.6; } sfx('throw', undefined, { pan: pan(sim.b.squirrels.find((q) => q.id === ev.sq).x) }); startShot(ev); if (b.teams[b.turn.team].human) buzz(10); break;
+      case 'tap': fx.ring(ev.x, ev.y, 40); sfx('tap', undefined, { pan: pan(ev.x) }); break;
       case 'impact':
-        if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst'); buzz([20, 30, 40]); }
-        else { fx.dust(ev.x, ev.y, ev.on === 'terrain' ? 16 : 8, L.season === 'winter' && ev.on === 'terrain' ? '#E8ECEA' : '#8A6A44'); fx.ring(ev.x, ev.y, 34, '#FFF6C8'); sfx('thock', ev.kind); if (ev.kind === 'hedgeapple') cam.shake = Math.max(cam.shake, 0.6); }
+        if (ev.burst) { fx.flash(ev.x, ev.y, 70); fx.ring(ev.x, ev.y, 110, '#FFE9A8'); fx.dust(ev.x, ev.y, 30); fx.shards(ev.x, ev.y, 26); fx.leaves(ev.x, ev.y, 30, L.season); fx.chips(ev.x, ev.y, 14); cam.shake = Math.max(cam.shake, 1.1); sfx('burst', undefined, { pan: pan(ev.x) }); buzz([20, 30, 40]); }
+        else { fx.dust(ev.x, ev.y, ev.on === 'terrain' ? 16 : 8, L.season === 'winter' && ev.on === 'terrain' ? '#E8ECEA' : '#8A6A44'); fx.ring(ev.x, ev.y, 34, '#FFF6C8'); sfx('thock', ev.kind, { on: ev.on, pan: pan(ev.x) }); if (ev.kind === 'hedgeapple') cam.shake = Math.max(cam.shake, 0.6); }
         if (ev.on === 'wood') { fx.chips(ev.x, ev.y, 12); fx.leaves(ev.x, ev.y, 12, L.season); }
         if (App.lastShot && App.lastShot.rec && ev.on === 'terrain') App.lastShot.end = { x: ev.x, y: ev.y };
         break;
-      case 'thud': fx.dust(ev.x, ev.y, 10); sfx('thud'); break;
-      case 'rustle': fx.leaves(ev.x, ev.y, 4, L.season); sfx('rustle'); break;
+      case 'thud': fx.dust(ev.x, ev.y, 10); sfx('thud', undefined, { pan: pan(ev.x) }); break;
+      case 'rustle': fx.leaves(ev.x, ev.y, 4, L.season); sfx('rustle', undefined, { pan: pan(ev.x) }); break;
       case 'hit':
         if (App.lastShot) App.lastShot.hit = true;
         if (v) { v.pose = 'hit'; v.poseT = 0.55; v.squash = 0.9; v.flash = 0.18; }
         fx.text(ev.x + 36, ev.y - 150, '-' + Math.round(ev.dmg), '#FFE0DA', true); fx.stars(ev.x, ev.y - 20);
         fx.leaves(ev.x, ev.y, 18, L.season); fx.chips(ev.x, ev.y, 8); fx.ring(ev.x, ev.y, 52, '#F2C230');
         if (!App.reduced) { App.hitstop = 0.06; cam.shake = Math.max(cam.shake, 0.35); }
-        sfx('boing'); buzz(18);
+        sfx('boing', undefined, { dmg: ev.dmg, pan: pan(ev.x) }); buzz(18);
         break;
       case 'wood': fx.chips(ev.x || 0, ev.y || 0, 0); break;
       case 'break': {
         renderer.trees.invalidate(ev.tree);
-        fx.leaves(ev.x, ev.y, 16, L.season, L.trees[ev.tree].species); fx.chips(ev.x, ev.y, 12); sfx('crack');
+        fx.leaves(ev.x, ev.y, 16, L.season, L.trees[ev.tree].species); fx.chips(ev.x, ev.y, 12); sfx('crack', undefined, { pan: pan(ev.x) });
         hud.call('Crack!', 700);
         break;
       }
-      case 'dislodge': if (v) { v.pose = 'fall'; v.poseT = 0; } sfx('chitter', sim.b.squirrels.find((q) => q.id === ev.sq).team); break;
-      case 'land': if (v) { v.pose = 'idle'; v.squash = 0.7; } fx.dust(ev.x, ev.y, 6); sfx('land'); break;
+      case 'dislodge': if (v) { v.pose = 'fall'; v.poseT = 0; } sfx('chitter', sim.b.squirrels.find((q) => q.id === ev.sq).team, { pan: pan(ev.x) }); break;
+      case 'land': if (v) { v.pose = 'idle'; v.squash = 0.7; } fx.dust(ev.x, ev.y, 6); sfx('land', undefined, { h: ev.h, pan: pan(ev.x) }); break;
       case 'ko': {
         const q = sim.b.squirrels.find((s) => s.id === ev.sq);
         if (v) { v.tumble = { from: ev.from, to: ev.to, t: 0 }; v.pose = 'fall'; }
         // follow the tumble into the leaf pile
         if (!sim.b.practice) { const mx = (ev.from.x + ev.to.x) / 2, my = Math.min(ev.from.y, ev.to.y) - 40; cam.set(mx, my, Math.max(cam.zoom, Math.min(1.1, cam.vw / 900)), false); App.koHold = 1.4; }
         fx.stars(ev.from.x, ev.from.y - 30); fx.chips(ev.from.x, ev.from.y, 10); fx.leaves(ev.from.x, ev.from.y - 10, 14, L.season);
-        sfx('ko'); buzz([20, 30, 40]);
+        sfx('ko', undefined, { pan: pan(ev.from.x) }); buzz([20, 30, 40]);
         // the cheer is for the rival's loss: when the one human side loses a squirrel it stays quiet
         if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) setTimeout(() => sfx('cheer'), 500);
         hud.call(`${q.name} is out!`, 1400);
@@ -1026,11 +1028,11 @@ function handleEvents() {
       case 'bird': {
         // a glancing bonk: the bird flaps off startled and the nut flies on
         const d = BIRDS[ev.bird]; fx.feathers(ev.x, ev.y, ev.bird); fx.ring(ev.x, ev.y, 30, '#FFF6C8');
-        sfx(ev.bird === 'goose' ? 'honk' : 'squawk', ev.bird); hud.call(`Bonk! ${article(d.name)}`, 900); say(`The nut bounced off ${article(d.name).toLowerCase()}.`);
+        sfx(ev.bird === 'goose' ? 'honk' : 'squawk', ev.bird, { pan: pan(ev.x) }); hud.call(`Bonk! ${article(d.name)}`, 900); say(`The nut bounced off ${article(d.name).toLowerCase()}.`);
         break;
       }
       case 'snatch': {
-        const d = BIRDS[ev.bird]; fx.feathers(ev.x, ev.y, ev.bird); sfx('squawk', ev.bird);
+        const d = BIRDS[ev.bird]; fx.feathers(ev.x, ev.y, ev.bird); sfx('squawk', ev.bird, { pan: pan(ev.x) });
         hud.call(`${cap(article(d.name))} snatched the acorn!`, 1300); say(`${cap(article(d.name))} snatched the acorn out of the air.`);
         break;
       }
