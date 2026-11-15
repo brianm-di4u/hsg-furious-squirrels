@@ -141,14 +141,17 @@ const TEMPLATES = {
     return `
     <div class="panel" role="dialog" aria-label="Quick Battle setup">
       <h2>Quick Battle</h2>
-      ${field('Battlefield', `<div class="seg">${levels.map((L) => `<button type="button" class="btn small" data-act="qset" data-k="level" data-v="${L.id}" aria-pressed="${q.level === L.id}">${L.n}. ${L.name}</button>`).join('')}</div>`)}
+      <h3>Battle</h3>
+      <div class="field stack"><label id="qf-level">Battlefield</label><div class="map qmap" role="group" aria-labelledby="qf-level">${levels.map((L) => `<button type="button" class="lvl" data-act="qset" data-k="level" data-v="${L.id}" aria-pressed="${q.level === L.id}"><span class="n">${L.n}</span><span>${L.name}</span></button>`).join('')}</div></div>
       ${field('Your family', `<div class="seg"><button type="button" class="btn small" data-act="qset" data-k="team" data-v="0" aria-pressed="${q.team == 0}">● Rustlers</button><button type="button" class="btn small" data-act="qset" data-k="team" data-v="1" aria-pressed="${q.team == 1}">▲ Tails</button></div>`)}
       ${field('Family size', `<div class="seg">${[2, 3, 4].map((n) => `<button type="button" class="btn small" data-act="qset" data-k="size" data-v="${n}" aria-pressed="${q.size == n}">${n}</button>`).join('')}</div>`)}
       ${field('Rounds', `<div class="seg">${[1, 3, 5].map((n) => `<button type="button" class="btn small" data-act="qset" data-k="rounds" data-v="${n}" aria-pressed="${q.rounds == n}">Best of ${n}</button>`).join('')}</div>`)}
+      <h3>Rules</h3>
       ${field('Wind', `<div class="seg">${[['off', 'Off'], ['light', 'Light'], ['normal', 'Normal'], ['gusty', 'Gusty']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="wind" data-v="${v}" aria-pressed="${q.wind === v}">${l}</button>`).join('')}</div>`)}
       ${field('Steam updraft', `<div class="seg">${[['off', 'Off'], ['on', 'On'], ['strong', 'Strong']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="steam" data-v="${v}" aria-pressed="${q.steam === v}">${l}</button>`).join('')}</div>`)}
       ${field('Birds', `<div class="seg">${[['off', 'Off'], ['some', 'Some'], ['lots', 'Lots']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="birds" data-v="${v}" aria-pressed="${(q.birds || 'some') === v}">${l}</button>`).join('')}</div>`)}
       ${field('Nuts', `<div class="seg"><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="all" aria-pressed="${q.loadout === 'all'}">All seven</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="story" aria-pressed="${q.loadout === 'story'}">Story unlocks</button><button type="button" class="btn small" data-act="qset" data-k="loadout" data-v="acorn" aria-pressed="${q.loadout === 'acorn'}">Acorns only</button></div>`)}
+      <p class="starrule">${{ all: 'All seven nuts, with the satchel shop.', story: `The special nuts you have won in the Story so far: ${Math.max(0, levels.filter((L) => L.unlock && L.n <= app.save.story.unlocked).length)} of ${levels.filter((L) => L.unlock).length}.`, acorn: 'Plain acorns only, and no shop.' }[q.loadout] || ''}</p>
       ${field('Rival skill', `<div class="seg">${[['easy', 'Easy'], ['medium', 'Medium'], ['sharp', 'Sharp'], ['hard', 'Hard']].map(([v, l]) => `<button type="button" class="btn small" data-act="qset" data-k="difficulty" data-v="${v}" aria-pressed="${q.difficulty === v}">${l}</button>`).join('')}</div>`)}
       ${tierHint(q.difficulty, app.save.settings.aimGuide)}
       <nav class="menu row">${btn('quickGo', 'Start battle', 'autofocus', 'btn primary')}${btn('back', 'Back', 'data-back')}</nav>

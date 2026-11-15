@@ -115,4 +115,36 @@ export const tests = [
       t.expect(/Medium: a short aim guide/.test(await text()), 'Quick Battle explains its own Rival skill the same way');
     },
   },
+  // ---- S2-09 ----
+  {
+    name: 'S2-09 Quick Battle setup: battlefields in a grid, Battle and Rules groups, and a new profile starts on Story unlocks',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      t.equal(await t.page.evaluate(() => window.__FS.save.quick.loadout), 'story', 'a new profile starts on the Story unlocks, not all seven nuts');
+      await t.game('scene', 'quick');
+      const lay = await t.page.evaluate(() => {
+        const maps = [...document.querySelectorAll('#screens .qmap .lvl')], r = maps.map((b) => b.getBoundingClientRect());
+        const heads = [...document.querySelectorAll('#screens h3')].map((h) => h.textContent);
+        const wind = [...document.querySelectorAll('#screens .field label')].find((l) => l.textContent === 'Wind');
+        const panel = document.querySelector('#screens .panel');
+        return { n: maps.length, cols: new Set(r.map((x) => Math.round(x.left))).size, rows: new Set(r.map((x) => Math.round(x.top))).size, heads, windTop: wind.getBoundingClientRect().top - panel.getBoundingClientRect().top, h: panel.scrollHeight, text: document.getElementById('screens').textContent };
+      });
+      t.equal(lay.n, 12, 'all twelve battlefields are there');
+      t.expect(lay.cols >= 3 && lay.rows <= 4, `in a grid of ${lay.cols} columns and ${lay.rows} rows`);
+      t.equal(lay.heads.join(), 'Battle,Rules', 'under Battle and Rules');
+      t.expect(/Story so far: 0 of 6/.test(lay.text), 'the Nuts choice says what Story unlocks means');
+      if (t.viewport === 'mobile') t.expect(lay.windTop < 800, `the first rule is ${Math.round(lay.windTop)} px down the panel`);
+      await snap(t, 'S2-09-quick-setup');
+      await t.page.click('#screens .qmap [data-v="story-05"]');
+      t.equal(await t.page.evaluate(() => window.__FS.save.quick.level), 'story-05', 'picking a battlefield saves it');
+      t.equal(await t.page.evaluate(() => document.querySelector('#screens .qmap [data-v="story-05"]').getAttribute('aria-pressed')), 'true', 'and marks it');
+      await t.page.click('#screens [data-k="loadout"][data-v="all"]');
+      t.expect(/All seven nuts/.test(await t.page.textContent('#screens')), 'choosing All seven still works');
+      // an old save keeps what it had
+      await t.page.evaluate(() => localStorage.setItem('hsg-furious-squirrels-v1', JSON.stringify({ v: 1, settings: { sound: true, music: true, volume: 0.5, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true }, story: { team: 0, unlocked: 3, stars: { 'story-01': 1 }, nuts: [] }, quick: { level: 'story-02', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'all', difficulty: 'medium' }, stats: { battles: 4, wins: 2, kos: 1, bestShot: 20 } })));
+      await t.reload();
+      t.equal(await t.page.evaluate(() => window.__FS.save.quick.loadout), 'all', 'a player whose save says All seven keeps it');
+    },
+  },
 ];
