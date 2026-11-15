@@ -7,6 +7,10 @@ import { TEAM_COLORS } from '../gfx/looks.js';
 const EM = ['<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="10" fill="#E0B23A" stroke="#1A1410" stroke-width="2.5"/></svg>',
   '<svg class="em" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 2 L24 22 L2 22 Z" fill="#2A9D8F" stroke="#1A1410" stroke-width="2.5"/></svg>'];
 
+// the speaker button: waves while sound is on, a cross while it is muted
+const SPK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/>';
+const SPEAKER = { on: SPK + '<path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>', off: SPK + '<path d="M15 9l6 6M21 9l-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>' };
+
 // a phone in either orientation: the HUD is compacted by the stylesheet at the same limits (max-width 700, max-height 480)
 const compactView = () => window.innerWidth <= 700 || window.innerHeight <= 480;
 
@@ -31,6 +35,7 @@ export class Hud {
           <div class="aimrow">
             <button type="button" class="btn small" id="b-move" data-hud="move" aria-pressed="false">Move</button>
             <button type="button" class="btn small" id="b-cam" data-hud="cam" aria-label="Recenter the camera">View</button>
+            <button type="button" class="btn small snd" id="b-sound" data-hud="sound" aria-pressed="false"></button>
             <button type="button" class="btn small pause" id="b-pause" data-hud="pause" aria-label="Pause">❚❚</button>
             <button type="button" class="btn primary throw" id="b-throw" data-hud="throw">Throw!</button>
           </div>
@@ -120,6 +125,8 @@ export class Hud {
     mv.setAttribute('aria-pressed', String(!!app.showPerches));
     mv.textContent = app.showPerches ? 'Done' : compactView() ? 'Move' : `Move (${Math.round(b.turn.stamina / 3)}%)`;
     mv.setAttribute('aria-label', `Move: ${Math.round(b.turn.stamina / 3)}% stamina left`);
+    const on = app.save.settings.sound !== false, sn = this.el('b-sound');
+    if (sn._on !== on) { sn._on = on; sn.innerHTML = on ? SPEAKER.on : SPEAKER.off; sn.setAttribute('aria-pressed', String(!on)); sn.setAttribute('aria-label', on ? 'Mute sound' : 'Sound is muted. Turn sound on'); }
     // call fade
     if (this.callT > 0) { this.callT -= 1 / 60; if (this.callT <= 0) this.el('call').classList.remove('show'); }
     // the mini-map strip hangs just under the top row, whatever height that row has at a large text size

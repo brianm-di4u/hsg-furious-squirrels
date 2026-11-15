@@ -6,7 +6,8 @@ import { makeAudioKit, measureAudio } from './audiokit.js';
 import { SCORES, SCENES } from './music.js';
 
 let ctx = null, master = null, sfxBus = null, noiseBuf = null, kit = null;
-const state = { on: true, music: true, ambience: true, vol: 0.5, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
+const state = { on: true, music: true, ambience: true, vol: 0.5, sfxVol: 1, musicVol: 1, started: false, theme: null, scene: null, params: {}, tension: false, hidden: false, paused: false, timer: false, played: 0 };
+const SFX_GAIN = 0.9; // the effects bus at its full level
 const FADE_MUSIC = 1.6, FADE_SCENE = 2.5; // seconds a mood or a place takes to cross-fade into the next
 
 export function initAudio(settings) {
@@ -15,8 +16,8 @@ export function initAudio(settings) {
   window.addEventListener('keydown', start);
   window.addEventListener('pointerdown', start);
 }
-function setFlags(s) { state.on = s.sound !== false; state.music = s.music !== false; state.ambience = s.ambience !== false; state.vol = s.volume ?? 0.5; }
-function applyLevels() { if (!kit) return; kit.music.level(state.music ? 1 : 0); kit.amb.level(state.ambience ? 1 : 0); }
+function setFlags(s) { state.on = s.sound !== false; state.music = s.music !== false; state.ambience = s.ambience !== false; state.vol = s.volume ?? 0.5; state.sfxVol = s.sfxVol ?? 1; state.musicVol = s.musicVol ?? 1; }
+function applyLevels() { if (!kit) return; if (sfxBus) sfxBus.gain.setTargetAtTime(SFX_GAIN * state.sfxVol, ctx.currentTime, 0.05); kit.music.level(state.music ? state.musicVol : 0); kit.amb.level(state.ambience ? 1 : 0); }
 // Music and ambience are held (faded out, nothing scheduled) on the pause card and in a hidden tab.
 function syncHold() { if (!kit) return; if (state.paused || state.hidden) kit.hold(); else kit.release(); }
 function runScheduler(on) {
@@ -34,13 +35,13 @@ function unlock() {
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -8; limiter.knee.value = 6; limiter.ratio.value = 14; limiter.attack.value = 0.003; limiter.release.value = 0.25;
     master.connect(limiter); limiter.connect(ctx.destination);
-    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = SFX_GAIN * state.sfxVol; sfxBus.connect(master);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     let s = 12345;
     for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; d[i] = (s / 0x3fffffff) - 1; }
     ctx.onstatechange = () => { if (ctx && ctx.state === 'interrupted' && !document.hidden) ctx.resume().catch(() => {}); };
-    kit = makeAudioKit(ctx, master, { seed: (Math.random() * 0x7fffffff) >>> 0, music: state.music ? 1 : 0, ambience: state.ambience ? 1 : 0 });
+    kit = makeAudioKit(ctx, master, { seed: (Math.random() * 0x7fffffff) >>> 0, music: state.music ? state.musicVol : 0, ambience: state.ambience ? 1 : 0 });
     state.started = true;
     for (const [k, v] of Object.entries(state.params)) kit.amb.set(k, v, 0.01);
     kit.music.intensity(state.tension ? 1 : 0);
@@ -82,7 +83,7 @@ export function handleVisibility(hidden) {
 }
 export function audioState() {
   const lv = kit ? kit.levels() : { music: 0, ambience: 0 };
-  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3) };
+  return { started: state.started, on: state.on, music: state.music, ambience: state.ambience, vol: state.vol, theme: state.theme, scene: state.scene, params: { ...state.params }, tension: state.tension, ctx: ctx ? ctx.state : 'none', played: state.played, scheduler: state.timer, musicPaused: state.paused, held: kit ? kit.held : false, busMusic: +lv.music.toFixed(3), busAmbience: +lv.ambience.toFixed(3), busSfx: sfxBus ? +sfxBus.gain.value.toFixed(3) : 0 };
 }
 
 function tone(freq, dur, { type = 'triangle', vol = 0.2, at = 0, slide = 0, attack = 0.005, bus = sfxBus, filter = 0 } = {}) {
@@ -110,7 +111,7 @@ function noise(dur, { vol = 0.2, at = 0, type = 'bandpass', freq = 1200, q = 1, 
 // Short parameterised effects (in the spirit of ZzFX by Frank Force, MIT: one call per sound, no samples).
 const POP = { acorn: 520, chinquapin: 760, pecan: 620, walnut: 300, hickory: 560, sweetgum: 680, hedgeapple: 220 };
 export function sfx(name, arg) {
-  if (!ctx || !state.on) return;
+  if (!ctx || !state.on || state.sfxVol <= 0) return;
   state.played++;
   switch (name) {
     case 'ui': tone(880, 0.05, { type: 'square', vol: 0.05, filter: 3000 }); break;

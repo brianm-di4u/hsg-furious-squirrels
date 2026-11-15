@@ -211,8 +211,8 @@ const TEMPLATES = {
       </div>
       <h3>Controls</h3>
       <div class="cards">
-        <div class="card"><b>Keyboard</b><br>←/→ angle, ↑/↓ power (Shift for big steps). Space or Enter throws, and taps a flying nut. 1–7 or Q/E pick a nut. M moves; then A/D/W/S step between perches. Z/X zoom, C recenters the view, P or Esc pauses.</div>
-        <div class="card"><b>Gamepad</b><br>Left stick aims. A throws, and taps a flying nut. LB/RB pick a nut, left/right on the D-pad step between perches, Start pauses.</div>
+        <div class="card"><b>Keyboard</b><br>←/→ angle, ↑/↓ power (Shift for big steps). Space or Enter throws, and taps a flying nut. 1–7 or Q/E pick a nut. M moves; then A/D/W/S step between perches. Z/X zoom, C recenters the view, N mutes the sound, P or Esc pauses.</div>
+        <div class="card"><b>Gamepad</b><br>Left stick aims. A throws, and taps a flying nut. LB/RB pick a nut, left/right on the D-pad step between perches, Start pauses, Select mutes the sound.</div>
       </div>
       <h3>The nuts</h3>
       ${NUT_ORDER.map((k) => `<div class="nutrow"><canvas data-nut="${k}"></canvas><div><b>${NUTS[k].key}. ${NUTS[k].name}</b><br><small>${NUTS[k].trick}</small></div></div>`).join('')}
@@ -228,6 +228,8 @@ const TEMPLATES = {
       ${field('Music', seg('music', s.music, [[true, 'On'], [false, 'Off']]))}
       ${field('Ambience', seg('ambience', s.ambience, [[true, 'On'], [false, 'Off']]))}
       ${field('Volume', seg('volume', s.volume, [[0.25, 'Low'], [0.5, 'Medium'], [0.8, 'High']]))}
+      ${field('Effects level', seg('sfxVol', s.sfxVol, [[0, 'Off'], [0.35, 'Low'], [0.65, 'Medium'], [1, 'High']]))}
+      ${field('Music level', seg('musicVol', s.musicVol, [[0.35, 'Low'], [0.65, 'Medium'], [1, 'High']]))}
       ${field('Motion', seg('reducedMotion', s.reducedMotion == null ? 'auto' : s.reducedMotion, [['auto', 'System'], [false, 'Full'], [true, 'Reduced']]))}
       ${field('Aim guide', seg('aimGuide', s.aimGuide, [['auto', 'By skill'], ['always', 'Always long'], ['off', 'Off']]))}
       ${field('Turn timer', seg('turnTimer', s.turnTimer, [[0, 'Off'], [30, '30 s'], [60, '60 s']]))}

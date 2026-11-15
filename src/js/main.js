@@ -272,7 +272,14 @@ App.onHud = (a) => {
   else if (a === 'move') toggleMove();
   else if (a === 'cam') { App.renderer.cam.user = false; frameCamera(false); kick(); }
   else if (a === 'pause') pauseGame();
+  else if (a === 'sound') toggleSound();
 };
+// the speaker button, the N key and the pad's Select button flip the master Sound switch from inside a battle (S5-08)
+function toggleSound() {
+  const s = App.save.settings;
+  s.sound = !s.sound; persist('settings', 'sound'); applySettings();
+  say(s.sound ? 'Sound on' : 'Sound off'); kick();
+}
 
 function pauseGame() {
   if (App.scene !== 'battle' || screens.cur) return;
@@ -581,6 +588,7 @@ window.addEventListener('keydown', (e) => {
     case 'KeyZ': renderer.cam.zoomAt(1.15, renderer.cam.vw / 2, renderer.cam.vh / 2); break;
     case 'KeyX': renderer.cam.zoomAt(1 / 1.15, renderer.cam.vw / 2, renderer.cam.vh / 2); break;
     case 'KeyC': App.onHud('cam'); break;
+    case 'KeyN': toggleSound(); break;
     case 'Escape': case 'KeyP': pauseGame(); break;
     default: {
       const k = NUT_ORDER.find((n) => NUTS[n].key === e.key);
@@ -604,7 +612,7 @@ function pollPad() {
   for (const p of pads) {
     if (!p || !p.connected) continue;
     const bt = (i) => !!(p.buttons[i] && p.buttons[i].pressed);
-    const now = { a: bt(0), b: bt(1), lb: bt(4), rb: bt(5), start: bt(9), up: bt(12), down: bt(13), left: bt(14), right: bt(15) };
+    const now = { a: bt(0), b: bt(1), lb: bt(4), rb: bt(5), start: bt(9), select: bt(8), up: bt(12), down: bt(13), left: bt(14), right: bt(15) };
     const prev = padPrev[p.index] || {}, edge = (k) => now[k] && !prev[k];
     if (screens.cur) {
       const m = { up: edge('up') || (p.axes[1] < -0.6 && !prev.ay), down: edge('down') || (p.axes[1] > 0.6 && !prev.ay), left: edge('left'), right: edge('right'), cancel: edge('b') };
@@ -619,6 +627,7 @@ function pollPad() {
       if (edge('left')) stepPerch(-1, 0);
       if (edge('right')) stepPerch(1, 0);
       if (edge('start')) pauseGame();
+      if (edge('select')) toggleSound();
     }
     now.ay = Math.abs(p.axes[1]) > 0.6;
     padPrev[p.index] = now;

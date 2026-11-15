@@ -23,6 +23,12 @@ async function storyBattle(t, levelId = 'story-01', settings = {}, story = {}) {
   if ((await t.state()).screen === 'prep') await t.game('act', 'menu', 'prepGo');
   await t.page.waitForFunction((k) => { try { return !!JSON.parse(localStorage.getItem(k)).resume.battle; } catch { return false; } }, SAVE_KEY, { timeout: 5000 });
 }
+const gesture = async (t) => {
+  await t.page.keyboard.press('Shift');
+  await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
+};
+const audio = async (t) => (await t.state()).audio;
+const waitAudio = (t, fn, arg) => t.page.waitForFunction(fn, arg, { timeout: 15000 }); // generous: the audio clock runs slowly when the machine is busy
 const throwOnce = async (t) => { await t.game('act', 'fire', {}); await t.game('act', 'skipFlight'); };
 
 export const tests = [
@@ -217,6 +223,126 @@ export const tests = [
       await t.page.click('[data-act="journalBack"]');
       t.equal((await t.state()).screen, 'records', 'Back returns to Records');
       t.expect(await t.page.locator('[data-act="journal"]').count() === 1, 'and Records still offers the journal');
+    },
+  },
+  // ---- S5-08 ----
+  {
+    name: 'S5-08 Settings has an Effects level and a Music level that drive their own buses and are saved',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      const s0 = (await t.state()).settings;
+      t.expect(s0.sfxVol === 1 && s0.musicVol === 1, 'a new profile starts at the level the game always had');
+      await t.game('scene', 'settings');
+      const txt = await screenText(t);
+      t.expect(/Effects level/.test(txt) && /Music level/.test(txt) && /Volume/.test(txt), 'Settings shows both new rows beside Volume');
+      await snap(t, 'S5-08-settings');
+      await gesture(t);
+      await waitAudio(t, () => { const a = window.__game.getState().audio; return a.busMusic > 0.95 && a.busSfx > 0.85; });
+      let a = await audio(t);
+      t.expect(Math.abs(a.busSfx - 0.9) < 0.02, `effects bus is 0.9 by default (${a.busSfx})`);
+      await t.page.click('[data-k="musicVol"][data-v="0.35"]');
+      await waitAudio(t, () => { const a = window.__game.getState().audio; return Math.abs(a.busMusic - 0.35) < 0.02; });
+      a = await audio(t);
+      t.expect(a.busSfx > 0.85, 'a lower Music level leaves the effects alone');
+      await t.page.click('[data-k="sfxVol"][data-v="0.65"]');
+      await waitAudio(t, () => Math.abs(window.__game.getState().audio.busSfx - 0.585) < 0.02);
+      a = await audio(t);
+      t.expect(Math.abs(a.busMusic - 0.35) < 0.02, 'and a lower Effects level leaves the music alone');
+      t.expect(a.on && a.music, 'the Sound and Music switches are untouched');
+      await t.page.click('[data-k="sfxVol"][data-v="0"]');
+      await waitAudio(t, () => window.__game.getState().audio.busSfx < 0.01);
+      const played = (await audio(t)).played;
+      await t.page.click('[data-k="musicVol"][data-v="0.65"]');
+      t.equal((await audio(t)).played, played, 'Effects Off plays no cue, not even a menu tick');
+      await waitAudio(t, () => window.__game.getState().audio.busMusic > 0.6);
+      await t.page.click('[data-k="sfxVol"][data-v="1"]');
+      await t.page.click('[data-k="musicVol"][data-v="0.35"]');
+      await t.reload();
+      const s1 = (await t.state()).settings;
+      t.expect(s1.sfxVol === 1 && s1.musicVol === 0.35, 'both levels survive a reload');
+      await gesture(t);
+      await waitAudio(t, () => Math.abs(window.__game.getState().audio.busMusic - 0.35) < 0.02);
+    },
+  },
+  {
+    name: 'S5-08 a save from before the levels existed loads at full level, and damaged values fall back',
+    viewports: ['desktop'],
+    async run(t) {
+      const old = { v: 1, settings: { sound: true, music: false, volume: 0.25, reducedMotion: true, aimGuide: 'always', turnTimer: 30, textScale: 1.25, difficulty: 'hard', tutorial: false }, story: { team: 1, unlocked: 5, stars: { 'story-01': 3 }, nuts: ['pecan'] }, quick: {}, stats: { battles: 9, wins: 5 }, resume: null };
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, old]);
+      await t.reload();
+      let s = (await t.state()).settings;
+      t.expect(s.sfxVol === 1 && s.musicVol === 1, 'missing levels default to the old, full level');
+      t.expect(s.music === false && s.volume === 0.25 && s.turnTimer === 30, 'and nothing else in the old settings moved');
+      old.settings.sfxVol = 7; old.settings.musicVol = 'loud';
+      await t.page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [SAVE_KEY, old]);
+      await t.reload();
+      s = (await t.state()).settings;
+      t.expect(s.sfxVol === 1 && s.musicVol === 1, 'damaged levels fall back to full');
+    },
+  },
+  {
+    name: 'S5-08 the speaker button, the N key and a gamepad Select mute and unmute from inside a battle',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('newGame', { levelId: 'gray' });
+      await t.waitFrames(3);
+      const btn = t.page.locator('#b-sound');
+      t.equal(await btn.getAttribute('aria-pressed'), 'false', 'the HUD has a speaker button, sound on');
+      t.expect(/Mute sound/.test(await btn.getAttribute('aria-label')), 'labelled for screen readers');
+      const box = await btn.boundingBox();
+      t.expect(box.width >= 40 && box.height >= 40, `a usable target (${Math.round(box.width)}x${Math.round(box.height)})`);
+      const pause = await t.page.locator('#b-pause').boundingBox(), throwB = await t.page.locator('#b-throw').boundingBox();
+      t.expect(box.x + box.width <= pause.x + 1 && pause.x + pause.width <= throwB.x + 1, 'it sits beside Pause, and nothing overlaps');
+      await snap(t, 'S5-08-hud-speaker');
+      await btn.click();
+      t.equal((await t.state()).settings.sound, false, 'tapping it mutes');
+      t.equal(await btn.getAttribute('aria-pressed'), 'true', 'and shows muted');
+      t.expect((await saved(t)).settings.sound === false, 'the mute is saved');
+      await snap(t, 'S5-08-hud-muted');
+      await t.page.keyboard.press('n');
+      t.equal((await t.state()).settings.sound, true, 'N turns it back on');
+      await t.page.keyboard.press('n');
+      t.equal((await t.state()).settings.sound, false, 'and off again');
+      await btn.click();
+      t.equal((await t.state()).settings.sound, true, 'the button turns it on');
+      t.equal((await t.state()).scene, 'battle', 'the battle carried on');
+      // a pad's Select button
+      await t.page.evaluate(() => {
+        window.__padBtn = false;
+        const pad = { connected: true, index: 0, id: 'test pad', axes: [0, 0, 0, 0], get buttons() { return Array.from({ length: 17 }, (_, i) => ({ pressed: i === 8 && window.__padBtn, value: 0 })); } };
+        navigator.getGamepads = () => [pad];
+        window.dispatchEvent(new Event('gamepadconnected'));
+      });
+      await t.page.evaluate(() => { window.__padBtn = true; });
+      await t.page.waitForFunction(() => window.__game.getState().settings.sound === false, null, { timeout: 5000 });
+      await t.page.evaluate(() => { window.__padBtn = false; });
+      await t.waitFrames(4);
+      t.equal((await t.state()).settings.sound, false, 'Select mutes once per press');
+    },
+  },
+  {
+    name: 'S5-08 the five HUD buttons fit a phone in portrait and landscape',
+    viewports: ['mobile'],
+    async run(t) {
+      for (const [w, h] of [[390, 844], [844, 390], [360, 640]]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await t.game('newGame', { levelId: 'gray' });
+        await t.waitFrames(3);
+        const m = await t.page.evaluate(() => {
+          const r = ['b-move', 'b-cam', 'b-sound', 'b-pause', 'b-throw'].map((id) => { const e = document.getElementById(id).getBoundingClientRect(); return { id, l: Math.round(e.left), r: Math.round(e.right), w: Math.round(e.width), h: Math.round(e.height) }; });
+          return { r, vw: window.innerWidth };
+        });
+        t.expect(m.r.every((x) => x.l >= 0 && x.r <= m.vw), `${w}x${h}: every button is on screen ${JSON.stringify(m.r.map((x) => x.id + ':' + x.l + '-' + x.r))}`);
+        const sorted = [...m.r].sort((p, q) => p.l - q.l);
+        t.expect(sorted.every((x, i) => i === 0 || x.l >= sorted[i - 1].r - 1), `${w}x${h}: no two buttons overlap`);
+        t.expect(m.r.every((x) => x.w >= 40 && x.h >= 40), `${w}x${h}: each is at least 40 px (${JSON.stringify(m.r.map((x) => x.w + 'x' + x.h))})`);
+        fs.mkdirSync(SHOTS, { recursive: true });
+        await t.page.screenshot({ path: `${SHOTS}/S5-08-hud-buttons-${w}x${h}.png` });
+      }
+      await t.page.setViewportSize({ width: 390, height: 844 });
     },
   },
 ];
