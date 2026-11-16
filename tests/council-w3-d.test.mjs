@@ -232,11 +232,14 @@ export const tests = [
       await t.game('act', 'clearSave');
       await t.reload();
       await gesture(t);
+      // sources keep starting while the music or the bed plays: wait for the count to rise, however slowly the clock runs
+      const rises = async () => { const a = await t.page.evaluate(() => window.__starts); await t.page.waitForFunction((n) => window.__starts > n + 3, a, { timeout: 40000 }); return true; };
+      // and none start while everything is off: a quiet stretch can only show that nothing starts, so a slow clock cannot fail it
       const rate = async (ms) => { const a = await t.page.evaluate(() => window.__starts); await t.page.waitForTimeout(ms); return (await t.page.evaluate(() => window.__starts)) - a; };
       const set = (settings) => t.game('setState', { settings });
       const audioNow = () => t.page.evaluate(() => window.__game.getState().audio);
       await waitAudio(t, () => { const a = window.__game.getState().audio; return a.scheduler && a.musicPlaying && a.ambiencePlaying; });
-      t.expect((await rate(3000)) > 3, 'music and ambience schedule while they are on');
+      t.expect(await rises(), 'music and ambience schedule while they are on');
       await set({ music: false });
       await waitAudio(t, () => !window.__game.getState().audio.musicPlaying);
       let a = await audioNow();
@@ -248,13 +251,13 @@ export const tests = [
       t.equal(await rate(2500), 0, 'and no source is started');
       await set({ music: true, ambience: true });
       await waitAudio(t, () => { const x = window.__game.getState().audio; return x.scheduler && x.musicPlaying && x.ambiencePlaying; });
-      t.expect((await rate(3000)) > 3, 'turned back on they play again');
+      t.expect(await rises(), 'turned back on they play again');
       await set({ sound: false });
       await waitAudio(t, () => { const x = window.__game.getState().audio; return !x.scheduler && !x.musicPlaying && !x.ambiencePlaying; });
       t.equal(await rate(2500), 0, 'Sound off starts no source either');
       await set({ sound: true });
       await waitAudio(t, () => { const x = window.__game.getState().audio; return x.scheduler && x.musicPlaying && x.ambiencePlaying && x.busMusic > 0.9; });
-      t.expect((await rate(3000)) > 3, 'Sound on again brings the music and the bed back');
+      t.expect(await rises(), 'Sound on again brings the music and the bed back');
       t.equal((await audioNow()).theme, 'title', 'and it is still the title theme');
     },
   },
