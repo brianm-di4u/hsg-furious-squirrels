@@ -210,4 +210,22 @@ export const tests = [
       t.expect(same, 'the families start with the same acorns and grip');
     },
   },
+  // ---- C4-02 ----
+  {
+    name: 'C4-02 the Credits say how the art was made, in one plain line that fits',
+    async run(t) {
+      await t.game('scene', 'credits');
+      const r = await t.page.evaluate(() => {
+        const lis = [...document.querySelectorAll('#screens li')];
+        const li = lis.find((l) => l.textContent.startsWith('Art:'));
+        return { text: li && li.textContent, cut: lis.filter((l) => l.scrollWidth > l.clientWidth + 1).length, all: document.getElementById('screens').textContent };
+      });
+      t.equal(r.text, 'Art: 3D block-outs painted with AI image tools for this game. The squirrels are modelled in 3D.', 'the art line');
+      t.expect(!/Codex|Blender/.test(r.all), 'and it names no company or product');
+      t.equal(r.cut, 0, 'no line is cut off');
+      await t.page.evaluate(() => [...document.querySelectorAll('#screens li')].find((l) => l.textContent.startsWith('Art:')).scrollIntoView({ block: 'center' }));
+      await snap(t, 'C4-02-credits-art');
+      await t.checkLayout();
+    },
+  },
 ];

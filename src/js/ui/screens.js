@@ -349,7 +349,8 @@ const TEMPLATES = {
         <li>No logos or marks of the National Park Service or any business; not affiliated with or endorsed by anyone shown.</li>
       </ul>
       <h3>Made with</h3>
-      <ul><li>Hand-written Canvas2D and WebAudio. Backdrop paintings made for this game with Codex from a Blender block-out of the real valley; squirrels modelled in Blender. Sound-effect synthesis after ZzFX by Frank Force (MIT).</li>
+      <ul><li>Art: 3D block-outs painted with AI image tools for this game. The squirrels are modelled in 3D.</li>
+      <li>Hand-written Canvas2D and WebAudio. Sound-effect synthesis after ZzFX by Frank Force (MIT).</li>
       <li>Part of the open-source (MIT) Hot Springs Games collection.</li></ul>
       <nav class="menu row">${btn('creditsBack', 'Back', `autofocus data-back data-from="${from || ''}"`)}</nav>
     </div>`,
