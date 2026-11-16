@@ -1155,7 +1155,7 @@ function updateVis(dt) {
 // A Story level nudges the rival up or down the skill scale (its `skill` field); Quick Battles use the tier as picked.
 function rivalTier() { return aiTier(App.setup.difficulty || 'medium', App.setup.mode === 'story' && App.level ? App.level.skill : 0); }
 
-function updateAI() {
+function updateAI(dtw) {
   const sim = App.sim, b = sim.b;
   if (App.scene !== 'battle' || screens.cur || App.paused || App.testPaused || b.phase !== 'aim' || App.pendingEnd) return false;
   // a plan made for another turn (tests and restarts can switch turns) is dropped
@@ -1174,7 +1174,7 @@ function updateAI() {
   if (!A.skip && now < A.t0 + A.plan.think) return true;
   // animate the aim, then throw
   if (!A.anim) A.anim = { t: 0, from: { ...b.teams[b.turn.team].aim } };
-  A.anim.t += A.skip ? 1 : 1 / 30;
+  A.anim.t += A.skip ? 1 : dtw; // seconds, so the aim takes as long on a 144 Hz screen as on a slow one
   const u = Math.min(1, A.anim.t / (App.reduced ? 0.2 : 0.6)), e = u * u * (3 - 2 * u);
   sim.setAim({ nut: A.plan.nut, angle: A.anim.from.angle + (A.plan.angle - A.anim.from.angle) * e, power: A.anim.from.power + (A.plan.power - A.anim.from.power) * e });
   if (u >= 1) {
@@ -1240,7 +1240,7 @@ function frame(now) {
         if (sim.b.phase === 'flight' && !App.reduced && (App.puffT = (App.puffT || 0) + dtw) > 0.035) { App.puffT = 0; for (const n of sim.b.nuts) if (n.state !== 'husk') renderer.fx.puff(n.x, n.y); }
       } else acc = 0;
       handleEvents(); // moves and test-driven changes emit events outside a sim step
-      if (updateAI()) busy = true;
+      if (updateAI(dtw)) busy = true;
       if (App.pendingEnd && wallNow() >= App.pendingEnd.t) {
         const pe = App.pendingEnd; App.pendingEnd = null;
         if (pe.type === 'battleEnd') battleOver();

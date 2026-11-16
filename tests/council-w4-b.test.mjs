@@ -73,4 +73,51 @@ export const tests = [
       await t.checkLayout();
     },
   },
+  // ---- S6-12 ----
+  {
+    name: 'S6-12 the rival aims for the same time at 60 Hz and at 144 Hz',
+    viewports: ['desktop'],
+    async run(t) {
+      for (const seed of [7, 8, 9, 10, 11, 12, 13, 14]) {
+        await t.seed(seed);
+        const s = await t.game('newGame', { levelId: 'gray', birds: 'off', wind: 'off' });
+        if (s.battle.turn.team === 0) break;
+      }
+      await t.game('act', 'aim', { angle: 40, power: 0.5 });
+      await t.game('act', 'fire', {});
+      await t.game('act', 'skipFlight');
+      // the plan is ready and told to think for a minute, set in the call that sees it
+      await t.page.waitForFunction(() => { const A = window.__FS.aiActive; if (!(A && A.done && A.plan)) return false; A.plan.think = 60; return true; }, null, { timeout: 15000 });
+      // then the page's frames are ours: the game's own frame function is run by hand with a clock that moves by a set step,
+      // so the answer cannot depend on this machine's frame rate
+      const run = (stepMs) => t.page.evaluate(async (step) => {
+        const raf = window.requestAnimationFrame;
+        let held = null;
+        window.requestAnimationFrame = (cb) => { held = cb; return 1; };
+        const until = performance.now() + 5000;
+        while (!held && performance.now() < until) await new Promise((r) => setTimeout(r, 5));
+        const A = window.__FS.aiActive, b = window.__FS.sim.b;
+        A.plan.think = 0; // aim at once
+        let T = performance.now(), frames = 0;
+        const cb0 = held; held = null; T += step; cb0(T);
+        while (held && b.phase === 'aim' && frames < 5000) { const cb = held; held = null; T += step; frames++; cb(T); }
+        window.requestAnimationFrame = raf;
+        if (held) raf(held); // hand the game its own loop back
+        return { frames: frames + 1, seconds: (frames + 1) * step / 1000, phase: b.phase, reduced: !!window.__FS.reduced };
+      }, stepMs);
+      const r60 = await run(1000 / 60);
+      t.equal(r60.phase, 'flight', 'the rival threw');
+      t.expect(Math.abs(r60.seconds - (r60.reduced ? 0.2 : 0.6)) <= 0.03, `at 60 Hz the aim took ${r60.seconds.toFixed(3)} s in ${r60.frames} frames`);
+      // the same again for a second rival turn at 144 Hz
+      await t.game('act', 'skipFlight');
+      await t.game('act', 'aim', { angle: 40, power: 0.5 });
+      await t.game('act', 'fire', {});
+      await t.game('act', 'skipFlight');
+      await t.page.waitForFunction(() => { const A = window.__FS.aiActive; if (!(A && A.done && A.plan)) return false; A.plan.think = 60; return true; }, null, { timeout: 15000 });
+      const r144 = await run(1000 / 144);
+      t.equal(r144.phase, 'flight', 'the rival threw again');
+      t.expect(Math.abs(r144.seconds - (r144.reduced ? 0.2 : 0.6)) <= 0.03, `at 144 Hz the aim took ${r144.seconds.toFixed(3)} s in ${r144.frames} frames`);
+      t.expect(r144.frames > r60.frames * 2, 'and it took more frames, so it is not counting frames');
+    },
+  },
 ];
