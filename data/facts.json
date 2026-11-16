@@ -148,7 +148,7 @@
    "id": "hs-0148",
    "stretch": "any",
    "text": "The USGS says the park is best known for its 47 hot springs, which emerge from Hot Springs Mountain at an average temperature of 143 degrees Fahrenheit.",
-   "q": "According to the USGS, how many hot springs emerge from Hot Springs Mountain in Hot Springs National Park?",
+   "q": "How many hot springs emerge from Hot Springs Mountain in Hot Springs National Park?",
    "a": "47",
    "source": "USGS: Hot Springs National Park",
    "url": "https://www.usgs.gov/geology-and-ecology-of-national-parks/hot-springs-national-park"
@@ -274,7 +274,7 @@
    "id": "hs-0049",
    "stretch": "any",
    "text": "According to Wikipedia, a Hot Springs casino revival during Gov. Orval Faubus's administration (1955-1967) was ended in 1967 by Republican Gov. Winthrop Rockefeller.",
-   "q": "According to Wikipedia, in what year did Gov. Winthrop Rockefeller end Hot Springs' casino revival?",
+   "q": "In what year did Gov. Winthrop Rockefeller end Hot Springs' casino revival?",
    "a": "1967",
    "source": "Wikipedia: Sid McMath",
    "url": "https://en.wikipedia.org/wiki/Sid_McMath"
