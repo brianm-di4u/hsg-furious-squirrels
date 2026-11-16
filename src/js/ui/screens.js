@@ -85,7 +85,7 @@ const dailyHistory = (daily) => {
   }
   return `<div class="rec-table" role="table" aria-label="Daily Duel, last seven days">${rows.join('')}</div>`;
 };
-const pct = (a, b) => b > 0 ? Math.round(100 * a / b) + '%' : 'none yet';
+const pct = (a, b) => b > 0 ? Math.round(100 * Math.min(a, b) / b) + '%' : 'none yet';
 
 const TEMPLATES = {
   title: (app) => `
@@ -203,7 +203,7 @@ const TEMPLATES = {
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>
-        <div><span>Accuracy</span><b>${pct(d.stats.hits, d.stats.throws)}</b></div><div><span>Knockouts</span><b>${d.stats.kos}</b></div>
+        <div><span>Accuracy</span><b>${pct(d.stats.landed ?? d.stats.hits, d.stats.throws)}</b></div><div><span>Knockouts</span><b>${d.stats.kos}</b></div>
         <div><span>Biggest hit</span><b>${d.stats.best}</b></div><div><span>Grip lost</span><b>${d.gripLost}</b></div>
         <div><span>Turns</span><b>${d.turns}</b></div>${d.par ? `<div><span>Par</span><b>${d.par}</b></div>` : ''}
       </div>` : ''}

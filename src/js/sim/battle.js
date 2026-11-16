@@ -38,7 +38,7 @@ export class Sim {
       turn: { team: 0, sq: null, n: 0, stamina: STAMINA, moved: 0 },
       teams: [0, 1].map((t) => ({
         id: TEAMS[t].id, acorns: ACORNS.start, human: opts.human ? !!opts.human[t] : t === (opts.playerTeam ?? 0),
-        inventory: startInventory(loadout, opts.unlocked), next: 0, stats: { throws: 0, hits: 0, kos: 0, dmg: 0, best: 0 },
+        inventory: startInventory(loadout, opts.unlocked), next: 0, stats: { throws: 0, hits: 0, landed: 0, kos: 0, dmg: 0, best: 0 },
         aim: { angle: 45, power: 0.6, nut: 'acorn' },
       })),
       squirrels: [], trees: null, craters: [], settle: 0, falling: [], nuts: [], log: [],
@@ -333,6 +333,7 @@ export class Sim {
       shot.dmg += dmg;
       b.teams[shot.team].acorns += ACORNS.hit;
       b.teams[shot.team].stats.hits++; b.teams[shot.team].stats.dmg += dmg;
+      if (!shot.landed) { shot.landed = true; b.teams[shot.team].stats.landed = (b.teams[shot.team].stats.landed || 0) + 1; } // accuracy counts a throw once, however many it splashes
     }
     this.emit({ type: 'hit', sq: q.id, dmg, grip: q.grip, x: q.x, y: q.y - SQ_UP });
     if (q.grip <= 0) this.knockOut(q);

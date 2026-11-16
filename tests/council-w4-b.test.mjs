@@ -19,7 +19,7 @@ export const tests = [
       await t.game('newGame', { levelId: 'story-01', mode: 'story', seed: 5 });
       const par = await t.page.evaluate(() => {
         const S = window.__FS.sim, b = S.b;
-        b.turn.n = 9; b.teams[0].stats.throws = 8; b.teams[0].stats.hits = 3; b.teams[0].stats.kos = 1; b.teams[0].stats.best = 61;
+        b.turn.n = 9; b.teams[0].stats.throws = 8; b.teams[0].stats.hits = 3; b.teams[0].stats.landed = 3; b.teams[0].stats.kos = 1; b.teams[0].stats.best = 61;
         b.teams[1].stats.dmg = 37.4; // grip the rival shook loose from this family's squirrels
         return window.__FS.level.par;
       });
@@ -34,13 +34,47 @@ export const tests = [
       await t.checkLayout();
       // a Quick Battle has no par to show
       await t.game('newGame', { levelId: 'gray', seed: 7 });
-      await t.page.evaluate(() => { const b = window.__FS.sim.b; b.teams[0].stats.throws = 4; b.teams[0].stats.hits = 0; });
+      await t.page.evaluate(() => { const b = window.__FS.sim.b; b.teams[0].stats.throws = 4; b.teams[0].stats.hits = 0; b.teams[0].stats.landed = 0; });
       await t.game('scene', 'results');
       await t.page.waitForSelector('.statgrid');
       const q = await tiles(t);
       t.expect(!('Par' in q), 'no Par tile outside the Story');
       t.equal(q.Accuracy, '0%', 'no hits is 0%');
       t.equal(q['Grip lost'], '0', 'and no grip lost');
+    },
+  },
+  {
+    name: "S3-19 one throw that hits two rivals counts as one accurate throw, never over 100 percent",
+    async run(t) {
+      await t.game("act", "clearSave");
+      await t.reload();
+      await t.game("newGame", { levelId: "gray", seed: 7 });
+      const r = await t.page.evaluate(() => {
+        const S = window.__FS.sim, b = S.b, foes = b.squirrels.filter((q) => q.team === 1);
+        b.teams[0].stats.throws = 1;
+        b.shot = { team: 0, sq: 0, kind: "acorn", dmg: 0, kos: 0, breaks: 0 };
+        S.damage(foes[0], 5, { team: 0 }); S.damage(foes[1], 5, { team: 0 });
+        return { ...b.teams[0].stats };
+      });
+      t.equal(r.hits + "/" + r.landed, "2/1", "two squirrels hit, one throw landed");
+      await t.game("scene", "results");
+      await t.page.waitForSelector(".statgrid");
+      const g = await tiles(t);
+      t.equal(g.Accuracy, "100%", "one throw, one that landed");
+      t.equal(g.Hits, "2", "Hits still counts every squirrel");
+      const k = await t.page.evaluate(() => { const st = window.__FS.save.stats; return st.hits + "/" + st.throws; });
+      t.equal(k, "1/1", "the record keeps throws that hit");
+      const accuracy = async () => (await tiles(t))["Throw accuracy"];
+      await t.game("scene", "title");
+      await t.game("act", "menu", "records");
+      await t.page.waitForSelector(".statgrid");
+      t.equal(await accuracy(), "100%", "Records shows the same");
+      // a save from before this fix may hold more hits than throws: it is shown as at most 100%
+      await t.game("setState", { stats: { throws: 3, hits: 6 } });
+      await t.game("scene", "title");
+      await t.game("act", "menu", "records");
+      await t.page.waitForSelector(".statgrid");
+      t.equal(await accuracy(), "100%", "an old over-count never reads over 100%");
     },
   },
   // ---- S4-11 ----

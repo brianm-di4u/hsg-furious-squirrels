@@ -573,7 +573,7 @@ function battleOver() {
     s.stats.bestStreak = Math.max(s.stats.bestStreak, s.stats.streak);
   }
   s.stats.kos += myStats.kos; s.stats.bestShot = Math.max(s.stats.bestShot, myStats.best);
-  s.stats.throws += myStats.throws || 0; s.stats.hits += myStats.hits || 0;
+  s.stats.throws += myStats.throws || 0; s.stats.hits += myStats.landed || 0; // saved as throws that hit: a splash on two rivals is one
   const records = {
     // a first win counts as a new best only for a player who had no stars here yet (older saves hold stars but no turns)
     turns: App.setup.mode === 'story' && win ? { now: Math.max(1, myTurns), was: before.turns ?? null, best: before.turns == null ? !before.stars : Math.max(1, myTurns) < before.turns } : null,
