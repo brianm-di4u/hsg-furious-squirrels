@@ -330,6 +330,9 @@ function hurry() {
   App.ff = FAST; App.slowT = 0;
   return true;
 }
+// "Aim keys: Toward the rival" (S1-06): for a family that throws to the left, Left and Right (and the stick) flatten and raise
+// the arm the way they do for a family that throws right, so Right always means toward the rival's side of the screen.
+const keySign = () => { const q = App.sim.active(); return App.save.settings.aimKeys === 'rival' && q && q.facing < 0 ? -1 : 1; };
 const AIM_SAY_MS = 400; // how long the arrow keys must rest before the aim is read out
 function nudgeAim(da, dp) {
   const sim = App.sim;
@@ -729,8 +732,8 @@ window.addEventListener('keydown', (e) => {
   const big = e.shiftKey ? 5 : 1;
   let used = true;
   switch (e.code) {
-    case 'ArrowLeft': nudgeAim(big, 0); break;
-    case 'ArrowRight': nudgeAim(-big, 0); break;
+    case 'ArrowLeft': nudgeAim(big * keySign(), 0); break;
+    case 'ArrowRight': nudgeAim(-big * keySign(), 0); break;
     case 'ArrowUp': nudgeAim(0, big / 100); break;
     case 'ArrowDown': nudgeAim(0, -big / 100); break;
     case 'Space': case 'Enter': case 'NumpadEnter':
@@ -780,7 +783,7 @@ function pollPad() {
       if (edge('a') && document.activeElement && document.activeElement.click) document.activeElement.click();
     } else if (App.scene === 'battle') {
       if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) { endKo(); App.inputKind = 'pad'; }
-      if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
+      if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw * keySign(), 0);
       if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
       if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else pressThrow(); }
       if (edge('lb')) cycleNut(-1);

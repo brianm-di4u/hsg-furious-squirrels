@@ -342,4 +342,42 @@ export const tests = [
       await t.page.setViewportSize({ width: 390, height: 844 });
     },
   },
+  // ---- S1-06 ----
+  {
+    name: 'S1-06 Aim keys: "Toward the rival" flips Left and Right for the family that throws left, and is off by default',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      t.equal((await t.state()).settings.aimKeys, 'asis', 'a fresh profile keeps the keys as they always were');
+      // the player's family: the Tails (team 1) throw left, the Rustlers (team 0) right; find a seed where the player goes first
+      const start = async (team) => {
+        for (const seed of [7, 8, 9, 10, 11, 12, 13, 14]) {
+          await t.seed(seed);
+          const s = await t.game('newGame', { levelId: 'gray', birds: 'off', team });
+          if (s.battle.turn.team === team) return;
+        }
+        throw new Error('no seed lets the player throw first');
+      };
+      const angleAfter = async (key) => {
+        await t.game('act', 'aim', { angle: 40, power: 0.5 });
+        await t.page.keyboard.press(key);
+        return (await t.state()).battle.teams[await t.page.evaluate(() => window.__FS.sim.b.turn.team)].aim.angle;
+      };
+      await start(1);
+      t.expect((await angleAfter('ArrowLeft')) > 40, 'as they are: Left raises the arm for the Tails');
+      t.expect((await angleAfter('ArrowRight')) < 40, 'and Right lowers it');
+      await t.game('setState', { settings: { aimKeys: 'rival' } });
+      t.expect((await angleAfter('ArrowLeft')) < 40, 'toward the rival: Left flattens the arm for the Tails');
+      t.expect((await angleAfter('ArrowRight')) > 40, 'and Right raises it');
+      await start(0);
+      t.expect((await angleAfter('ArrowLeft')) > 40, 'the Rustlers throw right: their keys are unchanged');
+      t.expect((await angleAfter('ArrowRight')) < 40, 'whichever way the option is set');
+      await t.reload();
+      t.equal((await t.state()).settings.aimKeys, 'rival', 'the choice survives a reload');
+      await t.game('scene', 'settings');
+      t.expect(/Aim keys/.test(await t.page.textContent('#screens')) && /Toward the rival/.test(await t.page.textContent('#screens')), 'Settings has the row');
+      await t.page.locator('[data-k="aimKeys"]').first().scrollIntoViewIfNeeded();
+      await snap(t, 'S1-06-settings');
+    },
+  },
 ];

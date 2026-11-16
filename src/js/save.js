@@ -14,7 +14,7 @@ let mem = null;
 
 export const DEFAULT_SAVE = () => ({
   v: 1,
-  settings: { sound: true, music: true, ambience: true, volume: 0.5, sfxVol: 1, musicVol: 1, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true, releaseThrows: true, vibration: true, seenTips: [] },
+  settings: { sound: true, music: true, ambience: true, volume: 0.5, sfxVol: 1, musicVol: 1, reducedMotion: null, aimGuide: 'auto', turnTimer: 0, textScale: 1, difficulty: 'medium', tutorial: true, releaseThrows: true, aimKeys: 'asis', vibration: true, seenTips: [] },
   story: { team: null, unlocked: 1, stars: {}, nuts: [], acorns: ACORNS.start, starTier: {}, bestTurns: {}, losses: {}, notes: [] },
   quick: { level: 'story-01', team: 0, size: 3, rounds: 1, wind: 'normal', steam: 'on', birds: 'some', loadout: 'story', difficulty: 'medium' },
   stats: { battles: 0, wins: 0, kos: 0, bestShot: 0, throws: 0, hits: 0, streak: 0, bestStreak: 0, winsEasy: 0, winsMedium: 0, winsSharp: 0, winsHard: 0 },
@@ -81,6 +81,7 @@ function decoded(s) {
   if (!TIER_NAMES.includes(out.quick.difficulty)) out.quick.difficulty = d.quick.difficulty;
   if (typeof out.settings.ambience !== 'boolean') out.settings.ambience = d.settings.ambience;
   if (typeof out.settings.releaseThrows !== 'boolean') out.settings.releaseThrows = d.settings.releaseThrows;
+  if (!['asis', 'rival'].includes(out.settings.aimKeys)) out.settings.aimKeys = d.settings.aimKeys;
   if (typeof out.settings.vibration !== 'boolean') out.settings.vibration = d.settings.vibration;
   const rawTips = object(s.settings) ? s.settings.seenTips : undefined;
   if (Array.isArray(rawTips)) out.settings.seenTips = [...new Set(rawTips.filter((id) => TIP_IDS.includes(id)))];
