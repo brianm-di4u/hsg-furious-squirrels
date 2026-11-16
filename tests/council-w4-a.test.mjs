@@ -82,4 +82,42 @@ export const tests = [
       await t.page.waitForFunction(() => window.__game.getState().audio.recent.includes('cheer'), null, { timeout: 8000 });
     },
   },
+  // ---- P-N03 ----
+  {
+    name: 'P-N03 after a long stall the music scheduler skips ahead: nothing is started in the past, and no pile of notes lands at once',
+    viewports: ['desktop'],
+    async run(t) {
+      // the game's own scheduler (src/js/ui/audiokit.js), run on a context whose clock the test moves by hand
+      const r = await t.page.evaluate(async () => {
+        const base = new URL('src/js/ui/', location.href).href;
+        const { makeAudioKit } = await import(base + 'audiokit.js');
+        const { SCORES, SCENES } = await import(base + 'music.js');
+        const oc = new OfflineAudioContext(2, 44100, 44100);
+        let now = 0, starts = [];
+        const ctx = new Proxy(oc, {
+          get(o, k) {
+            if (k === 'currentTime') return now;
+            if (k === 'createOscillator' || k === 'createBufferSource') return () => { const n = o[k](); const go = n.start.bind(n); n.start = (when = 0, ...rest) => { starts.push(when); return go(when, ...rest); }; return n; };
+            const v = o[k];
+            return typeof v === 'function' ? v.bind(o) : v;
+          },
+        });
+        const kit = makeAudioKit(ctx, oc.destination, { seed: 7 });
+        kit.music.play(SCORES[Object.keys(SCORES)[0]], { at: 0, fade: 0.02 });
+        kit.amb.play(SCENES[Object.keys(SCENES)[0]], { at: 0, fade: 0.02 });
+        // ten seconds of a timer that keeps up (every 25 ms, a quarter second ahead, as the game's does)
+        for (now = 0; now < 10; now += 0.025) kit.scheduleUntil(now + 0.25);
+        const steady = starts.length;
+        // then the page stalls for 6 s (longer than any one bar), and the timer fires once
+        starts = [];
+        now += 6;
+        kit.scheduleUntil(now + 0.25);
+        const late = starts.filter((w) => w < now - 0.001).length, atOnce = starts.filter((w) => w < now + 0.1).length;
+        return { steady, late, atOnce, total: starts.length, now };
+      });
+      t.expect(r.steady > 20, `the scheduler really started notes while it kept up (${r.steady} in 10 s)`);
+      t.equal(r.late, 0, 'after the stall nothing is started in the past, where it would sound at once');
+      t.expect(r.atOnce <= 14, `and no clump starts together: ${r.atOnce} within 0.1 s of the wake-up (a steady second is about ${Math.round(r.steady / 10)})`);
+    },
+  },
 ];
