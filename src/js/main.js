@@ -214,6 +214,7 @@ function onTurnStart(first) {
 const TIPS = ['Drag back from anywhere to aim. Let go to throw. Slide back to where you began to cancel.', 'Next: wind (top) bends your throw. Press Move to scamper to another branch.', 'Knock every rival out of the trees to win the round.'];
 const TIP_AIM_ONLY = 'Drag back from anywhere to aim. Then press Throw! Slide back to where you began to cancel.';
 const TIP_MS = 8000;
+const TIP_PAN = 'Two fingers to look around.';
 let tipTimer = 0;
 function tutorial() {
   clearTimeout(tipTimer);
@@ -250,13 +251,24 @@ function contextTip(q) {
   const ids = [b.practice ? 'practice' : App.setup.mode === 'quick' ? 'quick' : '', ...NUT_ORDER.filter((k) => k !== 'acorn' && (tm.inventory[k] || 0) > 0).map((k) => 'nut-' + k),
     b.steamLevel > 0 && App.level.steam ? 'steam' : '', Math.round(Math.abs(b.wind) * 10) >= 1 ? 'wind' : ''];
   const id = ids.find((x) => x && TIP_IDS.includes(x) && !seen.includes(x));
-  if (!id) return false;
+  if (!id) return panTip();
   // in a short (landscape) window the title card and a tip would not both fit: the tip waits for the card to go
   if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return true; }
   const text = CONTEXT_TIPS[id]();
   hud.hint(text); say(text, true);
   tipTimer = setTimeout(dismissTip, TIP_MS);
   markTip(id);
+  return true;
+}
+// On a phone a one-finger drag always aims, so the first battle of a new player says how to look around (S1-13). It is told
+// once a visit, only on a touch screen, and never to a player who has already finished a battle, so it adds nothing to a save.
+let panTold = false;
+function panTip() {
+  if (panTold || App.inputKind !== 'touch' || App.save.stats.battles > 0 || App.sim.b.practice) return false;
+  if (hud.cardOn && window.innerHeight <= 480) { hud.hint(''); tipTimer = setTimeout(tutorial, 3400); return true; }
+  panTold = true;
+  hud.hint(TIP_PAN); say(TIP_PAN, true);
+  tipTimer = setTimeout(dismissTip, TIP_MS);
   return true;
 }
 function markTip(id) {

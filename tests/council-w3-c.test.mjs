@@ -262,6 +262,8 @@ export const tests = [
       t.expect(/Pecan Dart: .* in flight to dash/.test(seq[2].hint), 'a nut tip says when to tap');
       await t.reload();
       t.equal((await t.state()).settings.seenTips.length, 9, 'what was shown is saved');
+      // a touch player who has played nothing is told one more thing (how to look around, S1-13): this player has finished a battle
+      await t.page.evaluate(() => { window.__FS.save.stats.battles = 1; });
       await start();
       t.equal((await t.state()).hint, '', 'and nothing shows twice');
     },

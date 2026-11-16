@@ -206,6 +206,40 @@ export const tests = [
       await t.checkLayout({ allowScrollY: true });
     },
   },
+  // ---- S1-13 ----
+  {
+    name: 'S1-13 a new player on a phone is told once to use two fingers to look around; a mouse, or a player who has finished a battle, is not',
+    async run(t) {
+      const ALL = ['quick', 'practice', 'nut-chinquapin', 'nut-pecan', 'nut-walnut', 'nut-hickory', 'nut-sweetgum', 'nut-hedgeapple', 'steam', 'wind'];
+      const TEXT = 'Two fingers to look around.';
+      const fresh = async (battles) => {
+        await t.game('act', 'clearSave');
+        await t.reload();
+        await startHuman(t);
+        await aimPhase(t);
+        // every other tip has been seen, so the one under test is the only one left
+        await t.page.evaluate(([ids, n]) => { const A = window.__FS; A.save.settings.seenTips = ids; A.save.stats.battles = n; A.hud.hint(''); }, [ALL, battles]);
+      };
+      const hint = async () => { await t.page.evaluate(() => window.__FS.tips()); return (await t.state()).hint.replace(/Tap anywhere to close$/, '').trim(); };
+      await fresh(0);
+      const first = await hint();
+      if (t.viewport === 'mobile') {
+        t.equal(first, TEXT, 'a new player on a touch screen is told');
+        t.expect(first.split(/\s+/).length <= 12, 'in twelve words or fewer');
+        await snap(t, 'S1-13-pan-hint');
+        await t.page.evaluate(() => window.__FS.hud.hint(''));
+        t.equal(await hint(), '', 'and only once');
+        t.equal(await t.page.evaluate(() => window.__FS.save.settings.seenTips.length), ALL.length, 'nothing is added to the save');
+        await fresh(1);
+        t.equal(await hint(), '', 'a player who has finished a battle is not told');
+        await fresh(0);
+        await t.page.evaluate(() => { window.__FS.save.settings.tutorial = false; });
+        t.equal(await hint(), '', 'and Tutorial hints Off silences it');
+      } else {
+        t.equal(first, '', 'a mouse player has no use for it');
+      }
+    },
+  },
   // ---- C4-01 ----
   {
     name: 'C4-01 a complete save from a newer version is byte for byte the same after a whole visit, and the player is told once',
