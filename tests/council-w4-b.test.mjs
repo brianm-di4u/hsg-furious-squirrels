@@ -270,4 +270,48 @@ export const tests = [
       await t.checkLayout();
     },
   },
+  // ---- C4-05 ----
+  {
+    name: 'C4-05 the 15 approved Field Notes are in the journal word for word, and a long one fits its card',
+    async run(t) {
+      const approved = JSON.parse(fs.readFileSync('tools/approved-notes.json', 'utf8'));
+      await t.game('act', 'clearSave');
+      await t.reload();
+      const facts = await t.page.evaluate(() => FACTS.landmarks.map((f) => ({ id: f.id, text: f.text, stretch: f.stretch })));
+      t.equal(facts.length, 31, 'sixteen notes and fifteen more');
+      for (const n of approved.notes) {
+        const f = facts.find((x) => x.id === n.id);
+        t.expect(f && f.text === n.text && f.stretch === n.stretch, `${n.id} is as approved`);
+      }
+      t.equal(facts.find((x) => x.id === 'hs-0102').text, "The brewery's own history says it opened in the Superior Bathhouse in 2013.", 'and the brewery year is corrected');
+      t.equal(await t.page.evaluate(() => FACTS.landmarks.filter((f) => !f.q || !f.a || !f.source || !f.url).length), 0, 'each has its question, answer, source and link');
+      // all of them found: the journal lists them, and every one fits its row
+      const ids = await t.page.evaluate(() => [...FACTS.landmarks, ...FACTS.nature].map((f) => f.id));
+      await t.game('setState', { story: { notes: ids, team: 0 } });
+      await t.game('act', 'menu', 'journal', {});
+      const j = await t.page.evaluate(() => ({ found: document.querySelectorAll('.note-list li.found').length, head: document.querySelector('.sub').textContent, cut: [...document.querySelectorAll('.note-list li')].filter((l) => l.scrollWidth > l.clientWidth + 1).length, text: document.querySelector('.note-list').textContent }));
+      t.equal(j.found, 50, 'every note is shown, landmarks and nature');
+      t.expect(/50 of 50 notes found/.test(j.head), 'the count is of fifty: ' + j.head);
+      t.equal(j.cut, 0, 'no note is cut off');
+      for (const n of approved.notes) t.expect(j.text.includes(n.text), `${n.id} is on screen`);
+      await t.page.evaluate(() => document.querySelector('.note-list li:nth-child(20)').scrollIntoView({ block: 'center' }));
+      await snap(t, 'C4-05-journal');
+      await t.checkLayout();
+      // the results card: the longest 'any' note, unread, is the one a battle brings
+      const longest = approved.notes.filter((n) => n.stretch === 'any').sort((a, b) => b.text.length - a.text.length)[0];
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('setState', { story: { notes: ids.filter((x) => x !== longest.id), team: 0 } });
+      await t.game('newGame', { levelId: 'story-01', mode: 'story', seed: 5 });
+      await t.page.evaluate(() => { window.__FS.sim.b.teams[0].stats.throws = 3; });
+      await t.game('scene', 'results');
+      await t.page.waitForSelector('.notes');
+      const card = await t.page.evaluate(() => { const n = document.querySelector('.notes'), p = document.querySelector('.panel'), r = n.getBoundingClientRect(), pr = p.getBoundingClientRect(); return { text: n.textContent, inside: r.left >= pr.left - 1 && r.right <= pr.right + 1, cut: n.scrollWidth > n.clientWidth + 1 }; });
+      t.expect(card.text.includes(longest.text), `the results card shows ${longest.id}: ${card.text}`);
+      t.expect(card.inside && !card.cut, 'and it fits its card');
+      await t.page.evaluate(() => document.querySelector('.notes').scrollIntoView({ block: 'center' }));
+      await snap(t, 'C4-05-results-note');
+      await t.checkLayout();
+    },
+  },
 ];

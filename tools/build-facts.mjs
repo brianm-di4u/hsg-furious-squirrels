@@ -18,6 +18,13 @@ export const LANDMARK_IDS = {
   'hs-0086': 'any', 'hs-0094': 'north', 'hs-0099': 'north', 'hs-0071': 'north',
 };
 
+// C4-05: the owner approved 15 more notes (springs, the Arlington, Oaklawn, the lakes) and a corrected year for hs-0102. Their
+// wording lives in tools/approved-notes.json and is written over the bank's explanation, so a rebuild keeps it; the question,
+// answer, source and URL still come from the bank, which is what tools/check-facts.mjs compares.
+const APPROVED = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'approved-notes.json'), 'utf8'));
+for (const n of APPROVED.notes) LANDMARK_IDS[n.id] = n.stretch;
+const TEXT_OVERRIDE = { ...Object.fromEntries(APPROVED.notes.map((n) => [n.id, n.text])), ...APPROVED.change };
+
 export const NATURE = [
   { id: 'n-squirrels-park', season: 'any', text: 'Both families are real neighbors: the park\'s species list counts the eastern gray squirrel as present and the fox squirrel as probably present.', source: 'NPS NPSpecies, Hot Springs National Park mammals', url: 'https://irmaservices.nps.gov/v3/rest/npspecies/checklist/HOSP/Mammal' },
   { id: 'n-size', season: 'any', text: 'Fox squirrels are the bigger cousins: about 1½–2 lb in Arkansas, while gray squirrels weigh just over a pound.', source: 'University of Arkansas Cooperative Extension', url: 'https://uaex.uada.edu/environment-nature/musings-on-nature-blog/posts/squirrels.aspx' },
@@ -48,7 +55,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const q = qs.find((x) => x.id === id);
     if (!q) throw new Error('missing trivia id ' + id);
     if (q.confidence !== 'confirmed') throw new Error(id + ' is not confirmed');
-    return { id, stretch, text: q.explanation, q: q.question, a: q.answer, source: q.source, url: q.sourceUrl };
+    return { id, stretch, text: TEXT_OVERRIDE[id] ?? q.explanation, q: q.question, a: q.answer, source: q.source, url: q.sourceUrl };
   });
   fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'data', 'facts.json'), JSON.stringify({ landmarks, nature: NATURE }, null, 1));

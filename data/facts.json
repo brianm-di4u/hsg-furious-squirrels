@@ -12,7 +12,7 @@
   {
    "id": "hs-0102",
    "stretch": "north",
-   "text": "The Superior Bathhouse Brewery and Distillery has occupied the Superior Bathhouse since 2012.",
+   "text": "The brewery's own history says it opened in the Superior Bathhouse in 2013.",
    "q": "Which Bathhouse Row bathhouse now houses a brewery and distillery?",
    "a": "The Superior",
    "source": "Wikipedia: Hot Springs, Arkansas",
@@ -143,6 +143,141 @@
    "a": "The Rix Tower",
    "source": "NPS: Hot Springs Mountain Tower",
    "url": "https://www.nps.gov/places/hot-springs-mountain-tower.htm"
+  },
+  {
+   "id": "hs-0148",
+   "stretch": "any",
+   "text": "The USGS says the park is best known for its 47 hot springs, which emerge from Hot Springs Mountain at an average temperature of 143 degrees Fahrenheit.",
+   "q": "According to the USGS, how many hot springs emerge from Hot Springs Mountain in Hot Springs National Park?",
+   "a": "47",
+   "source": "USGS: Hot Springs National Park",
+   "url": "https://www.usgs.gov/geology-and-ecology-of-national-parks/hot-springs-national-park"
+  },
+  {
+   "id": "hs-0154",
+   "stretch": "any",
+   "text": "NPS calls the Hot Springs thermal springs the hottest east of the Rocky Mountains, and says they average 143 degrees Fahrenheit.",
+   "q": "NPS calls the Hot Springs thermal springs the hottest east of what landmark?",
+   "a": "The Rocky Mountains",
+   "source": "NPS: Maurice Historic Display Spring",
+   "url": "https://www.nps.gov/places/maurice-historic-display-spring.htm"
+  },
+  {
+   "id": "hs-0146",
+   "stretch": "any",
+   "text": "NPS says the Hot Springs thermal springs produce over 700,000 gallons of water a day.",
+   "q": "Per the National Park Service, about how much water do the Hot Springs thermal springs produce per day?",
+   "a": "Over 700,000 gallons",
+   "source": "NPS: Maurice Historic Display Spring",
+   "url": "https://www.nps.gov/places/maurice-historic-display-spring.htm"
+  },
+  {
+   "id": "hs-0112",
+   "stretch": "north",
+   "text": "Hot Springs has had three successive Arlington Hotel buildings, dating from 1875, 1892–93 and 1924.",
+   "q": "How many successive Arlington Hotel buildings has Hot Springs had?",
+   "a": "Three",
+   "source": "Wikipedia: Arlington Hotel",
+   "url": "https://en.wikipedia.org/wiki/Arlington_Hotel_(Hot_Springs_National_Park)"
+  },
+  {
+   "id": "hs-0532",
+   "stretch": "north",
+   "text": "The 1893 Arlington had 300 rooms, but only 50 had their own baths. It burned in 1923.",
+   "q": "How many of the second Arlington Hotel's 300 guest rooms had private bathrooms?",
+   "a": "50",
+   "source": "NPS: Arlington Lawn",
+   "url": "https://www.nps.gov/hosp/learn/historyculture/arlington-lawn.htm"
+  },
+  {
+   "id": "hs-0404",
+   "stretch": "north",
+   "text": "Radio station KTHS first broadcast from the Arlington Hotel.",
+   "q": "From which Hot Springs hotel did radio station KTHS first broadcast?",
+   "a": "The Arlington Hotel",
+   "source": "Encyclopedia of Arkansas: KTHS Radio Station",
+   "url": "https://encyclopediaofarkansas.net/entries/kths-radio-station-6423/"
+  },
+  {
+   "id": "hs-0212",
+   "stretch": "any",
+   "text": "Per Wikipedia, Hot Springs declared a city holiday for Oaklawn's first day of racing, and more than 3,000 people attended.",
+   "q": "What did Hot Springs declare for Oaklawn's first day of racing, per Wikipedia?",
+   "a": "A city holiday",
+   "source": "Wikipedia: Oaklawn Racing Casino Resort",
+   "url": "https://en.wikipedia.org/wiki/Oaklawn_Racing_Casino_Resort"
+  },
+  {
+   "id": "hs-0214",
+   "stretch": "any",
+   "text": "The first Arkansas Derby ran at Oaklawn Park in 1936 with a purse of $5,000.",
+   "q": "What was the purse of the first Arkansas Derby at Oaklawn in 1936?",
+   "a": "$5,000",
+   "source": "Encyclopedia of Arkansas: Oaklawn Park",
+   "url": "https://encyclopediaofarkansas.net/entries/oaklawn-park-racetrack-3636/"
+  },
+  {
+   "id": "hs-0470",
+   "stretch": "any",
+   "text": "Wikipedia says the Oaklawn meet, held December through May, is sometimes called the \"Fifth Season\".",
+   "q": "Which Hot Springs racetrack's winter-spring meet is sometimes called the \"Fifth Season\"?",
+   "a": "Oaklawn",
+   "source": "Wikipedia: Hot Springs, Arkansas",
+   "url": "https://en.wikipedia.org/wiki/Hot_Springs,_Arkansas"
+  },
+  {
+   "id": "hs-0454",
+   "stretch": "any",
+   "text": "Voters approved Amendment 100 in 2018, and Oaklawn became a full casino on April 1, 2019.",
+   "q": "Which Arkansas constitutional amendment let Oaklawn open a full casino in 2019?",
+   "a": "Amendment 100",
+   "source": "Wikipedia: Oaklawn Racing Casino Resort",
+   "url": "https://en.wikipedia.org/wiki/Oaklawn_Racing_Casino_Resort"
+  },
+  {
+   "id": "hs-0121",
+   "stretch": "any",
+   "text": "Arkansas Power & Light developed Lake Hamilton; Carpenter Dam, a concrete gravity dam, was completed in 1931 and the lake was created in 1932.",
+   "q": "Which dam formed Lake Hamilton, and when was it completed?",
+   "a": "Carpenter Dam, 1931",
+   "source": "Wikipedia: Lake Hamilton",
+   "url": "https://en.wikipedia.org/wiki/Lake_Hamilton_(Arkansas)"
+  },
+  {
+   "id": "hs-0122",
+   "stretch": "any",
+   "text": "Wikipedia gives Lake Hamilton as about 7,200 acres; Lake Catherine, the smaller of the two lakes, is about 1,940 acres.",
+   "q": "About how many acres is Lake Hamilton?",
+   "a": "About 7,200",
+   "source": "Wikipedia: Lake Hamilton",
+   "url": "https://en.wikipedia.org/wiki/Lake_Hamilton_(Arkansas)"
+  },
+  {
+   "id": "hs-0312",
+   "stretch": "any",
+   "text": "Lake Hamilton is named for Hamilton Moses, an Arkansas Power & Light executive; Carpenter Dam is named for Flavius Josephus Carpenter.",
+   "q": "Lake Hamilton near Hot Springs is named for which Arkansas Power & Light executive?",
+   "a": "Hamilton Moses",
+   "source": "Wikipedia: Lake Hamilton",
+   "url": "https://en.wikipedia.org/wiki/Lake_Hamilton_(Arkansas)"
+  },
+  {
+   "id": "hs-0600",
+   "stretch": "any",
+   "text": "After Arkansas outlawed gambling in 1913, the Ohio Club on Central Avenue posed as the Ohio Cigar Store. A false wall hid the real club behind it.",
+   "q": "When gambling was banned, the Ohio Club on Central Avenue officially became what front business, complete with a fake wall?",
+   "a": "The Ohio Cigar Store",
+   "source": "Encyclopedia of Arkansas: Ohio Club",
+   "url": "https://encyclopediaofarkansas.net/entries/ohio-club-9408/"
+  },
+  {
+   "id": "hs-0049",
+   "stretch": "any",
+   "text": "According to Wikipedia, a Hot Springs casino revival during Gov. Orval Faubus's administration (1955-1967) was ended in 1967 by Republican Gov. Winthrop Rockefeller.",
+   "q": "According to Wikipedia, in what year did Gov. Winthrop Rockefeller end Hot Springs' casino revival?",
+   "a": "1967",
+   "source": "Wikipedia: Sid McMath",
+   "url": "https://en.wikipedia.org/wiki/Sid_McMath"
   }
  ],
  "nature": [

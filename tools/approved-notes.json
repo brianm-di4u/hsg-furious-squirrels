@@ -1,0 +1,83 @@
+{
+ "_about": "The 15 Field Notes and the one corrected note the owner approved on 15 November 2026 (wave 4, C4-05), copied character for character from the council file approved-local-facts.json. tools/build-facts.mjs adds the notes to its landmark list and writes each text over the bank explanation.",
+ "notes": [
+  {
+   "id": "hs-0148",
+   "stretch": "any",
+   "text": "The USGS says the park is best known for its 47 hot springs, which emerge from Hot Springs Mountain at an average temperature of 143 degrees Fahrenheit."
+  },
+  {
+   "id": "hs-0154",
+   "stretch": "any",
+   "text": "NPS calls the Hot Springs thermal springs the hottest east of the Rocky Mountains, and says they average 143 degrees Fahrenheit."
+  },
+  {
+   "id": "hs-0146",
+   "stretch": "any",
+   "text": "NPS says the Hot Springs thermal springs produce over 700,000 gallons of water a day."
+  },
+  {
+   "id": "hs-0112",
+   "stretch": "north",
+   "text": "Hot Springs has had three successive Arlington Hotel buildings, dating from 1875, 1892–93 and 1924."
+  },
+  {
+   "id": "hs-0532",
+   "stretch": "north",
+   "text": "The 1893 Arlington had 300 rooms, but only 50 had their own baths. It burned in 1923."
+  },
+  {
+   "id": "hs-0404",
+   "stretch": "north",
+   "text": "Radio station KTHS first broadcast from the Arlington Hotel."
+  },
+  {
+   "id": "hs-0212",
+   "stretch": "any",
+   "text": "Per Wikipedia, Hot Springs declared a city holiday for Oaklawn's first day of racing, and more than 3,000 people attended."
+  },
+  {
+   "id": "hs-0214",
+   "stretch": "any",
+   "text": "The first Arkansas Derby ran at Oaklawn Park in 1936 with a purse of $5,000."
+  },
+  {
+   "id": "hs-0470",
+   "stretch": "any",
+   "text": "Wikipedia says the Oaklawn meet, held December through May, is sometimes called the \"Fifth Season\"."
+  },
+  {
+   "id": "hs-0454",
+   "stretch": "any",
+   "text": "Voters approved Amendment 100 in 2018, and Oaklawn became a full casino on April 1, 2019."
+  },
+  {
+   "id": "hs-0121",
+   "stretch": "any",
+   "text": "Arkansas Power & Light developed Lake Hamilton; Carpenter Dam, a concrete gravity dam, was completed in 1931 and the lake was created in 1932."
+  },
+  {
+   "id": "hs-0122",
+   "stretch": "any",
+   "text": "Wikipedia gives Lake Hamilton as about 7,200 acres; Lake Catherine, the smaller of the two lakes, is about 1,940 acres."
+  },
+  {
+   "id": "hs-0312",
+   "stretch": "any",
+   "text": "Lake Hamilton is named for Hamilton Moses, an Arkansas Power & Light executive; Carpenter Dam is named for Flavius Josephus Carpenter."
+  },
+  {
+   "id": "hs-0600",
+   "stretch": "any",
+   "text": "After Arkansas outlawed gambling in 1913, the Ohio Club on Central Avenue posed as the Ohio Cigar Store. A false wall hid the real club behind it."
+  },
+  {
+   "id": "hs-0049",
+   "stretch": "any",
+   "text": "According to Wikipedia, a Hot Springs casino revival during Gov. Orval Faubus's administration (1955-1967) was ended in 1967 by Republican Gov. Winthrop Rockefeller."
+  }
+ ],
+ "change": {
+  "hs-0102": "The brewery's own history says it opened in the Superior Bathhouse in 2013."
+ }
+}
