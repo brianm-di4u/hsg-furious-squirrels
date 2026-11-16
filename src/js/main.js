@@ -330,8 +330,9 @@ function hurry() {
   App.ff = FAST; App.slowT = 0;
   return true;
 }
-// "Aim keys: Toward the rival" (S1-06): for a family that throws to the left, Left and Right (and the stick) flatten and raise
-// the arm the way they do for a family that throws right, so Right always means toward the rival's side of the screen.
+// "Aim keys: Toward the rival" (S1-06): the arrow that points toward the rival's side of the screen flattens the arm and the
+// other one raises it. For a family that throws right (the Rustlers) that is as it always was: Right flattens, Left raises.
+// For a family that throws left (the Tails) the option swaps the keys: Left, the side of their rival, flattens and Right raises.
 const keySign = () => { const q = App.sim.active(); return App.save.settings.aimKeys === 'rival' && q && q.facing < 0 ? -1 : 1; };
 const AIM_SAY_MS = 400; // how long the arrow keys must rest before the aim is read out
 function nudgeAim(da, dp) {
