@@ -55,14 +55,16 @@ export const tests = [
         const S = window.__FS.sim; window.__freqs.length = 0;
         S.knockOut(S.b.squirrels.find((q) => q.team === tm && !q.out)); window.__FS.kick();
       }, team);
-      const cheered = () => t.page.evaluate(() => window.__freqs.includes(1046));
+      // every cue is detuned by up to 20 cents (S5-03, about 1.2 percent), so a cue is found within 1.5 percent of its pitch
+      const heard = (hz) => t.page.evaluate((f) => window.__freqs.some((x) => Math.abs(x - f) / f < 0.015), hz);
+      const cheered = () => heard(1046);
       await ko(0);
-      await t.page.waitForFunction(() => window.__freqs.includes(900), null, { timeout: 8000 });
+      await t.page.waitForFunction(() => window.__freqs.some((x) => Math.abs(x - 900) / 900 < 0.015), null, { timeout: 8000 });
       await t.page.waitForTimeout(1200);
       t.expect(!(await cheered()), 'own squirrel knocked out: no rival-knockout cheer');
-      t.expect(await t.page.evaluate(() => window.__freqs.includes(900)), 'own squirrel knocked out: the knockout cue still plays');
+      t.expect(await heard(900), 'own squirrel knocked out: the knockout cue still plays');
       await ko(1);
-      await t.page.waitForFunction(() => window.__freqs.includes(900), null, { timeout: 8000 });
+      await t.page.waitForFunction(() => window.__freqs.some((x) => Math.abs(x - 900) / 900 < 0.015), null, { timeout: 8000 });
       await t.page.waitForTimeout(1200);
       t.expect(await cheered(), 'rival squirrel knocked out: the cheer plays');
     },
