@@ -228,4 +228,46 @@ export const tests = [
       await t.checkLayout();
     },
   },
+  // ---- C4-04 ----
+  {
+    name: 'C4-04 the logo, level signs and results headings use the bundled face, from file:// too; everything else keeps its font',
+    fileUrl: true,
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      const fam = (sel) => t.page.evaluate((s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).fontFamily : ''; }, sel);
+      await t.page.waitForFunction(() => document.fonts.check('900 24px "Lilita One"') && [...document.fonts].some((f) => f.family.replace(/"/g, '') === 'Lilita One' && f.status === 'loaded'), null, { timeout: 8000 });
+      t.expect((await fam('.logo h1')).startsWith('"Lilita One"'), `the logo: ${await fam('.logo h1')}`);
+      t.expect((await fam('.tagline')).startsWith('system-ui'), 'the tagline keeps its body font');
+      t.expect(!(await fam('.menu .btn')).includes('Lilita'), 'and so do the buttons');
+      await snap(t, 'C4-04-title');
+      // the logo fits its sign at every text size
+      for (const scale of [1, 1.5]) {
+        await t.game('setState', { settings: { textScale: scale } });
+        await t.page.waitForFunction((s) => window.__FS.renderer.textScale === s, scale, { timeout: 5000 });
+        const fit = await t.page.evaluate(() => { const h = document.querySelector('.logo h1'), l = document.querySelector('.logo'), r = h.getBoundingClientRect(), s = l.getBoundingClientRect(); return { within: r.left >= s.left - 1 && r.right <= s.right + 1, wide: h.scrollWidth <= h.clientWidth + 1, onscreen: r.left >= 0 && r.right <= innerWidth }; });
+        t.expect(fit.within && fit.wide && fit.onscreen, `the logo fits its sign at ${scale * 100}%: ${JSON.stringify(fit)}`);
+        await t.checkLayout();
+      }
+      await t.game('setState', { settings: { textScale: 1 } });
+      // the level signs on the story map
+      await t.game('setState', { story: { unlocked: 3, team: 0 } });
+      await t.game('scene', 'story');
+      t.expect((await fam('.lvl .n')).startsWith('"Lilita One"'), 'the level numbers on the map');
+      await snap(t, 'C4-04-story-map');
+      await t.checkLayout();
+      // the results headings
+      await t.game('newGame', { levelId: 'story-01', mode: 'story', seed: 5 });
+      await t.page.evaluate(() => { window.__FS.sim.b.teams[0].stats.throws = 3; });
+      await t.game('scene', 'results');
+      await t.page.waitForSelector('.statgrid');
+      t.expect((await fam('.panel h2')).startsWith('"Lilita One"') && (await fam('.winner')).startsWith('"Lilita One"'), 'the results heading and the winner line');
+      const rfit = await t.page.evaluate(() => [...document.querySelectorAll('.panel h2, .winner')].every((e) => e.scrollWidth <= e.clientWidth + 1));
+      t.expect(rfit, 'which fit');
+      await snap(t, 'C4-04-results');
+      await t.page.evaluate(() => window.__FS.screens.show('settings', {}));
+      t.expect((await fam('.panel h2')).startsWith('"Arial Black"'), 'other headings keep the old stack: ' + await fam('.panel h2'));
+      await t.checkLayout();
+    },
+  },
 ];

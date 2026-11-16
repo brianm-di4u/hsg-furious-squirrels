@@ -1,3 +1,4 @@
+@import './fonts.css';
 /* Furious Squirrels. Palettes from shared/design/tokens.css (nps-rustic, ouachita-forest, thermal-water, gilded-spa),
    copied inline. Panels look like routed-wood park signs: sign brown with cream letters. */
 :root {
@@ -5,6 +6,7 @@
   --gold: #F2C230; --gold-dark: #9C7A1E; --teal: #2A9D8F; --teal-dark: #1F6B62; --rust: #B5541E; --rust-dark: #7E3A14;
   --pine: #2F4A2C; --oak: #5C7A3A; --redbud: #B5568F; --steam: #F4F6F5;
   --font-head: "Arial Black", Impact, "Helvetica Neue", sans-serif;
+  --font-display: "Lilita One", "Arial Black", Impact, "Helvetica Neue", sans-serif; /* C4-04: the logo, level signs and results headings; the stack above stays behind it */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
   --text-scale: 1;
@@ -179,7 +181,7 @@ body.reduced .call, body.reduced .hint { transition: none; }
 .res-sq canvas { width: 84px; height: 84px; }
 @media (max-width: 520px) { .title-sq { width: 54px; height: 54px; } .logo { padding: 10px 14px 12px; } }
 .logo { margin: 0 auto 6px; display: inline-block; padding: 14px 26px 18px; border-radius: 22px; background: var(--sign); border: 4px solid var(--sign-edge); box-shadow: 0 6px 0 var(--sign-edge), 0 14px 30px rgba(0,0,0,0.3); }
-.logo h1 { margin: 0; font: 900 calc(54px * var(--text-scale)) / 0.95 var(--font-head); color: #FFF6C8; letter-spacing: 1px; text-shadow: 0 4px 0 var(--sign-edge); }
+.logo h1 { margin: 0; font: 900 calc(54px * var(--text-scale)) / 0.95 var(--font-display); color: #FFF6C8; letter-spacing: 1px; text-shadow: 0 4px 0 var(--sign-edge); }
 .logo h1 span { display: block; color: #F2C230; }
 .tagline { margin: 10px auto 4px; padding: 6px 14px; display: inline-block; border-radius: 12px; background: #2A2119; color: #fff; font: 700 calc(15px * var(--text-scale)) var(--font-ui); }
 .brand { display: inline-block; margin-left: 6px; padding: 3px 10px; border-radius: 10px; background: #2A2119; font: 700 calc(13px * var(--text-scale)) var(--font-ui); color: #fff; }
@@ -219,7 +221,8 @@ body.reduced .call, body.reduced .hint { transition: none; }
 .stars .on { display: inline-block; animation: starpop 0.45s ease-out backwards; }
 @keyframes starpop { from { transform: scale(0.2) rotate(-40deg); opacity: 0; } 70% { transform: scale(1.35); opacity: 1; } to { transform: scale(1); } }
 body.reduced .stars .on { animation: none; }
-.winner { font: 900 calc(24px * var(--text-scale)) var(--font-head); color: #FFF6C8; }
+.panel[aria-label="Battle results"] h2 { font-family: var(--font-display); }
+.winner { font: 900 calc(24px * var(--text-scale)) var(--font-display); color: #FFF6C8; }
 .statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 10px 0; }
 .statgrid div { display: flex; justify-content: space-between; }
 .label-fiction { display: inline-block; padding: 2px 8px; border-radius: 8px; background: #3E3226; color: #F5E9D0; font-size: calc(13px * var(--text-scale)); }
@@ -231,7 +234,7 @@ body.reduced .stars .on { animation: none; }
 .qmap .lvl .n { font-size: calc(18px * var(--text-scale)); }
 .lvl[aria-pressed="true"] { background: var(--gold); color: var(--ink); border-color: var(--ink); box-shadow: 0 2px 0 var(--gold-dark); }
 .lvl[aria-pressed="true"] .n { color: var(--ink); }
-.lvl .n { font: 900 calc(22px * var(--text-scale)) var(--font-head); color: var(--gold); }
+.lvl .n { font: 900 calc(22px * var(--text-scale)) var(--font-display); color: var(--gold); }
 .lvl .st { color: var(--gold); letter-spacing: 1px; }
 .lvl .st .t3 { color: #7FD6C8; }
 .lvl .st .t4 { color: #FF9B6A; }
@@ -284,7 +287,7 @@ body.reduced .help-more { animation: none; }
 /* ---------- the feud's voice (S4-01) ---------- */
 .titlecard, .taunt { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.5s; }
 .titlecard { bottom: 120px; width: min(92vw, 460px); padding: 12px 18px; border-radius: 16px; background: rgba(42,33,25,0.92); border: 3px solid var(--ink); color: #fff; }
-.titlecard b { display: block; font: 900 calc(22px * var(--text-scale)) / 1.1 var(--font-head); color: #FFF6C8; }
+.titlecard b { display: block; font: 900 calc(22px * var(--text-scale)) / 1.1 var(--font-display); color: #FFF6C8; }
 .titlecard span { display: block; margin-top: 4px; font: 600 calc(15px * var(--text-scale)) / 1.3 var(--font-ui); }
 .titlecard small { display: block; margin-top: 4px; font: 700 calc(12px * var(--text-scale)) var(--font-ui); color: var(--gold); }
 .titlecard.show, .taunt.show { opacity: 1; }
