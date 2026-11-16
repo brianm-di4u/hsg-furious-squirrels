@@ -24,7 +24,7 @@ const App = {
   scene: 'boot', ready: false, loading: 0, paused: false, testPaused: false, time: 0, clock: null, steps: 0,
   save: loadSave(), sim: null, level: null, setup: null, vis: {}, showPerches: false, hoverPerch: null,
   aimGuide: null, guideKey: '', aiActive: null, aimAnim: null, pendingEnd: null, held: new Set(), craterN: 0,
-  turnElapsed: 0, ff: 1, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
+  turnElapsed: 0, ff: 1, holdThrow: 0, tutorialStep: 0, nextSeed: null, art: {}, reduced: false,
 };
 window.__FS = App;
 
@@ -314,10 +314,16 @@ function tapNow() {
 // A press while a shot or the rival's turn plays out hurries it along (S1-02): the rival skips its thinking and aim
 // animation, a flight or settle runs FAST times quicker until the turn passes, and the knockout slow-motion ends.
 const FAST = 3;
+// The keys that hurry a turn also throw, so for this long after a hurry press, or after a turn begins, Space, Enter and
+// the pad's A do not throw: the press that ended the rival's turn must not also throw the player's next nut.
+const THROW_HOLD = 0.4;
+const throwHeld = () => wallNow() < App.holdThrow;
+function pressThrow() { if (!throwHeld() && throwNow()) return; hurry(); }
 function hurry() {
   const sim = App.sim;
   if (!sim || App.scene !== 'battle' || screens.cur || App.paused || App.testPaused) return false;
   const ph = sim.b.phase;
+  if (ph !== 'aim' || App.aiActive) App.holdThrow = wallNow() + THROW_HOLD;
   if (ph === 'aim') { const A = App.aiActive; if (!A || A.skip) return false; A.skip = true; return true; }
   if (ph !== 'flight' && ph !== 'settle') return false;
   if (App.ff >= FAST && !(App.slowT > 0)) return false;
@@ -730,7 +736,7 @@ window.addEventListener('keydown', (e) => {
     case 'Space': case 'Enter': case 'NumpadEnter':
       if (e.target && e.target.closest && e.target.closest('#hud button')) return; // activates the focused HUD button, not a throw
       if (e.repeat) break;
-      if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry();
+      if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else pressThrow();
       break;
     case 'KeyM': toggleMove(); break;
     case 'KeyA': stepPerch(-1, 0); break;
@@ -776,7 +782,7 @@ function pollPad() {
       if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) { endKo(); App.inputKind = 'pad'; }
       if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw, 0);
       if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
-      if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else if (!throwNow()) hurry(); }
+      if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else pressThrow(); }
       if (edge('lb')) cycleNut(-1);
       if (edge('rb')) cycleNut(1);
       if (edge('left')) stepPerch(-1, 0);
@@ -1049,7 +1055,7 @@ function handleEvents() {
       }
       case 'miss': hud.call('Missed!', 600); say('Missed.', true); if (App.lastShot && App.lastShot.rec) App.lastShot.end = { x: ev.x, y: ev.y }; break;
       case 'turn': {
-        App.ff = 1;
+        App.ff = 1; App.holdThrow = wallNow() + THROW_HOLD;
         const L = App.lastShot, call = L && L.rec ? shotCall() : '';
         if (call) { hud.call(call, 1400); say(call + '.', true); }
         if (L) { L.said = call; L.rec = false; }

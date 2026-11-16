@@ -31,9 +31,9 @@ export const tests = [
       await fire(t);
       await t.game('act', 'skipFlight');
       t.equal((await t.state()).battle.turn.team, 1, "it is the rival's turn");
-      await t.page.waitForFunction(() => window.__FS.aiActive && window.__FS.aiActive.done && window.__FS.aiActive.plan, null, { timeout: 15000 });
-      // make it think for a minute, so that only the press can bring its throw
-      await t.page.evaluate(() => { window.__FS.aiActive.plan.think = 60; });
+      // make it think for a minute, so that only the press can bring its throw: set in the same call that sees the plan,
+      // so a slow machine cannot let the rival throw between the wait and the change
+      await t.page.waitForFunction(() => { const A = window.__FS.aiActive; if (!(A && A.done && A.plan)) return false; A.plan.think = 60; return true; }, null, { timeout: 15000 });
       // count animation frames from the press to the rival's throw: frames, not seconds, so a slow machine cannot fail it
       await t.page.evaluate(() => {
         window.__frames = -1;
@@ -45,6 +45,36 @@ export const tests = [
       const frames = await t.page.evaluate(() => window.__frames);
       t.expect(frames <= 4, `the rival threw ${frames} frames after the press`);
       t.equal((await t.state()).battle.teams[1].stats.throws, 1, 'and it was a real throw');
+    },
+  },
+  {
+    name: 'S1-02 the press that hurries the rival does not also throw the next nut, and a later press does',
+    viewports: ['desktop'],
+    async run(t) {
+      await humanFirst(t);
+      await fire(t);
+      await t.game('act', 'skipFlight');
+      await t.page.waitForFunction(() => { const A = window.__FS.aiActive; if (!(A && A.done && A.plan)) return false; A.plan.think = 60; return true; }, null, { timeout: 15000 });
+      await t.page.keyboard.press('Space');
+      await t.page.waitForFunction(() => window.__FS.sim.b.phase === 'flight', null, { timeout: 8000 });
+      await t.game('act', 'skipFlight');
+      // in the same tick in which the turn has passed to the player, the keys that hurried the rival must not throw
+      const r = await t.page.evaluate(() => new Promise((res) => {
+        const end = performance.now() + 20000;
+        const tick = () => {
+          const b = window.__FS.sim.b;
+          if (performance.now() > end) res({ throws: -1 });
+          else if (b.turn.team === 0 && b.phase === 'aim' && window.__FS.holdThrow > performance.now() / 1000) {
+            for (const code of ['Space', 'Enter']) window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+            res({ throws: b.teams[0].stats.throws });
+          } else requestAnimationFrame(tick);
+        };
+        tick();
+      }));
+      t.equal(r.throws, 1, 'Space and Enter in the first moments of the next turn throw nothing (the one throw is the first turn)');
+      await t.page.waitForFunction(() => performance.now() / 1000 >= window.__FS.holdThrow, null, { timeout: 5000 });
+      await t.page.keyboard.press('Space');
+      t.equal((await t.state()).battle.teams[0].stats.throws, 2, 'and a press after the pause throws as ever');
     },
   },
   {
