@@ -120,4 +120,36 @@ export const tests = [
       t.expect(r.atOnce <= 14, `and no clump starts together: ${r.atOnce} within 0.1 s of the wake-up (a steady second is about ${Math.round(r.steady / 10)})`);
     },
   },
+  // ---- C4-01 ----
+  {
+    name: 'C4-01 a complete save from a newer version is byte for byte the same after a whole visit, and the player is told once',
+    viewports: ['desktop'],
+    async run(t) {
+      const KEY = 'hsg-furious-squirrels-v1';
+      // a real, complete save with progress in it, marked as written by version 2
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.game('setState', { story: { team: 0, unlocked: 5 }, settings: { textScale: 1.25 } });
+      await t.game('act', 'menu', 'set', { k: 'sound', v: 'false' });
+      const newer = await t.page.evaluate((k) => { const o = JSON.parse(localStorage.getItem(k)); o.v = 2; o.story.unlocked = 5; const raw = JSON.stringify(o); localStorage.setItem(k, raw); return raw; }, KEY);
+      await t.reload();
+      const told = () => t.page.evaluate(() => (document.getElementById('screens').textContent.match(/newer version of the game/g) || []).length);
+      t.equal(await told(), 1, 'the title says once that the save is from a newer version');
+      t.expect(/not be saved/.test(await t.page.textContent('#screens')), 'and that this visit is not being saved');
+      t.equal((await t.state()).save.story.unlocked, 1, 'the visit plays from defaults, not from the newer save');
+      // a visit that would normally save a lot: settings, a quick-battle setup, a played battle, a result
+      await t.game('act', 'menu', 'set', { k: 'sound', v: 'true' });
+      await t.game('act', 'menu', 'set', { k: 'textScale', v: '1.5' });
+      await t.game('act', 'menu', 'qset', { k: 'size', v: '2' });
+      await t.seed(7);
+      await t.game('newGame', { levelId: 'story-01', mode: 'story', loadout: 'story' });
+      await t.game('act', 'fire', {});
+      await t.game('act', 'skipFlight');
+      await t.game('scene', 'results');
+      await t.page.waitForFunction(() => window.__FS.screens.cur === 'results', null, { timeout: 10000 });
+      await t.game('scene', 'title');
+      t.equal(await t.page.evaluate((k) => localStorage.getItem(k), KEY), newer, 'the newer save is byte for byte what it was');
+      t.equal(await t.page.evaluate((k) => localStorage.getItem(k + '-bad'), KEY), null, 'and no copy was set aside as damaged');
+    },
+  },
 ];
