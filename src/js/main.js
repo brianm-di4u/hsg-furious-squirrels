@@ -340,11 +340,26 @@ function hurry() {
 // For a family that throws left (the Tails) the option swaps the keys: Left, the side of their rival, flattens and Right raises.
 const keySign = () => { const q = App.sim.active(); return App.save.settings.aimKeys === 'rival' && q && q.facing < 0 ? -1 : 1; };
 const AIM_SAY_MS = 400; // how long the arrow keys must rest before the aim is read out
+// A held arrow key steps faster the longer it is held (S1-12): by repeat count, 1 degree (or percent), then 2, then 4. The
+// first press and Shift steps are as they were. The readout shows whole degrees and percents, so every aim is kept whole:
+// a displayed 46 is 46, and entering 46 again repeats the shot.
+const KEY_RAMP = [[0, 1], [10, 2], [25, 4]];
+const keyStep = (repeats) => KEY_RAMP.reduce((m, [from, step]) => (repeats >= from ? step : m), 1);
+let keyRun = { code: '', repeats: 0 };
+const padAcc = { a: 0, p: 0 };
+// the stick nudges are collected until they add up to a whole degree or percent, so a gentle push still moves the aim
+function padAim(da, dp) {
+  padAcc.a += da; padAcc.p += dp * 100;
+  const wa = Math.trunc(padAcc.a), wp = Math.trunc(padAcc.p);
+  if (!wa && !wp) return;
+  padAcc.a -= wa; padAcc.p -= wp;
+  nudgeAim(wa, wp / 100);
+}
 function nudgeAim(da, dp) {
   const sim = App.sim;
   if (!sim || sim.b.phase !== 'aim' || !humanTurn()) return;
   const a = sim.b.teams[sim.b.turn.team].aim;
-  sim.setAim({ angle: a.angle + da, power: a.power + dp });
+  sim.setAim({ angle: Math.round(a.angle + da), power: Math.round((a.power + dp) * 100) / 100 });
   App.guideKey = ''; kick();
   // read the new aim out once the keys pause (S2-12), so a held arrow is not read a hundred times
   clearTimeout(App.aimSayT);
@@ -737,7 +752,8 @@ window.addEventListener('keydown', (e) => {
   if (App.scene !== 'battle') return;
   App.inputKind = 'key';
   dismissTip(); endKo();
-  const big = e.shiftKey ? 5 : 1;
+  keyRun = e.repeat && keyRun.code === e.code ? { code: e.code, repeats: keyRun.repeats + 1 } : { code: e.code, repeats: 0 };
+  const big = e.shiftKey ? 5 : keyStep(keyRun.repeats);
   let used = true;
   switch (e.code) {
     case 'ArrowLeft': nudgeAim(big * keySign(), 0); break;
@@ -791,8 +807,8 @@ function pollPad() {
       if (edge('a') && document.activeElement && document.activeElement.click) document.activeElement.click();
     } else if (App.scene === 'battle') {
       if (Object.keys(now).some((k) => now[k] && !prev[k]) || Math.abs(p.axes[0]) > 0.2 || Math.abs(p.axes[1]) > 0.2) { endKo(); App.inputKind = 'pad'; }
-      if (Math.abs(p.axes[0]) > 0.2) nudgeAim(-p.axes[0] * 72 * dtw * keySign(), 0);
-      if (Math.abs(p.axes[1]) > 0.2) nudgeAim(0, -p.axes[1] * 0.72 * dtw);
+      if (Math.abs(p.axes[0]) > 0.2) padAim(-p.axes[0] * 72 * dtw * keySign(), 0); else padAcc.a = 0;
+      if (Math.abs(p.axes[1]) > 0.2) padAim(0, -p.axes[1] * 0.72 * dtw); else padAcc.p = 0;
       if (edge('a')) { if (App.sim.b.phase === 'flight') { if (!tapNow()) hurry(); } else pressThrow(); }
       if (edge('lb')) cycleNut(-1);
       if (edge('rb')) cycleNut(1);

@@ -238,7 +238,7 @@ const TEMPLATES = {
       </div>
       <h3>Controls</h3>
       <div class="cards">
-        <div class="card"><b>Keyboard</b><br>←/→ angle, ↑/↓ power (Shift for big steps). Space or Enter throws, and taps a flying nut. 1–7 or Q/E pick a nut. M moves; then A/D/W/S step between perches. Z/X zoom, C recenters the view, N mutes the sound, P or Esc pauses.</div>
+        <div class="card"><b>Keyboard</b><br>←/→ angle, ↑/↓ power (hold a key to speed up, Shift for big steps). Space or Enter throws, and taps a flying nut. 1–7 or Q/E pick a nut. M moves; then A/D/W/S step between perches. Z/X zoom, C recenters the view, N mutes the sound, P or Esc pauses.</div>
         <div class="card"><b>Gamepad</b><br>Left stick aims. A throws, and taps a flying nut. LB/RB pick a nut, left/right on the D-pad step between perches, Start pauses, Select mutes the sound.</div>
       </div>
       <h3>The nuts</h3>

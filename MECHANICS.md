@@ -168,7 +168,7 @@ Input comes from `games/Cart Racing/src/js/ui/input.js` (keyboard, gamepad and t
 
 | Action | Mouse | Touch | Keyboard | Gamepad |
 |---|---|---|---|---|
-| Aim (angle + power) | Drag back from the squirrel (slingshot pull; the length is the power) | Same drag (`pointerup` releases) | ←/→ angle 1° (Shift 5°), ↑/↓ power 1% (Shift 5%) | Left stick |
+| Aim (angle + power) | Drag back from the squirrel (slingshot pull; the length is the power) | Same drag (`pointerup` releases) | ←/→ angle 1° (Shift 5°), ↑/↓ power 1% (Shift 5%); a held key steps 1, then 2 after 10 repeats, then 4 after 25 (not with Shift) | Left stick |
 | Throw | Release the drag, or the Throw button | Release, or the Throw button | Space / Enter | A |
 | Ability | Click anywhere in flight | Tap anywhere | Space | A |
 | Choose nut | Nut bar click | Nut bar tap | 1–7, Q/E cycle | LB/RB |

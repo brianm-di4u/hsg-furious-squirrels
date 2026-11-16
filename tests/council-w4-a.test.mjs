@@ -120,6 +120,92 @@ export const tests = [
       t.expect(r.atOnce <= 14, `and no clump starts together: ${r.atOnce} within 0.1 s of the wake-up (a steady second is about ${Math.round(r.steady / 10)})`);
     },
   },
+  // ---- S1-12 ----
+  {
+    name: 'S1-12 a held arrow key steps 1, then 2, then 4, and a first press, a pad nudge and a Shift step stay whole',
+    viewports: ['desktop'],
+    async run(t) {
+      await startHuman(t);
+      await aimPhase(t);
+      const aim = () => t.page.evaluate(() => { const b = window.__game.getState().battle; return b.teams[b.turn.team].aim; });
+      // n key events in one page call: the first is a press, the rest are the operating system's auto-repeats
+      const keys = (code, n, extra = {}) => t.page.evaluate(([c, count, ex]) => {
+        for (let i = 0; i < count; i++) window.dispatchEvent(new KeyboardEvent('keydown', { code: c, repeat: i > 0, bubbles: true, ...ex }));
+      }, [code, n, extra]);
+      await t.game('act', 'aim', { angle: -30, power: 1 });
+      await keys('ArrowLeft', 1);
+      t.equal((await aim()).angle, -29, 'a single press is one degree, as ever');
+      await t.game('act', 'aim', { angle: -30, power: 1 });
+      await keys('ArrowLeft', 10);
+      t.equal((await aim()).angle, -20, 'the first ten steps of a held key are one degree each');
+      await t.game('act', 'aim', { angle: -30, power: 1 });
+      await keys('ArrowLeft', 40);
+      t.equal((await aim()).angle, 70, 'forty steps: 10 at 1, 15 at 2 and 15 at 4 degrees');
+      await keys('ArrowLeft', 1);
+      t.equal((await aim()).angle, 71, 'a new press starts again at one degree');
+      await t.game('act', 'aim', { angle: 0, power: 1 });
+      await keys('ArrowDown', 20);
+      t.equal(Math.round((await aim()).power * 100), 70, 'power ramps the same way: twenty steps are 10 at 1 and 10 at 2 percent');
+      await t.game('act', 'aim', { angle: 0, power: 0.5 });
+      await keys('ArrowUp', 1, { shiftKey: true });
+      t.equal(Math.round((await aim()).power * 100), 55, 'a Shift step is five percent, as ever');
+      await t.game('act', 'aim', { angle: 40, power: 0.5 });
+      await keys('ArrowRight', 12, { shiftKey: true });
+      t.equal((await aim()).angle, -20, 'and Shift is not ramped: twelve Shift steps are 5 degrees each');
+      // a held key hands over to another key from step one
+      await t.game('act', 'aim', { angle: 0, power: 0.5 });
+      await t.page.evaluate(() => {
+        for (let i = 0; i < 30; i++) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', repeat: i > 0, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowRight', repeat: true, bubbles: true }));
+      });
+      t.equal((await aim()).angle, 10 + 30 + 20 - 1, 'a different key that is already repeating starts at one degree (30 steps: 10 + 30 + 20, then one back)');
+    },
+  },
+  {
+    name: 'S1-12 stick nudges move the aim in whole degrees and whole percents, even a gentle push',
+    viewports: ['desktop'],
+    initScript: () => {
+      const pad = { index: 0, connected: true, axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
+      window.__pad = pad;
+      navigator.getGamepads = () => [pad];
+    },
+    async run(t) {
+      await startHuman(t);
+      await aimPhase(t);
+      await t.page.evaluate(() => window.dispatchEvent(new Event('gamepadconnected')));
+      const aim = () => t.page.evaluate(() => { const b = window.__game.getState().battle; return b.teams[b.turn.team].aim; });
+      const whole = (a) => Number.isInteger(a.angle) && Math.abs(a.power * 100 - Math.round(a.power * 100)) < 1e-9;
+      await t.game('act', 'aim', { angle: 30, power: 0.5 });
+      // a firm push to the right and down until the aim has moved well past a few frames' worth
+      await t.page.evaluate(() => { window.__pad.axes[0] = 0.73; window.__pad.axes[1] = 0.41; });
+      await t.page.waitForFunction(() => { const b = window.__game.getState().battle, a = b.teams[b.turn.team].aim; return a.angle <= 24 && a.power <= 0.46; }, null, { timeout: 20000 });
+      await t.page.evaluate(() => { window.__pad.axes[0] = 0; window.__pad.axes[1] = 0; });
+      const a1 = await aim();
+      t.expect(whole(a1), `after a firm push the aim is whole: ${a1.angle} degrees, ${a1.power * 100} percent`);
+      // a gentle push: each frame adds well under a degree, and the aim must still creep along
+      await t.page.evaluate(() => { window.__pad.axes[0] = -0.25; });
+      await t.page.waitForFunction((from) => window.__game.getState().battle.teams[0].aim.angle >= from + 3, a1.angle, { timeout: 20000 });
+      await t.page.evaluate(() => { window.__pad.axes[0] = 0; });
+      const a2 = await aim();
+      t.expect(whole(a2), `after a gentle push it is whole too: ${a2.angle} degrees`);
+      t.expect(a2.angle >= a1.angle + 3, 'and a gentle push did move it');
+      const shown = await t.page.$eval('#readout', (r) => r.textContent);
+      t.expect(shown.startsWith(`${a2.angle}° · ${Math.round(a2.power * 100)}%`), `the readout says what the aim is: ${shown}`);
+    },
+  },
+  {
+    name: 'S1-12 How to Play tells a keyboard player that a held key speeds up, and the card fits',
+    async run(t) {
+      await t.game('scene', 'help');
+      await t.page.waitForSelector('.card');
+      const card = await t.page.evaluate(() => { const c = [...document.querySelectorAll('.card')].find((d) => /^Keyboard/.test(d.textContent)); const r = c.getBoundingClientRect(); return { text: c.textContent, right: r.right, over: c.scrollWidth > c.clientWidth + 1 }; });
+      t.expect(/hold a key to speed up/.test(card.text), 'the Keyboard card says it: ' + card.text.slice(0, 90));
+      t.expect(card.right <= t.vp.width && !card.over, 'and the card stays inside the screen');
+      await t.page.evaluate(() => [...document.querySelectorAll('.card')].find((d) => /^Keyboard/.test(d.textContent)).scrollIntoView({ block: 'center' }));
+      await snap(t, 'S1-12-help-keyboard');
+      await t.checkLayout({ allowScrollY: true });
+    },
+  },
   // ---- C4-01 ----
   {
     name: 'C4-01 a complete save from a newer version is byte for byte the same after a whole visit, and the player is told once',

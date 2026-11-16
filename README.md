@@ -11,7 +11,7 @@ the valley's shape, the trees, the nuts and the squirrels are real, and every fa
 
 ## Play
 Open `index.html` (works from `file://` too).
-- **Aim:** drag back from anywhere, like a slingshot (or ←/→ angle, ↑/↓ power, Shift for big steps).
+- **Aim:** drag back from anywhere, like a slingshot (or ←/→ angle, ↑/↓ power, Shift for big steps, hold a key to speed up).
 - **Throw:** let go, press Throw, or Space/Enter. **Trick:** tap or press Space once while a special nut flies.
 - **Move:** press Move (M), then a glowing perch; A/D/W/S scamper by keyboard. **Pause:** Esc/P.
 - Gamepad: left stick aims, A throws and tricks, LB/RB pick nuts, Start pauses. Touch: drag, tap, pinch to zoom.
