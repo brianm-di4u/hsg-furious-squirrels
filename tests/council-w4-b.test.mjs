@@ -120,4 +120,70 @@ export const tests = [
       t.expect(r144.frames > r60.frames * 2, 'and it took more frames, so it is not counting frames');
     },
   },
+  // ---- C4-03 ----
+  {
+    name: 'C4-03 every place a nut is named uses the bar\'s name for it',
+    async run(t) {
+      const NAME = { acorn: 'Acorn', chinquapin: 'Trio', pecan: 'Pecan', walnut: 'Walnut', hickory: 'Hickory', sweetgum: 'Gumball', hedgeapple: 'Hedge' };
+      const KEY = { acorn: '1', chinquapin: '2', pecan: '3', walnut: '4', hickory: '5', sweetgum: '6', hedgeapple: '7' };
+      const SPECIAL = Object.keys(NAME).filter((k) => k !== 'acorn');
+      const OLD = /Chinquapin Trio|Pecan Dart|Black Walnut|Hickory Hook|Sweetgum Drop|Hedge Apple\b/;
+      await t.game('act', 'clearSave');
+      await t.reload();
+      for (const seed of [7, 8, 9, 10, 11, 12, 13, 14]) {
+        await t.seed(seed);
+        const s = await t.game('newGame', { levelId: 'gray', birds: 'off', wind: 'off', loadout: 'all' });
+        if (s.battle.turn.team === 0) break;
+      }
+      await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
+      await t.page.waitForFunction(() => document.querySelectorAll('#nutbar .nut').length === 7, null, { timeout: 8000 });
+      // the bar: its label, its aria-label, and (the readout under it) the trick line for each nut as it is picked
+      const bar = await t.page.evaluate(() => [...document.querySelectorAll('#nutbar .nut')].map((b) => ({ k: b.dataset.nut, nm: b.querySelector('.nm').textContent, aria: b.getAttribute('aria-label') })));
+      t.equal(bar.map((b) => b.k).join(), Object.keys(NAME).join(), 'the bar has all seven');
+      for (const b of bar) t.expect(b.nm === NAME[b.k] && b.aria.startsWith(NAME[b.k]), `bar ${b.k}: "${b.nm}" / "${b.aria}"`);
+      for (const k of Object.keys(NAME)) {
+        await t.game('act', 'aim', { nut: k });
+        await t.page.waitForFunction((n) => document.querySelector('.trick') && document.querySelector('.trick').textContent.startsWith(n + ':'), NAME[k], { timeout: 5000 });
+        const line = await t.page.$eval('.trick', (e) => e.textContent);
+        t.expect(line.startsWith(NAME[k] + ': '), `the readout for ${k}: "${line}"`);
+      }
+      // the other screens, each handed every nut it can show
+      const screenText = async (name, data) => {
+        await t.page.evaluate(([n, d]) => window.__FS.screens.show(n, d), [name, data]);
+        return t.page.evaluate(() => ({ text: document.getElementById('screens').textContent, bolds: [...document.querySelectorAll('#screens .nutrow b')].map((b) => b.textContent), labels: [...document.querySelectorAll('#screens [aria-label]')].map((b) => b.getAttribute('aria-label')) }));
+      };
+      let r = await screenText('help', {});
+      for (const k of Object.keys(NAME)) t.expect(r.bolds.includes(`${KEY[k]}. ${NAME[k]}`), `How to Play names ${k} "${NAME[k]}": ${r.bolds.join('|')}`);
+      t.expect(!OLD.test(r.text), 'How to Play has none of the old long names');
+      await t.page.evaluate(() => document.querySelector('#screens .nutrow').scrollIntoView({ block: 'start' }));
+      await snap(t, 'C4-03-help-nuts');
+      const setup = { mode: 'story', purse: 999 };
+      r = await screenText('prep', { setup, bought: { pecan: 1 }, name: 'Battle', kinds: SPECIAL, blurb: '' });
+      for (const k of SPECIAL) t.expect(r.bolds.includes(NAME[k]) && r.labels.some((l) => l.startsWith('Buy a ' + NAME[k] + ' for ')), `the satchel names ${k}: ${r.bolds.join('|')}`);
+      t.expect(r.labels.includes('Take back one Pecan'), 'and Undo names the nut it takes back');
+      t.expect(!OLD.test(r.text + r.labels.join()), 'the satchel has none of the old long names');
+      await snap(t, 'C4-03-satchel');
+      r = await screenText('shop', { team: 0, round: 1, winner: 0 });
+      for (const k of SPECIAL) t.expect(r.bolds.includes(NAME[k]), `the shop names ${k}: ${r.bolds.join('|')}`);
+      t.expect(!OLD.test(r.text), 'the shop has none of the old long names');
+      for (const k of SPECIAL) {
+        r = await screenText('results', { win: true, practice: false, records: null, stats: { throws: 1, hits: 1, kos: 0, best: 1 }, gripLost: 0, turns: 1, unlock: k, fact: null });
+        t.expect(r.text.includes(`New nut unlocked: ${NAME[k]}: `) && !OLD.test(r.text), `the results card names the new ${k}`);
+      }
+      await t.checkLayout();
+      // the tips: the first time each special is in a satchel
+      const allTips = ['quick', 'practice', 'nut-chinquapin', 'nut-pecan', 'nut-walnut', 'nut-hickory', 'nut-sweetgum', 'nut-hedgeapple', 'steam', 'wind'];
+      for (const k of SPECIAL) {
+        await t.game('setState', { settings: { seenTips: allTips.filter((x) => x !== 'nut-' + k) } });
+        for (const seed of [7, 8, 9, 10, 11, 12, 13, 14]) {
+          await t.seed(seed);
+          const s = await t.game('newGame', { levelId: 'gray', birds: 'off', wind: 'off', loadout: 'all' });
+          if (s.battle.turn.team === 0) break;
+        }
+        await t.page.waitForFunction((n) => window.__game.getState().hint.startsWith(n + ':'), NAME[k], { timeout: 8000 }).catch(() => {});
+        const hint = (await t.state()).hint;
+        t.expect(hint.startsWith(NAME[k] + ': ') && !OLD.test(hint), `the tip for ${k}: "${hint}"`);
+      }
+    },
+  },
 ];

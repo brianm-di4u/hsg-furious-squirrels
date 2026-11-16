@@ -48,12 +48,12 @@ A sunny, silly, turn-based nut-throwing duel across the real valley of Hot Sprin
   | Nut | Trick |
   |---|---|
   | Acorn | Basic |
-  | Chinquapin Trio | Tap: splits into three |
-  | Pecan Dart | Tap: straight dash that zips through leaves and cracks wood |
-  | Black Walnut Burst | Tap or impact: big pop that rattles nearby branches |
-  | Hickory Hook | Tap: curls back like a boomerang |
-  | Sweetgum Drop | Tap: drops a spiky gumball straight down |
-  | Hedge Apple | Heavy, barely moved by wind, and rolls downhill on landing |
+  | Trio | Tap: splits into three |
+  | Pecan | Tap: straight dash that zips through leaves and cracks wood |
+  | Walnut | Tap or impact: big pop that rattles nearby branches |
+  | Hickory | Tap: curls back like a boomerang |
+  | Gumball | Tap: drops a spiky gumball straight down |
+  | Hedge | Heavy, barely moved by wind, and rolls downhill on landing |
 
 - **Optional turn timer:** off, 30 s or 60 s. When it runs out, the turn passes with no throw.
 
@@ -75,14 +75,14 @@ See `research/town-content.md` for sources.
 | # | Name | Row stretch | Season and time | Family size | Steam | Wind | New nut | Par turns |
 |---|---|---|---|---|---|---|---|---|
 | 1 | Morning on the Row | Middle | Summer day | 2 vs 2 | off | light | (acorn; tutorial) | 8 |
-| 2 | Under the Tower | North | Summer day | 2 vs 2 | weak | light | Chinquapin Trio | 9 |
-| 3 | Dome at Dusk | Middle | Summer dusk | 3 vs 3 | on | normal | Pecan Dart | 10 |
-| 4 | Redbud Ridge | South | Spring day | 3 vs 3 | on | normal | Hickory Hook | 10 |
-| 5 | Valley of Vapors | Middle | Spring misty morning | 3 vs 3 | strong | light | Black Walnut Burst | 11 |
+| 2 | Under the Tower | North | Summer day | 2 vs 2 | weak | light | Trio | 9 |
+| 3 | Dome at Dusk | Middle | Summer dusk | 3 vs 3 | on | normal | Pecan | 10 |
+| 4 | Redbud Ridge | South | Spring day | 3 vs 3 | on | normal | Hickory | 10 |
+| 5 | Valley of Vapors | Middle | Spring misty morning | 3 vs 3 | strong | light | Walnut | 11 |
 | 6 | Magnolia Lamps | North | Summer night | 3 vs 3 | on | normal | — | 11 |
-| 7 | Fall on the Promenade | South | Fall day | 3 vs 3 | on | gusty | Sweetgum Drop | 12 |
+| 7 | Fall on the Promenade | South | Fall day | 3 vs 3 | on | gusty | Gumball | 12 |
 | 8 | Gumball Gulch | Middle | Fall dusk | 3 vs 3 | strong | normal | — | 12 |
-| 9 | Hedge Apple Harvest | North | Fall day | 4 vs 4 | on | normal | Hedge Apple | 13 |
+| 9 | Hedge Apple Harvest | North | Fall day | 4 vs 4 | on | normal | Hedge | 13 |
 | 10 | First Dusting | South | Winter day | 4 vs 4 | on | gusty | — | 13 |
 | 11 | Winter Lamps | Middle | Winter night | 4 vs 4 | strong | normal | — | 14 |
 | 12 | Battle for the Valley | North | Fall sunset | 4 vs 4, best of 3 | on | gusty | — | 14 |

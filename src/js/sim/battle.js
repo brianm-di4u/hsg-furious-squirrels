@@ -105,7 +105,7 @@ export class Sim {
     b.teams.forEach((tm) => { tm.next = 0; });
     b.turn = { team: first ? (b.seed & 1 ? 1 : 0) : (b.round + (b.seed & 1)) % 2, sq: null, n: b.turn ? b.turn.n : 0, stamina: STAMINA, moved: 0 };
     if (b.practice) b.turn.team = 0;
-    // the family that throws second gets a bonus special each round (offsets the first-throw edge): a Black Walnut, or
+    // the family that throws second gets a bonus special each round (offsets the first-throw edge): a Walnut, or
     // (S3-13) before the walnut is unlocked, the best special it does have
     const second = b.teams[1 - b.turn.team], bonus = !b.practice && BONUS_NUTS.find((k) => k in second.inventory);
     if (bonus) second.inventory[bonus] = Math.min(NUT_CAP, second.inventory[bonus] + 1);

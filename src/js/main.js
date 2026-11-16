@@ -237,12 +237,12 @@ const tapWord = () => ({ key: 'press Space', pad: 'press A', touch: 'tap', mouse
 const CONTEXT_TIPS = {
   quick: () => `Knock every rival out of the trees. ${App.inputKind === 'key' ? 'Arrows aim.' : App.inputKind === 'pad' ? 'Stick aims.' : 'Drag back to aim.'}`,
   practice: () => `Hit every target. ${aimWords()}`,
-  'nut-chinquapin': () => `Chinquapin Trio: ${tapWord()} in flight to split into three.`,
-  'nut-pecan': () => `Pecan Dart: ${tapWord()} in flight to dash straight through leaves.`,
-  'nut-walnut': () => `Black Walnut: ${tapWord()} in flight, or let it land, for a big pop.`,
-  'nut-hickory': () => `Hickory Hook: ${tapWord()} in flight to curl it back.`,
-  'nut-sweetgum': () => `Sweetgum Drop: ${tapWord()} in flight to drop a spiky gumball.`,
-  'nut-hedgeapple': () => 'Hedge Apple: heavy, it shrugs off wind and rolls downhill.',
+  'nut-chinquapin': () => `Trio: ${tapWord()} in flight to split into three.`,
+  'nut-pecan': () => `Pecan: ${tapWord()} in flight to dash straight through leaves.`,
+  'nut-walnut': () => `Walnut: ${tapWord()} in flight, or let it land, for a big pop.`,
+  'nut-hickory': () => `Hickory: ${tapWord()} in flight to curl it back.`,
+  'nut-sweetgum': () => `Gumball: ${tapWord()} in flight to drop a spiky gumball.`,
+  'nut-hedgeapple': () => 'Hedge: heavy, it shrugs off wind and rolls downhill.',
   steam: () => 'Steam over the Row lifts nuts that fly through it.',
   wind: () => 'The wind flag at the top bends every throw. Aim into it.',
 };

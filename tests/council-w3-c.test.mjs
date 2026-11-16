@@ -259,7 +259,7 @@ export const tests = [
       for (const x of seq) t.expect(x.hint.length > 0 && x.hint.split(/s+/).length <= 12, `"${x.hint}" is ${x.hint.split(/s+/).length} words`);
       t.equal(new Set(seq.map((x) => x.hint)).size, 9, 'and no two say the same');
       t.expect(/Knock every rival out of the trees/.test(seq[0].hint), 'the first one is the goal');
-      t.expect(/Pecan Dart: .* in flight to dash/.test(seq[2].hint), 'a nut tip says when to tap');
+      t.expect(/Pecan: .* in flight to dash/.test(seq[2].hint), 'a nut tip says when to tap');
       await t.reload();
       t.equal((await t.state()).settings.seenTips.length, 9, 'what was shown is saved');
       // a touch player who has played nothing is told one more thing (how to look around, S1-13): this player has finished a battle

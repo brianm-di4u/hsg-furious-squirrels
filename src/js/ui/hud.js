@@ -56,7 +56,7 @@ export class Hud {
   buildNutBar() {
     const sim = this.app.sim, team = sim.b.turn.team, inv = sim.b.teams[team].inventory;
     const bar = this.el('nutbar');
-    bar.innerHTML = NUT_ORDER.filter((k) => k === 'acorn' || k in inv).map((k) => `<button type="button" class="nut" data-nut="${k}" aria-label="${NUTS[k].name}${k === 'acorn' ? '' : ', ' + (inv[k] || 0) + ' left'}"><span class="key">${NUTS[k].key}</span><canvas></canvas><span class="nm">${NUTS[k].short}</span>${k === 'acorn' ? '<span class="ct">∞</span>' : `<span class="ct">${inv[k] || 0}</span>`}</button>`).join('');
+    bar.innerHTML = NUT_ORDER.filter((k) => k === 'acorn' || k in inv).map((k) => `<button type="button" class="nut" data-nut="${k}" aria-label="${NUTS[k].name}${k === 'acorn' ? '' : ', ' + (inv[k] || 0) + ' left'}"><span class="key">${NUTS[k].key}</span><canvas></canvas><span class="nm">${NUTS[k].name}</span>${k === 'acorn' ? '<span class="ct">∞</span>' : `<span class="ct">${inv[k] || 0}</span>`}</button>`).join('');
     bar.querySelectorAll('.nut').forEach((b) => {
       const ic = nutIcon(b.dataset.nut, 34), c = b.querySelector('canvas');
       c.width = ic.width; c.height = ic.height; c.getContext('2d').drawImage(ic, 0, 0);

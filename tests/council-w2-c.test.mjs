@@ -368,7 +368,7 @@ export const tests = [
         await t.page.click('.nut[data-nut="hickory"]');
         await t.waitForStable(200);
         const sp = await t.page.$eval('#readout .trick', (e) => { const q = getComputedStyle(e); return { shown: q.display !== 'none', text: e.textContent, clipped: e.scrollHeight > e.clientHeight + 1 && q.webkitLineClamp === 'none' }; });
-        t.expect(sp.shown && /Hickory Hook/.test(sp.text), `${w}x${h}: the trick shows for a special nut: ${sp.text}`);
+        t.expect(sp.shown && /Hickory/.test(sp.text), `${w}x${h}: the trick shows for a special nut: ${sp.text}`);
       }
       await t.page.setViewportSize({ width: 390, height: 844 });
     },

@@ -72,7 +72,7 @@ export const tests = [
       t.equal(s.save.story.unlocked, 2, 'battle 2 unlocked');
       t.expect(s.save.story.stars['story-01'] >= 1, 'stars recorded');
       const txt = await t.page.textContent('#screens');
-      t.expect(/Chinquapin Trio/.test(txt), 'new nut announced');
+      t.expect(/Trio/.test(txt), 'new nut announced');
       t.expect(/Next battle/.test(txt), 'next battle offered');
       await t.shot('m3-results');
       await t.reload();

@@ -57,7 +57,7 @@ battle = {
 - **Geometry, not mask.**
   - Each tree is a trunk segment plus a small tree of branch segments (2–3 levels), defined in the level JSON.
   - Collision is circle against capsule: point-to-segment distance compared with `r + w/2`.
-  - **Canopies** are soft circles. A nut passing through one gets extra drag (`v *= 0.985` per step, rustle event), unless it is a Pecan Dart in its dash.
+  - **Canopies** are soft circles. A nut passing through one gets extra drag (`v *= 0.985` per step, rustle event), unless it is a Pecan in its dash.
 - **Branch hit points:**
   - Branches have `hp = 14 + 4·width` (about 40–54). Hits subtract the nut's `wood` damage.
   - At 0 hp the branch and its child branches **break**: a scripted fall with rotation and a leaf burst.
@@ -272,7 +272,7 @@ The shared contract (`shared/test-harness/README.md`), all JSON-serializable:
 
 ## 14. Changes made during balancing and review (shipped values)
 - **Fairness:** levels mirror the near-valley slopes, trees and spawn pairs across the valley; beyond West Mountain's crest distance, Hot Springs Mountain keeps its real rise to the tower. Squirrels start on the highest primary branches. Every level is re-baked until `tools/check-levels.mjs` proves every starting squirrel has a hitting acorn throw at wind −1, 0 and +1.
-- **Second mover:** the family that throws second each round gets a bonus Black Walnut.
+- **Second mover:** the family that throws second each round gets a bonus Walnut.
 - **Steam:** reaches 900 units above the floor, column 260 wide, lift off/weak/on/strong = 0/420/680/980, square-root fade.
 - **Nut table (shipped):** acorn 44/32 at 56; trio 18/14 at 34 each; pecan 48/28 at 46 (wood 60); walnut 38/44 at 100 (wood 55 in 100); hickory 46/30 at 52 (hard shell); sweetgum ball 46/30 at 56; hedge apple 42/22 at 42, wind ×0.3.
 - **AI noise (angle σ / power σ):** easy 3.8° / 4.5%, medium 2.0° / 2.2%, hard 0.6° / 0.7%; trick nuts are planned inside the search (trio splits ~280 units short, the dart dashes when heading at the target, the gumball drops over it).

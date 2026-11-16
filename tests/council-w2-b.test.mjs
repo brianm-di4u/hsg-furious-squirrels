@@ -33,13 +33,13 @@ export const tests = [
       t.expect(/Battle 3: Dome at Dusk/.test(await t.page.textContent('#screens')), 'names the battle');
       t.equal(await purseText(t), 'Your acorns: 100');
       let r = await rows(t);
-      t.equal(r.map((x) => x.name).join('|'), 'Chinquapin Trio|Pecan Dart', 'one row per unlocked special');
+      t.equal(r.map((x) => x.name).join('|'), 'Trio|Pecan', 'one row per unlocked special');
       t.equal(r[0].have, '1/3', 'one of each to start');
       await snap(t, 'S3-01-satchel');
       await click(t, '[data-act="prepBuy"][data-kind="pecan"]');
       await click(t, '[data-act="prepBuy"][data-kind="pecan"]');
-      t.equal(await purseText(t), 'Your acorns: 40', 'two Pecan Darts at 30 each');
-      t.equal((await t.state()).lastSaid, 'Pecan Dart packed. 40 acorns left.', 'the purchase is announced');
+      t.equal(await purseText(t), 'Your acorns: 40', 'two Pecans at 30 each');
+      t.equal((await t.state()).lastSaid, 'Pecan packed. 40 acorns left.', 'the purchase is announced');
       r = await rows(t);
       t.equal(r[1].have, '3/3'); t.expect(r[1].buyOff, 'Buy is off at the cap of three');
       await click(t, '[data-act="prepUndo"][data-kind="pecan"]');

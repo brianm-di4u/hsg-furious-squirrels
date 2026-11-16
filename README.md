@@ -21,8 +21,8 @@ Open `index.html` (works from `file://` too).
 Modes: **Story** (12 battles across the seasons, unlocking six special nuts, each a different spot on the mountains), **Quick Battle** (any battlefield,
 family size, rounds, wind, steam, nut set and rival skill) and **Practice Range**.
 
-The seven nuts: Acorn, Chinquapin Trio (splits), Pecan Dart (dashes), Black Walnut Burst (big pop), Hickory Hook
-(boomerang), Sweetgum Drop (drops a gumball), Hedge Apple (heavy, rolls).
+The seven nuts: Acorn, Trio (splits), Pecan (dashes), Walnut (big pop), Hickory
+(boomerang), Gumball (drops a spiky gumball), Hedge (heavy, rolls).
 
 ## Build
 ```bash
