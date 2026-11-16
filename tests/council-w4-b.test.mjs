@@ -265,6 +265,9 @@ export const tests = [
       const rfit = await t.page.evaluate(() => [...document.querySelectorAll('.panel h2, .winner')].every((e) => e.scrollWidth <= e.clientWidth + 1));
       t.expect(rfit, 'which fit');
       await snap(t, 'C4-04-results');
+      await t.game('scene', 'credits');
+      const credit = await t.page.evaluate(() => [...document.querySelectorAll('#screens li')].map((l) => l.textContent).find((x) => /Lilita One/.test(x)) || '');
+      t.expect(/SIL Open Font License/.test(credit), 'the Credits name the face and its licence: ' + credit);
       await t.page.evaluate(() => window.__FS.screens.show('settings', {}));
       t.expect((await fam('.panel h2')).startsWith('"Arial Black"'), 'other headings keep the old stack: ' + await fam('.panel h2'));
       await t.checkLayout();

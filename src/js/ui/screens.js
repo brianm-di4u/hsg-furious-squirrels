@@ -351,6 +351,7 @@ const TEMPLATES = {
       <h3>Made with</h3>
       <ul><li>Art: 3D block-outs painted with AI image tools for this game. The squirrels are modelled in 3D.</li>
       <li>Hand-written Canvas2D and WebAudio. Sound-effect synthesis after ZzFX by Frank Force (MIT).</li>
+      <li>Lettering on the logo, level signs and results: Lilita One, under the SIL Open Font License.</li>
       <li>Part of the open-source (MIT) Hot Springs Games collection.</li></ul>
       <nav class="menu row">${btn('creditsBack', 'Back', `autofocus data-back data-from="${from || ''}"`)}</nav>
     </div>`,
