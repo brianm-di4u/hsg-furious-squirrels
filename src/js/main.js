@@ -599,7 +599,7 @@ function battleOver() {
     winnerName: res.battleWinner >= 0 && App.setup.mode !== 'practice' ? TEAMS[res.battleWinner].name : '',
     losses: App.setup.mode === 'story' && !win ? s.story.losses[L.id] || 0 : 0, offerEasy: App.setup.mode === 'story' && !win && (s.story.losses[L.id] || 0) >= LOSS_OFFER && s.settings.difficulty !== 'easy',
     retry: !win && !practice && !daily, daily, loss: !win && !practice ? lossText(b, me, myStats) : null,
-    stats: myStats, turns: myTurns, par: App.setup.mode === 'story' ? parFor(L.par, b.played || 1) : null, rounds: b.played || 1, koAllowed: koAllowed(L.teamSize), acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
+    stats: myStats, gripLost: Math.round(b.teams.reduce((n, t, i) => n + (i === me ? 0 : t.stats.dmg), 0)), turns: myTurns, par: App.setup.mode === 'story' ? parFor(L.par, b.played || 1) : null, rounds: b.played || 1, koAllowed: koAllowed(L.teamSize), acorns: b.teams[me].acorns, fact, me, winner: res.battleWinner,
   });
   decorateScreen();
   say((win ? 'Victory!' : 'Battle over.') + (daily && daily.won ? ` Daily Duel won in ${daily.turns} ${daily.turns === 1 ? 'turn' : 'turns'}.` : '') + (records.turns && records.turns.best ? ' New best: ' + records.turns.now + (records.turns.now === 1 ? ' turn.' : ' turns.') : '') + (records.shot ? ' New best hit: ' + records.shot + '.' : ''));

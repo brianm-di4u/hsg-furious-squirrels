@@ -202,8 +202,9 @@ const TEMPLATES = {
       ${d.unlock ? `<p><b>New nut unlocked:</b> ${NUTS[d.unlock].name}: ${NUTS[d.unlock].trick}</p>` : ''}
       ${d.stats.throws ? `<div class="statgrid">
         <div><span>Throws</span><b>${d.stats.throws}</b></div><div><span>Hits</span><b>${d.stats.hits}</b></div>
-        <div><span>Knockouts</span><b>${d.stats.kos}</b></div><div><span>Biggest hit</span><b>${d.stats.best}</b></div>
-        <div><span>Turns</span><b>${d.turns}</b></div>
+        <div><span>Accuracy</span><b>${pct(d.stats.hits, d.stats.throws)}</b></div><div><span>Knockouts</span><b>${d.stats.kos}</b></div>
+        <div><span>Biggest hit</span><b>${d.stats.best}</b></div><div><span>Grip lost</span><b>${d.gripLost}</b></div>
+        <div><span>Turns</span><b>${d.turns}</b></div>${d.par ? `<div><span>Par</span><b>${d.par}</b></div>` : ''}
       </div>` : ''}
       ${d.banked != null ? `<p class="banked">Acorns banked: <b>${d.banked}</b> <small>(kept for your next battle)</small></p>` : ''}
       ${d.fact ? `<div class="notes" role="note"><h3>Field Notes</h3>${d.fact.html}<span class="src">Source: ${d.fact.source}</span></div>` : ''}
