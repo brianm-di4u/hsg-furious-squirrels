@@ -251,7 +251,9 @@ export const tests = [
       t.expect(Math.abs(a.busMusic - 0.35) < 0.02, 'and a lower Effects level leaves the music alone');
       t.expect(a.on && a.music, 'the Sound and Music switches are untouched');
       await t.page.click('[data-k="sfxVol"][data-v="0"]');
-      await waitAudio(t, () => window.__game.getState().audio.busSfx < 0.01);
+      // the bus glides to its new level on the audio clock, which stalls on a busy machine: wait for the saved choice, which
+      // is what stops the cues at once (audio.js: a cue is dropped while the level is 0)
+      await waitAudio(t, () => window.__game.getState().settings.sfxVol === 0);
       const played = (await audio(t)).played;
       await t.page.click('[data-k="musicVol"][data-v="0.65"]');
       t.equal((await audio(t)).played, played, 'Effects Off plays no cue, not even a menu tick');
