@@ -114,6 +114,7 @@ const TEMPLATES = {
         ${[0, 1].map((t) => `<button type="button" class="card btn" data-act="team" data-v="${t}" data-next="${next}" ${t === 0 ? 'autofocus' : ''} style="text-align:left;min-height:120px">
           <b>${t === 0 ? '● ' : '▲ '}${TEAMS[t].name}</b><br>${TEAMS[t].species} of ${TEAMS[t].home}${t === 0 ? ', in mustard caps' : ', in teal scarves'}.<br><small>${t === 0 ? 'Throwing right, across the valley toward the Tower.' : 'Throwing left, across the valley toward West Mountain.'}</small></button>`).join('')}
       </div>
+      <p class="starrule">Both families throw the same: pick the colors you like.</p>
       <nav class="menu row">${btn('back', 'Back', 'data-back')}</nav>
     </div>`,
 

@@ -186,4 +186,28 @@ export const tests = [
       }
     },
   },
+  // ---- S2-15 ----
+  {
+    name: 'S2-15 the family choice says both families throw the same, and it fits',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      await t.page.evaluate(() => window.__FS.screens.show('pickTeam', { next: 'story' }));
+      const line = await t.page.evaluate(() => [...document.querySelectorAll('#screens .starrule')].map((p) => p.textContent));
+      t.equal(line.join('|'), 'Both families throw the same: pick the colors you like.', 'the reassurance sits under the cards');
+      const order = await t.page.evaluate(() => { const c = document.querySelector('#screens .cards'), p = document.querySelector('#screens .starrule'); return !!(c.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING); });
+      t.expect(order, 'after the two cards');
+      const cut = await t.page.evaluate(() => [...document.querySelectorAll('#screens .starrule, #screens .card')].filter((e) => e.scrollWidth > e.clientWidth + 1).length);
+      t.equal(cut, 0, 'nothing is cut off');
+      await snap(t, 'S2-15-pick-family');
+      await t.checkLayout();
+      // it is true: the two families start with the same acorns and grip, and share one table of nuts
+      const same = await t.page.evaluate(() => {
+        window.__game.newGame({ levelId: 'gray', seed: 7 });
+        const b = window.__FS.sim.b, [a, c] = b.teams, grips = (k) => b.squirrels.filter((q) => q.team === k).map((q) => q.grip);
+        return JSON.stringify([a.acorns, grips(0)]) === JSON.stringify([c.acorns, grips(1)]); // (the family that throws second also gets a bonus nut: that is turn order, not family)
+      });
+      t.expect(same, 'the families start with the same acorns and grip');
+    },
+  },
 ];
