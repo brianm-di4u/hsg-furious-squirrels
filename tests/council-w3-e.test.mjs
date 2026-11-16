@@ -170,8 +170,9 @@ export const tests = [
   },
   // ---- S2-08 ----
   {
-    name: 'S2-08 the page can be pinch-zoomed, and the nut names, the turn label and the nameplates follow Text size',
+    name: 'S2-08 the viewport meta no longer forbids zooming, and the nut names, the turn label and the nameplates follow Text size',
     async run(t) {
+      // only the meta string is checked: touch-action still stops a pinch (it waits for the owner), so this does not claim the page zooms
       t.equal(await t.page.evaluate(() => document.querySelector('meta[name=viewport]').content.includes('user-scalable')), false, 'the viewport no longer forbids zooming');
       await startHuman(t);
       await t.page.waitForFunction(() => window.__game.getState().battle.phase === 'aim', null, { timeout: 30000 });
