@@ -517,7 +517,9 @@ function showTitle() {
   App.scene = 'title'; document.body.dataset.scene = 'title';
   hud.show(false);
   // a living battlefield behind the title
-  const L = ALL['story-01'] || Object.values(ALL)[0];
+  // (S4-11) as far into the Story as the player has got: that battle's season and time of day, with the air and birds it has
+  const far = STORY[clamp(Math.floor(App.save.story.unlocked) || 1, 1, STORY.length) - 1];
+  const L = ALL[far && far.id] || ALL['story-01'] || Object.values(ALL)[0];
   App.level = L; App.sim = new Sim(L, { seed: 5, teamSize: 3, human: [false, false], birds: 'lots' }); App.setup = { mode: 'title', levelId: L.id };
   renderer.setLevel(L, App.sim); loadArt(L);
   App.vis = {}; App.aiActive = null; App.paused = false;

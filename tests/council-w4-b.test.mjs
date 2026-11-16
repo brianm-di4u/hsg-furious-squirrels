@@ -43,4 +43,34 @@ export const tests = [
       t.equal(q['Grip lost'], '0', 'and no grip lost');
     },
   },
+  // ---- S4-11 ----
+  {
+    name: 'S4-11 the title shows the battle the player has got to, and a new player still sees the first',
+    async run(t) {
+      await t.game('act', 'clearSave');
+      await t.reload();
+      const seen = () => t.page.evaluate(() => ({ id: window.__FS.level.id, season: window.__FS.level.season, air: window.__FS.renderer.weather.kind, scene: window.__FS.scene }));
+      let s = await seen();
+      t.equal(s.id + '/' + s.scene, 'story-01/title', 'a new profile sees the first battle, as before');
+      await snap(t, 'S4-11-title-new');
+      // a fresh profile each time: a save never lowers what a player has opened
+      const titleFor = async (unlocked) => {
+        await t.game('act', 'clearSave');
+        await t.reload();
+        await t.game('setState', { story: { unlocked, team: 0 } });
+        await t.game('scene', 'title');
+        await t.page.waitForFunction(() => window.__FS.loading === 0, null, { timeout: 15000 });
+        return seen();
+      };
+      s = await titleFor(10); // the Story's tenth battle is a winter day
+      t.equal(s.id, 'story-10', 'a player who has opened battle 10 sees it');
+      t.equal(s.season + '/' + s.air, 'winter/snow', "with its season's air");
+      await snap(t, 'S4-11-title-winter');
+      s = await titleFor(4);
+      t.equal(s.id + '/' + s.air, 'story-04/petals', 'a spring battle brings petals');
+      t.equal((await titleFor(99)).id, 'story-12', 'past the end it is the last battle');
+      t.equal((await titleFor(0)).id, 'story-01', 'and nothing opened is the first');
+      await t.checkLayout();
+    },
+  },
 ];
