@@ -117,7 +117,12 @@ function openPrep(setup) {
   const L = ALL[setup.levelId];
   screens.show('prep', { setup: full, bought: {}, kinds: packKinds(full), blurb: setup.mode === 'story' ? blurbFor(L.n) : '', name: L.n && setup.mode === 'story' ? `Battle ${L.n}: ${L.name}` : L.name });
 }
+// The cheer for a rival's knockout comes half a second after it (S5-14): leaving the battle or starting another one first, or
+// pausing, drops it, so it never sounds over a menu.
+const cheers = new Set();
+const dropCheer = () => { for (const id of cheers) clearTimeout(id); cheers.clear(); };
 function startBattle(setup) {
+  dropCheer();
   let L = ALL[setup.levelId];
   if (!L) { showTitle(); showNotice('That battlefield could not be found'); return; }
   const saved = beginBattleSave(App.save, { mode: setup.mode, resume: !!setup.battle, levelNumber: L.n || 0, notify: saveConflict });
@@ -384,6 +389,7 @@ function toggleSound() {
 
 function pauseGame() {
   if (App.scene !== 'battle' || screens.cur) return;
+  dropCheer();
   App.paused = true; screens.show('pause'); kick();
 }
 
@@ -480,6 +486,7 @@ function askLeave(then) {
 }
 
 function showTitle() {
+  dropCheer();
   App.scene = 'title'; document.body.dataset.scene = 'title';
   hud.show(false);
   // a living battlefield behind the title
@@ -1032,7 +1039,7 @@ function handleEvents() {
         fx.stars(ev.from.x, ev.from.y - 30); fx.chips(ev.from.x, ev.from.y, 10); fx.leaves(ev.from.x, ev.from.y - 10, 14, L.season);
         sfx('ko', undefined, { pan: pan(ev.from.x) }); buzz([20, 30, 40]);
         // the cheer is for the rival's loss: when the one human side loses a squirrel it stays quiet
-        if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) setTimeout(() => sfx('cheer'), 500);
+        if (!(b.teams[q.team].human && b.teams.filter((tm) => tm.human).length === 1)) { const id = setTimeout(() => { cheers.delete(id); sfx('cheer'); }, 500); cheers.add(id); }
         hud.call(`${q.name} is out!`, 1400);
         let said = `${q.name} of the ${TEAMS[q.team].short} is out, tumbling into the leaf pile.`;
         if (!sim.b.practice) {

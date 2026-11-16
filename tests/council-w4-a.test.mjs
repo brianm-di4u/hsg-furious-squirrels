@@ -48,4 +48,38 @@ export const tests = [
       await t.checkLayout();
     },
   },
+  // ---- S5-14 ----
+  {
+    name: 'S5-14 the delayed cheer is dropped when the player leaves the battle, and still plays when they stay',
+    viewports: ['desktop'],
+    async run(t) {
+      const recent = () => t.page.evaluate(() => window.__game.getState().audio.recent);
+      const liveBattle = async () => {
+        await t.reload(); // a clean list of the cues heard
+        await t.game('newGame', { levelId: 'gray', seed: 7 });
+        await t.page.keyboard.press('Shift');
+        await t.page.waitForFunction(() => window.__game.getState().audio.ctx === 'running', null, { timeout: 5000 });
+      };
+      const knockRival = () => t.page.evaluate(() => { const S = window.__FS.sim; S.knockOut(S.b.squirrels.find((q) => q.team === 1 && !q.out)); window.__FS.kick(); });
+      // leaving: a knockout, then the title straight away. The page's own 800 ms timer is set after the cheer's 500 ms one, so it
+      // cannot fire first, whatever the load: when it has, the cheer's timer has had its turn too.
+      await liveBattle();
+      await knockRival();
+      await t.page.waitForFunction(() => window.__game.getState().audio.recent.includes('ko'), null, { timeout: 8000 });
+      await t.game('scene', 'title');
+      await t.page.evaluate(() => new Promise((r) => setTimeout(r, 800)));
+      t.expect(!(await recent()).includes('cheer'), 'no cheer sounds over the title after leaving: ' + (await recent()).join());
+      // a new battle started within the half second drops it too
+      await liveBattle();
+      await knockRival();
+      await t.page.waitForFunction(() => window.__game.getState().audio.recent.includes('ko'), null, { timeout: 8000 });
+      await t.game('newGame', { levelId: 'gray', seed: 8 });
+      await t.page.evaluate(() => new Promise((r) => setTimeout(r, 800)));
+      t.expect(!(await recent()).includes('cheer'), 'nor over a new battle: ' + (await recent()).join());
+      // staying: the same knockout, and the cheer comes (this proves the check above can see a cheer)
+      await liveBattle();
+      await knockRival();
+      await t.page.waitForFunction(() => window.__game.getState().audio.recent.includes('cheer'), null, { timeout: 8000 });
+    },
+  },
 ];
