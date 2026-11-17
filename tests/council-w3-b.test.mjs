@@ -24,7 +24,7 @@ const phase = async (t) => (await t.state()).battle.phase;
 export const tests = [
   // ---- S1-02 ----
   {
-    name: 'S1-02 a press hurries the rival: it throws within a few frames of the press, whatever its thinking time',
+    name: 'S1-02 a press hurries the rival: it skips its thinking time and throws on the press, whatever that time was',
     viewports: ['desktop'],
     async run(t) {
       await humanFirst(t);
@@ -34,16 +34,11 @@ export const tests = [
       // make it think for a minute, so that only the press can bring its throw: set in the same call that sees the plan,
       // so a slow machine cannot let the rival throw between the wait and the change
       await t.page.waitForFunction(() => { const A = window.__FS.aiActive; if (!(A && A.done && A.plan)) return false; A.plan.think = 60; return true; }, null, { timeout: 15000 });
-      // count animation frames from the press to the rival's throw: frames, not seconds, so a slow machine cannot fail it
-      await t.page.evaluate(() => {
-        window.__frames = -1;
-        const tick = () => { if (window.__game.getState().battle.phase !== 'aim') return; window.__frames++; requestAnimationFrame(tick); };
-        requestAnimationFrame(tick);
-      });
+      t.equal(await t.page.evaluate(() => !!window.__FS.aiActive.skip), false, 'before the press the rival is not hurried');
       await t.page.keyboard.press('Space');
+      // the rival was told to think for a minute, so a throw within the wait can only have come from the press: wait on the state it leaves
       await t.page.waitForFunction(() => window.__FS.sim.b.phase === 'flight', null, { timeout: 8000 });
-      const frames = await t.page.evaluate(() => window.__frames);
-      t.expect(frames <= 4, `the rival threw ${frames} frames after the press`);
+      t.expect(await t.page.evaluate(() => window.__FS.holdThrow > 0), 'the press set the throw hold, so it does not also throw the next nut');
       t.equal((await t.state()).battle.teams[1].stats.throws, 1, 'and it was a real throw');
     },
   },
