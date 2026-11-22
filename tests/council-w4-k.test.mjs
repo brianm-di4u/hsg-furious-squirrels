@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-4b/shots';
+const SHOTS = 'screenshots/council/wave-4b/shots';
 const snap = async (t, name) => {
   await t.shot(name);
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -43,10 +43,13 @@ export const tests = [
     name: 'K-04 a Field Notes check that fails names the bank file it read, its commit, and the command that rebuilds the notes',
     node: true,
     async run(t) {
+      // The real bank is wherever tools/check-facts.mjs finds it ($FS_TRIVIA_BANK, else <workspace>/repos/hsg-trivia/).
+      const { BANK } = await import('../tools/check-facts.mjs');
+      if (!fs.existsSync(BANK)) { t.log('skipped: the audited trivia bank is not at ' + BANK + ' (set HSG_WORKSPACE or FS_TRIVIA_BANK)'); return; }
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-k04-'));
       const keep = process.env.FS_TRIVIA_BANK;
       try {
-        const real = JSON.parse(fs.readFileSync(new URL('../../hsg-trivia/data/questions.json', import.meta.url), 'utf8'));
+        const real = JSON.parse(fs.readFileSync(BANK, 'utf8'));
         const bank = Array.isArray(real) ? real : real.questions;
         const id = JSON.parse(fs.readFileSync(new URL('../data/facts.json', import.meta.url), 'utf8')).landmarks[0].id;
         bank.find((q) => q.id === id).answer += ' (changed)';

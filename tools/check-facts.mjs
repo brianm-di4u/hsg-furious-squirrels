@@ -8,7 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BANK = process.env.FS_TRIVIA_BANK || path.resolve(ROOT, '..', 'hsg-trivia', 'data', 'questions.json');
+// Shared workspace material (reference/, research/, sibling repos/): $HSG_WORKSPACE, else this repo's grandparent
+// (the workspace root when the repo sits in <workspace>/repos/).
+const WORKSPACE = process.env.HSG_WORKSPACE || path.resolve(ROOT, '..', '..');
+// The audited bank: $FS_TRIVIA_BANK, else the sibling checkout <workspace>/repos/hsg-trivia/.
+export const BANK = process.env.FS_TRIVIA_BANK || path.join(WORKSPACE, 'repos', 'hsg-trivia', 'data', 'questions.json');
 
 // Which bank file was read, and the commit of the repo that holds it (with "+ uncommitted changes" when its working tree differs),
 // so a failure says what it compared against.
@@ -19,7 +23,7 @@ export function bankSource() {
 
 export function checkFacts() {
   const issues = [];
-  if (!fs.existsSync(BANK)) return { issues: [`The audited trivia bank is not at ${BANK}. Put Trivia Trail beside this repo, or point FS_TRIVIA_BANK at its data/questions.json.`], n: 0 };
+  if (!fs.existsSync(BANK)) return { issues: [`The audited trivia bank is not at ${BANK}. Put the hsg-trivia checkout in <workspace>/repos/ (set HSG_WORKSPACE to the workspace root), or point FS_TRIVIA_BANK at its data/questions.json.`], n: 0 };
   const facts = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/facts.json'), 'utf8'));
   const raw = JSON.parse(fs.readFileSync(BANK, 'utf8')), bank = Array.isArray(raw) ? raw : raw.questions;
   const research = ['squirrels-and-nuts.md', 'birds.md'].map((f) => fs.readFileSync(path.join(ROOT, 'research', f), 'utf8')).join(' ');
