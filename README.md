@@ -44,6 +44,18 @@ see `art-src/blender/README.md` and `README-squirrels.md`. Codex prompts: `art-s
 
 Only `index.html` and `assets/` ship to the website.
 
+## Paths outside this repo
+
+The game and its build use files inside this repo; the Field Notes test (`tools/check-facts.mjs`, run by `npm test`) also reads the audited trivia bank. The tools below can also use shared material from the Hot
+Springs Games workspace (`reference/`, `research/`, or a sibling checkout in `repos/`). They find the workspace through the
+`HSG_WORKSPACE` environment variable; when it is unset, the workspace is this repo's grandparent, which is right when the
+repo sits at `<workspace>/repos/<repo>`. When the workspace copy is not there, each tool falls back to a path in this repo or
+skips that step with a message.
+
+- `tools/build-facts.mjs` and `tools/check-facts.mjs`: the audited bank at `repos/hsg-trivia/data/questions.json` (`FS_TRIVIA_BANK` overrides it).
+- `tools/geo/geo-lib.mjs`: DEM tiles from `reference/geo/elevation/` (`FS_GEO_RAW` overrides it), else `repos/hsg-tub-rally/art-src/geo/raw/`.
+- Council-era tests write their extra captures to `screenshots/council/` (git-ignored).
+
 ## Layout
 | Path | What |
 |---|---|

@@ -8,7 +8,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BANK = process.env.FS_TRIVIA_BANK || path.resolve(ROOT, '..', 'hsg-trivia', 'data', 'questions.json');
+// Shared workspace material (reference/, research/, sibling repos/): $HSG_WORKSPACE, else this repo's grandparent
+// (the workspace root when the repo sits in <workspace>/repos/).
+const WORKSPACE = process.env.HSG_WORKSPACE || path.resolve(ROOT, '..', '..');
+// The audited bank: $FS_TRIVIA_BANK, else the sibling checkout <workspace>/repos/hsg-trivia/.
+const BANK = process.env.FS_TRIVIA_BANK || path.join(WORKSPACE, 'repos', 'hsg-trivia', 'data', 'questions.json');
 
 // id -> which Row stretch it belongs to (for picking a fact that matches the backdrop)
 export const LANDMARK_IDS = {

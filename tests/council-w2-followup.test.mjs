@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-2/shots';
+const SHOTS = 'screenshots/council/wave-2/shots';
 // Council wave 2, follow-up pass: ambience floor (S5-01), own voice for title and results (S5-02), landscape nut bar (S4-15).
 const render = (t, name, secs, opts) => t.page.evaluate(([n, s, o]) => window.__game.audioRender(n, s, false, o), [name, secs, { raw: true, ...(opts || {}) }]);
 

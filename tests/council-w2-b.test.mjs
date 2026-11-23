@@ -1,7 +1,7 @@
 // Council wave 2, batch B: the acorn economy (S3-01) and difficulty tiers (S3-04).
 import fs from 'node:fs';
 const SAVE_KEY = 'hsg-furious-squirrels-v1';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-2/shots';
+const SHOTS = 'screenshots/council/wave-2/shots';
 
 const saved = (t) => t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
 // a fresh profile on the Story map with the given progress (written through the game's own save path)

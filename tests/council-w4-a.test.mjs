@@ -1,6 +1,6 @@
 // Council wave 4, batch A: saves, lifecycle and robustness; controls, rules and play (C4-01, C4-06, S5-14, P-N03, S1-12, S1-13).
 import fs from 'node:fs';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-4/shots';
+const SHOTS = 'screenshots/council/wave-4/shots';
 const snap = async (t, name) => {
   await t.shot(name);
   fs.mkdirSync(SHOTS, { recursive: true });

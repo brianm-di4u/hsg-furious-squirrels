@@ -1,7 +1,7 @@
 // Council wave 4, batch B: difficulty, progression and records; feedback, teaching and help; world, words and ceremony
 // (S3-19, S4-11, S6-12, C4-03, S2-15, C4-02, C4-04, C4-05).
 import fs from 'node:fs';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-4/shots';
+const SHOTS = 'screenshots/council/wave-4/shots';
 const snap = async (t, name) => {
   await t.shot(name);
   fs.mkdirSync(SHOTS, { recursive: true });

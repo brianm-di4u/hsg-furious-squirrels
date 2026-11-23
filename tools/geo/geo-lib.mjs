@@ -16,9 +16,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const SHARED_DEMS = path.resolve(ROOT, '..', '..', 'reference', 'geo', 'elevation');
+// Shared workspace material (reference/, research/, sibling repos/): $HSG_WORKSPACE, else this repo's grandparent
+// (the workspace root when the repo sits in <workspace>/repos/).
+const WORKSPACE = process.env.HSG_WORKSPACE || path.resolve(ROOT, '..', '..');
+// DEM tiles: $FS_GEO_RAW, else <workspace>/reference/geo/elevation/, else the sibling checkout <workspace>/repos/hsg-tub-rally/art-src/geo/raw/.
+const SHARED_DEMS = path.join(WORKSPACE, 'reference', 'geo', 'elevation');
 export const RAW = process.env.FS_GEO_RAW
-  || (fs.existsSync(SHARED_DEMS) ? SHARED_DEMS : path.resolve(ROOT, '..', 'hsg-tub-rally', 'art-src', 'geo', 'raw'));
+  || (fs.existsSync(SHARED_DEMS) ? SHARED_DEMS : path.join(WORKSPACE, 'repos', 'hsg-tub-rally', 'art-src', 'geo', 'raw'));
 
 // ---------------------------------------------------------------------------------------------------------------
 // TIFF

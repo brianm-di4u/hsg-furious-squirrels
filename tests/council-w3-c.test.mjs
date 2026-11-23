@@ -1,7 +1,7 @@
 // Council wave 3, batch C: controls and play, difficulty and records, feedback and teaching
 // (S1-03, S3-06, S1-17, S2-10, S3-13, P-N02, S2-04, S2-09, S2-01).
 import fs from 'node:fs';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-3/shots';
+const SHOTS = 'screenshots/council/wave-3/shots';
 
 const snap = async (t, name) => {
   await t.shot(name);
