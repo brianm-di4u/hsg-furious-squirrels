@@ -1,5 +1,6 @@
 # Runs the game's browser test suite (npm test) on every pull request and on main.
 # Windows runner: the games and their layout tests were tuned against Windows system fonts.
+# Tests listed in tests/ci-skip.json are skipped here because they measure the runner more than the game; local runs keep them.
 # The suite needs this repo plus the audited trivia bank from hsg-trivia, cloned beside it for the Field Notes facts check.
 name: test
 
