@@ -39,7 +39,9 @@ export const tests = [
       const sl = await t.page.evaluate(() => window.__slices);
       const worst = [...sl].sort((a, b) => a - b)[Math.floor(sl.length * 0.9)] || 0; // 90th percentile: one slice can be hit by the machine, not the plan
       t.log(`rival plan: ${sl.length} slices, 90th percentile ${worst.toFixed(1)} ms`);
-      t.expect(sl.length > 40, `the plan ran in ${sl.length} slices`);
+      // Each slice ends by a 4 ms deadline (main.js: gen.next(performance.now() + 4)), so the count is the plan's total time over 4 ms and
+      // falls on a faster machine (about 30 here). What matters is that the plan is split across frames and that no slice is long.
+      t.expect(sl.length > 1, `the plan ran in ${sl.length} slices, not in one block`);
       t.expect(worst < 20, `planning slices blocked the page for ${worst.toFixed(1)} ms`);
     },
   },
