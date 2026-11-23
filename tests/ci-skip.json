@@ -1,0 +1,6 @@
+[
+  {
+    "test": "S6-12 the rival aims for the same time at 60 Hz and at 144 Hz",
+    "why": "counts frames at a simulated refresh rate; a shared runner drops frames"
+  }
+]
