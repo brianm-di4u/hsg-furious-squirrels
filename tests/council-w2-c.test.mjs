@@ -1,7 +1,7 @@
 // Council wave 2, batch C: Records (S3-02), the feud's voice (S4-01) and the phone HUD (S4-15).
 import fs from 'node:fs';
 const SAVE_KEY = 'hsg-furious-squirrels-v1';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-2/shots';
+const SHOTS = 'screenshots/council/wave-2/shots';
 
 const saved = (t) => t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
 // a save as the game wrote it before this wave: no purse, no star tiers, no records
@@ -319,8 +319,8 @@ export const tests = [
         }
       }
       t.log('HUD share of the height: ' + rows.map((r) => `${r.label} ${r.W}x${r.H} ${r.pct}% (playfield ${r.play}px)`).join('; '));
-      fs.mkdirSync('../_council/hsg-furious-squirrels/wave-2/measure', { recursive: true });
-      fs.writeFileSync('../_council/hsg-furious-squirrels/wave-2/measure/hud-after.json', JSON.stringify(rows, null, 1));
+      fs.mkdirSync('screenshots/council/wave-2/measure', { recursive: true });
+      fs.writeFileSync('screenshots/council/wave-2/measure/hud-after.json', JSON.stringify(rows, null, 1));
       await t.page.setViewportSize({ width: 390, height: 844 });
     },
   },

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const SAVE_KEY = 'hsg-furious-squirrels-v1';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-3/shots';
+const SHOTS = 'screenshots/council/wave-3/shots';
 
 const saved = (t) => t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
 const snap = async (t, name) => {

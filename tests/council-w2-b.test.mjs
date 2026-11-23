@@ -1,7 +1,7 @@
 // Council wave 2, batch B: the acorn economy (S3-01) and difficulty tiers (S3-04).
 import fs from 'node:fs';
 const SAVE_KEY = 'hsg-furious-squirrels-v1';
-const SHOTS = '../_council/hsg-furious-squirrels/wave-2/shots';
+const SHOTS = 'screenshots/council/wave-2/shots';
 
 const saved = (t) => t.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), SAVE_KEY);
 // a fresh profile on the Story map with the given progress (written through the game's own save path)
@@ -276,7 +276,9 @@ export const tests = [
       const sl = await t.page.evaluate(() => window.__slices);
       const worst = [...sl].sort((a, b) => a - b)[Math.floor(sl.length * 0.9)] || 0;
       t.log(`Sharp rival plan: ${sl.length} slices, 90th percentile ${worst.toFixed(1)} ms`);
-      t.expect(sl.length > 40, `the plan ran in ${sl.length} slices`);
+      // Each slice ends by a 4 ms deadline (main.js: gen.next(performance.now() + 4)), so the count is the plan's total time over 4 ms and
+      // falls on a faster machine (about 30 here). What matters is that the plan is split across frames and that no slice is long.
+      t.expect(sl.length > 1, `the plan ran in ${sl.length} slices, not in one block`);
       t.expect(worst < 20, `planning slices blocked the page for ${worst.toFixed(1)} ms`);
     },
   },
